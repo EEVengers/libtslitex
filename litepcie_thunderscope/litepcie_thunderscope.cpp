@@ -1,5 +1,7 @@
-// thunderscope_test.cpp : This file contains the 'main' function. Program execution begins and ends there.
+// litepcie_thunderscope.cpp : This file contains the 'main test' function. Program execution begins and ends there.
 //
+// This file contains parts Copyright (c) 2020 Antmicro <www.antmicro.com>
+// This file contains parts Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
 
 #include <iostream>
 #include <stdlib.h>
@@ -61,41 +63,41 @@ static int64_t get_time_ms(void)
     return timeMS;
 }
 
-static UINT32 read_reg(HANDLE fd, UINT32 reg)
-{
-    struct litepcie_ioctl_reg regData = { 0 };
-    DWORD len = 0;
-
-    regData.reg = reg;
-    regData.is_write = 0;
-    if (0 == DeviceIoControl(fd, LITEPCIE_IOCTL_REG,
-        &regData, sizeof(struct litepcie_ioctl_reg),
-        &regData, sizeof(struct litepcie_ioctl_reg), &len, 0))
-    {
-        fprintf(stderr, "RegRead failed: %d\n", GetLastError());
-    }
-    if (len != sizeof(struct litepcie_ioctl_reg))
-    {
-        fprintf(stderr, "read_reg returned bad len data. %d\n", len);
-    }
-    return regData.val;
-}
-
-static void write_reg(HANDLE fd, UINT32 reg, UINT32 val)
-{
-    struct litepcie_ioctl_reg regData;
-    DWORD len = 0;
-
-    regData.reg = reg;
-    regData.val = val;
-    regData.is_write = 1;
-    if (0 == DeviceIoControl(fd, LITEPCIE_IOCTL_REG,
-        &regData, sizeof(struct litepcie_ioctl_reg),
-        NULL, 0, &len, 0))
-    {
-        fprintf(stderr, "RegWrite failed: %d\n", GetLastError());
-    }
-}
+//static UINT32 litepcie_readl(HANDLE fd, UINT32 reg)
+//{
+//    struct litepcie_ioctl_reg regData = { 0 };
+//    DWORD len = 0;
+//
+//    regData.reg = reg;
+//    regData.is_write = 0;
+//    if (0 == DeviceIoControl(fd, LITEPCIE_IOCTL_REG,
+//        &regData, sizeof(struct litepcie_ioctl_reg),
+//        &regData, sizeof(struct litepcie_ioctl_reg), &len, 0))
+//    {
+//        fprintf(stderr, "RegRead failed: %d\n", GetLastError());
+//    }
+//    if (len != sizeof(struct litepcie_ioctl_reg))
+//    {
+//        fprintf(stderr, "litepcie_readl returned bad len data. %d\n", len);
+//    }
+//    return regData.val;
+//}
+//
+//static void litepcie_writel(HANDLE fd, UINT32 reg, UINT32 val)
+//{
+//    struct litepcie_ioctl_reg regData;
+//    DWORD len = 0;
+//
+//    regData.reg = reg;
+//    regData.val = val;
+//    regData.is_write = 1;
+//    if (0 == DeviceIoControl(fd, LITEPCIE_IOCTL_REG,
+//        &regData, sizeof(struct litepcie_ioctl_reg),
+//        NULL, 0, &len, 0))
+//    {
+//        fprintf(stderr, "RegWrite failed: %d\n", GetLastError());
+//    }
+//}
 
 
 
@@ -198,9 +200,9 @@ static inline void i2c_oe_scl_sda(bool oe, bool scl, bool sda)
 {
     //struct i2c_ops ops = i2c_devs[current_i2c_dev].ops;
 
-    write_reg(fd, CSR_I2C_W_ADDR, ((oe & 1) << I2C_SDAOE) |
-        ((scl & 1) << I2C_SCL) |
-        ((sda & 1) << I2C_SDAOUT));
+    litepcie_writel(fd, CSR_I2C_W_ADDR, ((oe & 1) << CSR_I2C_W_OE_OFFSET) |
+        ((scl & 1) << CSR_I2C_W_SCL_OFFSET) |
+        ((sda & 1) << CSR_I2C_W_SDA_OFFSET));
 
 }
 
@@ -247,7 +249,7 @@ static int i2c_receive_bit(void)
     i2c_oe_scl_sda(0, 1, 0);
     I2C_DELAY(1);
     // read in the middle of SCL high
-    value = read_reg(fd, CSR_I2C_R_ADDR) & 1;
+    value = litepcie_readl(fd, CSR_I2C_R_ADDR) & 1;
     I2C_DELAY(1);
     i2c_oe_scl_sda(0, 0, 0);
     I2C_DELAY(1);
@@ -435,16 +437,16 @@ public:
 
 
     //void w_write(char data) {
-    //    write_reg(this->fd, CSR_I2C_W_ADDR, data);
+    //    litepcie_writel(this->fd, CSR_I2C_W_ADDR, data);
     //}
 
     //char w_read() {
-    //    auto result = read_reg(this->fd, CSR_I2C_W_ADDR);
+    //    auto result = litepcie_readl(this->fd, CSR_I2C_W_ADDR);
     //    return result;
     //}
 
     //char r_read() {
-    //    auto result = read_reg(this->fd, CSR_I2C_R_ADDR);
+    //    auto result = litepcie_readl(this->fd, CSR_I2C_R_ADDR);
     //    return result;
     //}
 
@@ -542,7 +544,7 @@ void spi_write(HANDLE fd, int cs, INT reg, INT data[2]) {
     //this->mosi.write(mosi_data)
     // Start SPI Xfer.
     //this->control.write(mosi_bits * SPI_CONTROL_LENGTH | SPI_CONTROL_START)
-    litepcie_writel(fd, CSR_FRONTEND_SPI_CONTROL_ADDR, mosi_bits + _SPI_CONTROL_LENGTH | _SPI_CONTROL_START);
+    litepcie_writel(fd, CSR_FRONTEND_SPI_CONTROL_ADDR, mosi_bits * _SPI_CONTROL_LENGTH | _SPI_CONTROL_START);
 
     // Wait SPI Xfer to be done.
     while (litepcie_readl(fd, CSR_FRONTEND_SPI_STATUS_ADDR) != SPI_STATUS_DONE)
@@ -611,7 +613,7 @@ int main(int argc, char** argv)
     litepcie_auto_rx_delay = 0;
     litepcie_device_zero_copy = 0;
     litepcie_device_external_loopback = 0;
-    HANDLE fd;
+    //HANDLE fd;
     int i;
     unsigned char fpga_identifier[256];
     fd = litepcie_open("\\CTRL", GENERIC_READ | GENERIC_WRITE);
@@ -626,24 +628,24 @@ int main(int argc, char** argv)
 
     for (i = 0; i < 256; i++)
     {
-        fpga_identifier[i] = read_reg(fd, CSR_IDENTIFIER_MEM_BASE + 4 * i);
+        fpga_identifier[i] = litepcie_readl(fd, CSR_IDENTIFIER_MEM_BASE + 4 * i);
     }
     printf("FPGA Identifier:  %s.\n", fpga_identifier);
 
 #ifdef CSR_DNA_BASE
     printf("FPGA DNA:         0x%08x%08x\n",
-        read_reg(fd, CSR_DNA_ID_ADDR + 4 * 0),
-        read_reg(fd, CSR_DNA_ID_ADDR + 4 * 1));
+        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),
+        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1));
 #endif
 #ifdef CSR_XADC_BASE
     printf("FPGA Temperature: %0.1f °C\n",
-        (double)read_reg(fd, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
+        (double)litepcie_readl(fd, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
     printf("FPGA VCC-INT:     %0.2f V\n",
-        (double)read_reg(fd, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
+        (double)litepcie_readl(fd, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
     printf("FPGA VCC-AUX:     %0.2f V\n",
-        (double)read_reg(fd, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
+        (double)litepcie_readl(fd, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
     printf("FPGA VCC-BRAM:    %0.2f V\n",
-        (double)read_reg(fd, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
+        (double)litepcie_readl(fd, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
 #endif
 
 
@@ -688,16 +690,17 @@ int main(int argc, char** argv)
     //init_zl30250Driver(i2cDriver);
 
     for (unsigned char addr = 0; addr < 0x80; addr++) {
-        auto result = i2c_poll(i);
+        auto result = i2c_poll(addr);
         if (addr % 0x10 == 0) {
-            printf("\n0x{addr:02x}");
-            if (result) {
-                printf(" {addr:02x}");
-            }
-            else {
-                printf(" --");
-            }
+            printf("\n0x%02X", addr);
         }
+        if (result == 1) {
+            printf(" %02X", addr);
+        }
+        else {
+            printf(" --");
+        }
+
     }
 
 
