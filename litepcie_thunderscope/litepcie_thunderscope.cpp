@@ -184,7 +184,7 @@ extern "C" {
 
 #define U_SECOND	(1000000)
 #define I2C_PERIOD	(U_SECOND / I2C_FREQ_HZ)
-#define I2C_DELAY(n)	std::this_thread::sleep_for(std::chrono::microseconds((n * I2C_PERIOD / 4)));
+#define I2C_DELAY(n)	std::this_thread::sleep_for(std::chrono::microseconds((n * I2C_PERIOD)));
     
 
 char I2C_SCL = 0x01;
@@ -701,6 +701,17 @@ int main(int argc, char** argv)
             printf(" --");
         }
 
+    }
+
+    int data[3] = {0x01, 0x02, 0x03};
+
+    for (int i = 0; i < 5; i++) {
+        for (int i2 = 0; i2 < 10; i2++) {
+
+            spi_write(fd, i, i2, data);
+            std::this_thread::sleep_for(std::chrono::microseconds(1));
+        }
+        
     }
 
 

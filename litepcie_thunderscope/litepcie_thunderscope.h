@@ -26,7 +26,7 @@ extern "C" {
 
 	/* I2C frequency defaults to a safe value in range 10-100 kHz to be compatible with SMBus */
 #ifndef I2C_FREQ_HZ
-#define I2C_FREQ_HZ  50000
+#define I2C_FREQ_HZ  400000
 #endif
 
 #define I2C_ADDR_WR(addr) ((addr) << 1)
