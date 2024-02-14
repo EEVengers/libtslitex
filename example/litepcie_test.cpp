@@ -364,7 +364,9 @@ static int check_pn_data(const uint32_t* buf, int count, uint32_t* pseed, int da
 
 static void dma_test(uint8_t zero_copy, uint8_t external_loopback, int data_width, int auto_rx_delay)
 {
-    static struct litepcie_dma_ctrl dma = { .use_reader = 1, .use_writer = 1 };
+    static struct litepcie_dma_ctrl dma = { 0 };
+    dma.use_reader = 1;
+    dma.use_writer = 1;
     dma.loopback = external_loopback ? 0 : 1;
 
     if (data_width > 32 || data_width < 1) {

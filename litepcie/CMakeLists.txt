@@ -18,6 +18,4 @@ set(litepcie_SOURCES
     )
 
 add_library(litepcie STATIC ${litepcie_SOURCES} ${litepcie_HEADERS} ${litepcie_INTERFACE_HEADERS})
-target_include_directories(litepcie
-                            PUBLIC public_h
-                            PRIVATE include)
+target_include_directories(litepcie PUBLIC public_h include)
