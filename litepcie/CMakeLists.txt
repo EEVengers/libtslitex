@@ -1,11 +1,23 @@
-cmake_minimum_required(VERSION 3.20)
+set(litepcie_INTERFACE_HEADERS
+    public_h/csr.h
+    public_h/litepcie_dmadrv.h
+    public_h/litepcie_public.h
+    public_h/soc.h
+    )
 
-project(liblitepcie)
+set(litepcie_HEADERS
+    include/liblitepcie.h
+    include/litepcie_dma.h
+    include/litepcie_flash.h
+    include/litepcie_helpers.h
+    )
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR})
+set(litepcie_SOURCES
+    src/litepcie_dma.c
+    src/litepcie_helpers.c
+    )
 
-add_definitions(-DUNICODE -D_UNICODE)
-
-add_subdirectory(src)
-
-
+add_library(litepcie STATIC ${litepcie_SOURCES} ${litepcie_HEADERS} ${litepcie_INTERFACE_HEADERS})
+target_include_directories(litepcie
+                            PUBLIC public_h
+                            PRIVATE include)
