@@ -127,10 +127,12 @@ file_t litepcie_open(const char* name, int32_t flags)
     file_t fd;
 #if defined(_WIN32)
     /* Open LitePCIe device. */
-    WCHAR devName[1024] = { 0 };
-    getDeviceName(devName, 1024, 0);
-    UINT32 devLen = lstrlenW(devName);
+    wchar_t devName[1024] = { 0 };
+    uint32_t devNum = atoi(&name[strlen(name) - 1]);
+    getDeviceName(devName, 1024, devNum);
+    uint32_t devLen = lstrlenW(devName);
     mbstowcs(&devName[devLen], name, 1024-devLen);
+    devName[devLen + strlen(name) - 1] = '\0';
     fd = CreateFile(devName, (GENERIC_READ | GENERIC_WRITE), 0, NULL,
         OPEN_EXISTING, flags, NULL);
 #else

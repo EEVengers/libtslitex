@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 
 #include "litepcie_dma.h"
@@ -74,6 +75,7 @@ void litepcie_release_dma(file_t fd, uint8_t reader, uint8_t writer) {
 int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, uint8_t zero_copy)
 {
     int32_t flags = 0;
+    char devName[1024] = {0};
     dma->reader_hw_count = 0;
     dma->reader_sw_count = 0;
     dma->writer_hw_count = 0;
@@ -81,10 +83,16 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
 
     dma->zero_copy = zero_copy;
 
+    //Remove DMA Channel from file name
+    dma->channel = atoi(&device_name[strlen(device_name) - 1]);
+    strncpy(devName, devName,strlen(device_name)); 
+    devName[strlen(devName) - 1] = '\0';
+
 #if defined(_WIN32)
     flags = (FILE_ATTRIBUTE_NORMAL |
              FILE_FLAG_NO_BUFFERING |
              FILE_FLAG_OVERLAPPED);
+    //Last char is channel ID.  Zero remove char before opening file
 #else
     if (dma->use_reader)
         dma->fds.events |= POLLOUT;
@@ -93,7 +101,7 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
     flags = O_RDWR | O_CLOEXEC;
 #endif
 
-    dma->fds.fd = litepcie_open(device_name, flags);
+    dma->fds.fd = litepcie_open(devName, flags);
     if (dma->fds.fd < 0) {
         fprintf(stderr, "Could not open device\n");
         return -1;

@@ -427,7 +427,7 @@ int main(int argc, char** argv)
     //file_t fd;
     int i;
     unsigned char fpga_identifier[256];
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);

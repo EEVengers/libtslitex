@@ -66,7 +66,7 @@ static void info(void)
     file_t fd;
     int i;
     unsigned char fpga_identifier[256];
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -112,7 +112,7 @@ void scratch_test(void)
     printf("-------------------------\n");
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -157,7 +157,7 @@ static void flash_program(uint32_t base, const uint8_t* buf1, int size1)
     int errors;
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -242,7 +242,7 @@ static void flash_read(const char* filename, uint32_t size, uint32_t offset)
     }
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -272,7 +272,7 @@ static void flash_reload(void)
     file_t fd;
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_FLAGS);
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -402,7 +402,7 @@ static void dma_test(uint8_t zero_copy, uint8_t external_loopback, int data_widt
     printf("\x1b[1m[> DMA loopback test:\x1b[0m\n");
     printf("---------------------\n");
 
-    if (litepcie_dma_init(&dma, "\\DMA0", zero_copy))
+    if (litepcie_dma_init(&dma, LITEPCIE_DMA_NAME(0, 0), zero_copy))
         exit(1);
 
 #ifdef DMA_CHECK_DATA

@@ -29,6 +29,7 @@ typedef struct pollfd pollfd_t;
 struct litepcie_dma_ctrl {
     uint8_t use_reader, use_writer, loopback, zero_copy;
     pollfd_t fds;
+    uint32_t channel;
     char *buf_rd, *buf_wr;
     int64_t reader_hw_count, reader_sw_count;
     int64_t writer_hw_count, writer_sw_count;
