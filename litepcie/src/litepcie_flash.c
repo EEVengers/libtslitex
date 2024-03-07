@@ -25,10 +25,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include <litepcie_public.h>
-
 #include "litepcie_flash.h"
 #include "litepcie_helpers.h"
+#include "litepcie.h"
 
 #ifdef CSR_FLASH_BASE
 
@@ -36,7 +35,7 @@
 #define FLASH_RETRIES 16
 
 #if defined(_WIN32)
-void usleep(INT64 usec)
+void usleep(int64_t usec)
 {
     HANDLE timer;
     LARGE_INTEGER delay;
@@ -64,14 +63,10 @@ static uint64_t flash_spi(file_t fd, int tx_len, uint8_t cmd,
                           uint32_t tx_data)
 {
     struct litepcie_ioctl_flash m;
-    DWORD len;
     flash_spi_cs(fd, 0);
     m.tx_len = tx_len;
     m.tx_data = tx_data | ((uint64_t)cmd << 32);
-    checked_ioctl(fd, LITEPCIE_IOCTL_FLASH,
-        &m, sizeof(struct litepcie_ioctl_flash),
-        &m, sizeof(struct litepcie_ioctl_flash), &len, 0);
-
+    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_FLASH, m));
     flash_spi_cs(fd, 1);
     return m.rx_data;
 }
@@ -96,16 +91,15 @@ static uint8_t flash_read_status(file_t fd)
     return flash_spi(fd, 16, FLASH_RDSR, 0) & 0xff;
 }
 
-static void flash_erase_sector(file_t fd, uint32_t addr)
-{
-    flash_spi(fd, 32, FLASH_SE, addr << 8);
-}
-/**
 static __attribute__((unused)) void flash_write_status(file_t fd, uint8_t value)
 {
     flash_spi(fd, 16, FLASH_WRSR, value << 24);
 }
 
+static __attribute__((unused)) void flash_erase_sector(file_t fd, uint32_t addr)
+{
+    flash_spi(fd, 32, FLASH_SE, addr << 8);
+}
 
 static __attribute__((unused)) uint8_t flash_read_sector_lock(file_t fd, uint32_t addr)
 {
@@ -116,7 +110,7 @@ static __attribute__((unused)) void flash_write_sector_lock(file_t fd, uint32_t 
 {
     flash_spi(fd, 40, FLASH_WRSR, (addr << 8) | byte);
 }
-**/
+
 static void flash_write(file_t fd, uint32_t addr, uint8_t byte)
 {
     flash_spi(fd, 40, FLASH_PP, (addr << 8) | byte);
@@ -125,7 +119,6 @@ static void flash_write(file_t fd, uint32_t addr, uint8_t byte)
 static void flash_write_buffer(file_t fd, uint32_t addr, uint8_t *buf, uint16_t size)
 {
     int i;
-    DWORD len;
 
     struct litepcie_ioctl_flash m;
 
@@ -138,17 +131,13 @@ static void flash_write_buffer(file_t fd, uint32_t addr, uint8_t *buf, uint16_t 
         /* send cmd */
         m.tx_len = 32;
         m.tx_data = ((uint64_t)FLASH_PP << 32) | ((uint64_t)addr << 8);
-        checked_ioctl(fd, LITEPCIE_IOCTL_FLASH,
-            &m, sizeof(struct litepcie_ioctl_flash),
-            &m, sizeof(struct litepcie_ioctl_flash), &len, 0);
+        checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_FLASH, m));
 
         /* send bytes */
         for (i=0; i<size; i++) {
             m.tx_len = 8;
             m.tx_data = ((uint64_t)buf[i] << 32);
-            checked_ioctl(fd, LITEPCIE_IOCTL_FLASH,
-                &m, sizeof(struct litepcie_ioctl_flash),
-                &m, sizeof(struct litepcie_ioctl_flash), &len, 0);
+            checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_FLASH, m));
         }
 
         /* release cs_n */
@@ -164,7 +153,6 @@ uint8_t litepcie_flash_read(file_t fd, uint32_t addr)
 static void litepcie_flash_read_buffer(file_t fd, uint32_t addr, uint8_t *buf, uint16_t size)
 {
     int i;
-    DWORD len;
 
     struct litepcie_ioctl_flash m;
 
@@ -178,16 +166,12 @@ static void litepcie_flash_read_buffer(file_t fd, uint32_t addr, uint8_t *buf, u
         /* send cmd */
         m.tx_len = 32;
         m.tx_data = ((uint64_t)FLASH_READ << 32) | ((uint64_t)addr << 8);
-        checked_ioctl(fd, LITEPCIE_IOCTL_FLASH,
-            &m, sizeof(struct litepcie_ioctl_flash),
-            &m, sizeof(struct litepcie_ioctl_flash), &len, 0);
+        checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_FLASH, m));
 
         /* read bytes */
         for (i=0; i<size; i++) {
             m.tx_len = 8;
-            checked_ioctl(fd, LITEPCIE_IOCTL_FLASH,
-                &m, sizeof(struct litepcie_ioctl_flash),
-                &m, sizeof(struct litepcie_ioctl_flash), &len, 0);
+            checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_FLASH, m));
             buf[i] = m.rx_data;
         }
 

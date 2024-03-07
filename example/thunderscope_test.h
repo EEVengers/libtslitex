@@ -32,6 +32,14 @@ extern "C" {
 #define I2C_ADDR_WR(addr) ((addr) << 1)
 #define I2C_ADDR_RD(addr) (((addr) << 1) | 1u)
 
+
+/* spi */
+#define SPI_CTRL_START 0x1
+#define SPI_CTRL_LENGTH (1<<8)
+#define SPI_STATUS_DONE 0x1
+#define SPI_TIMEOUT 100000 /* in us */
+
+
 	void i2c_reset(void);
 	bool i2c_write(unsigned char slave_addr, unsigned int addr, const unsigned char* data, unsigned int len, unsigned int addr_size);
 	bool i2c_read(unsigned char slave_addr, unsigned int addr, unsigned char* data, unsigned int len, bool send_stop, unsigned int addr_size);

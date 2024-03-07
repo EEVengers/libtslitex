@@ -8,74 +8,80 @@
 
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+//Disable the redefinition warning here because windows headers are terrible
+#pragma warning (push)
+#pragma warning (disable : 4005)
+#pragma warning (disable : 4083)
+#include <stdint.h>
+#pragma warning (pop)
+
 #include "csr.h"
 #include "soc.h"
-#include "litepcie_dmadrv.h"
+#include "config.h"
 
-/* spi */
-#define SPI_CTRL_START 0x1
-#define SPI_CTRL_LENGTH (1<<8)
-#define SPI_STATUS_DONE 0x1
-#define SPI_TIMEOUT 100000 /* in us */
 
 /* pcie */
 #define DMA_TABLE_LOOP_INDEX (1 << 0)
 #define DMA_TABLE_LOOP_COUNT (1 << 16)
 
 struct litepcie_ioctl_reg {
-	UINT32 reg;
-	UINT32 val;
-	UINT8 is_write;
+	uint32_t addr;
+	uint32_t val;
+	uint8_t is_write;
 };
 
 struct litepcie_ioctl_flash {
 	int tx_len; /* 8 to 40 */
-	UINT64 tx_data; /* 8 to 40 bits */
-	UINT64 rx_data; /* 40 bits */
+	uint64_t tx_data; /* 8 to 40 bits */
+	uint64_t rx_data; /* 40 bits */
 };
 
 struct litepcie_ioctl_icap {
-	UINT8 addr;
-	UINT32 data;
+	uint8_t addr;
+	uint32_t data;
 };
 
 struct litepcie_ioctl_dma {
-	UINT8 loopback_enable;
+	uint8_t loopback_enable;
 };
 
 struct litepcie_ioctl_dma_writer {
-	UINT8 enable;
-	INT64 hw_count;
-	INT64 sw_count;
+	uint8_t enable;
+	int64_t hw_count;
+	int64_t sw_count;
 };
 
 struct litepcie_ioctl_dma_reader {
-	UINT8 enable;
-	INT64 hw_count;
-	INT64 sw_count;
+	uint8_t enable;
+	int64_t hw_count;
+	int64_t sw_count;
 };
 
 struct litepcie_ioctl_lock {
-	UINT8 dma_reader_request;
-	UINT8 dma_writer_request;
-	UINT8 dma_reader_release;
-	UINT8 dma_writer_release;
-	UINT8 dma_reader_status;
-	UINT8 dma_writer_status;
+	uint8_t dma_reader_request;
+	uint8_t dma_writer_request;
+	uint8_t dma_reader_release;
+	uint8_t dma_writer_release;
+	uint8_t dma_reader_status;
+	uint8_t dma_writer_status;
 };
 
 struct litepcie_ioctl_mmap_dma_info {
-	UINT64 dma_tx_buf_offset;
-	UINT64 dma_tx_buf_size;
-	UINT64 dma_tx_buf_count;
+	uint64_t dma_tx_buf_offset;
+	uint64_t dma_tx_buf_size;
+	uint64_t dma_tx_buf_count;
 
-	UINT64 dma_rx_buf_offset;
-	UINT64 dma_rx_buf_size;
-	UINT64 dma_rx_buf_count;
+	uint64_t dma_rx_buf_offset;
+	uint64_t dma_rx_buf_size;
+	uint64_t dma_rx_buf_count;
 };
 
 struct litepcie_ioctl_mmap_dma_update {
-	INT64 sw_count;
+	int64_t sw_count;
 };
 
 #define LITEPCIE_IOCTL(id)		CTL_CODE(FILE_DEVICE_UNKNOWN, id, METHOD_BUFFERED, FILE_ANY_ACCESS)
@@ -100,3 +106,6 @@ DEFINE_GUID (GUID_DEVINTERFACE_litepciedrv,
         0x164adc02, 0xe1ae, 0x4fe1, 0xa9, 0x4, 0x9a, 0x1, 0x35, 0x77, 0xb8, 0x91);
     // {164ADC02-E1AE-4FE1-A904-9A013577B891}
 
+#ifdef __cplusplus
+}
+#endif

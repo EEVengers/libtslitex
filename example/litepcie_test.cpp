@@ -7,23 +7,28 @@
 #include <string.h>
 #include <stdarg.h>
 #include <inttypes.h>
-//#include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
 
 #ifdef _WIN32
 #include <Windows.h>
-//#include <SetupAPI.h>
-//#include <INITGUID.H>
-//#include <ioapiset.h>
 #endif
 
 #include "liblitepcie.h"
-//#include "litepcie_public.h"
 #include <csr.h>
 #include <soc.h>
 
+#if !defined(_WIN32)
+#define INVALID_HANDLE_VALUE (-1)
+#endif
+
+
+#ifdef _WIN32
+#define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
+#else
+#define FILE_FLAGS  (O_RDWR)
+#endif
 
 #define DMA_EN
 //#define FLASH_EN
@@ -37,7 +42,6 @@
 /* Variables */
 /*-----------*/
 
-static WCHAR litepcie_device[1024];
 static int litepcie_device_num;
 
 sig_atomic_t keep_running = 1;
@@ -59,10 +63,10 @@ static int64_t get_time_ms(void)
 /*------*/
 static void info(void)
 {
-    HANDLE fd;
+    file_t fd;
     int i;
     unsigned char fpga_identifier[256];
-    fd = litepcie_open("\\CTRL", GENERIC_READ | GENERIC_WRITE);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -81,7 +85,8 @@ static void info(void)
 #ifdef CSR_DNA_BASE
     printf("FPGA DNA:         0x%08x%08x\n",
         litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),
-        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1));
+        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1)
+    );
 #endif
 #ifdef CSR_XADC_BASE
     printf("FPGA Temperature: %0.1f �C\n",
@@ -95,17 +100,19 @@ static void info(void)
 #endif
     litepcie_close(fd);
 }
+
 /* Scratch */
 /*---------*/
+
 void scratch_test(void)
 {
-    HANDLE fd;
+    file_t fd;
 
     printf("\x1b[1m[> Scratch register test:\x1b[0m\n");
     printf("-------------------------\n");
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_ATTRIBUTE_NORMAL);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -124,6 +131,7 @@ void scratch_test(void)
     /* Close LitePCIe device. */
     litepcie_close(fd);
 }
+
 /* SPI Flash */
 /*-----------*/
 
@@ -141,15 +149,15 @@ static void flash_progress(void* opaque, const char* fmt, ...)
 
 static void flash_program(uint32_t base, const uint8_t* buf1, int size1)
 {
-    HANDLE fd;
+    file_t fd;
 
     uint32_t size;
-    uint8_t* buf;
+    uint8_t *buf;
     int sector_size;
     int errors;
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_ATTRIBUTE_NORMAL);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -173,14 +181,13 @@ static void flash_program(uint32_t base, const uint8_t* buf1, int size1)
     if (errors) {
         printf("Failed %d errors.\n", errors);
         exit(1);
-    }
-    else {
+    } else {
         printf("Success.\n");
     }
 
     /* Free buffer and close LitePCIe device. */
     free(buf);
-    CloseHandle(fd);
+    litepcie_close(fd);
 }
 
 static void flash_write(const char* filename, uint32_t offset)
@@ -235,7 +242,7 @@ static void flash_read(const char* filename, uint32_t size, uint32_t offset)
     }
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_ATTRIBUTE_NORMAL);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -257,7 +264,7 @@ static void flash_read(const char* filename, uint32_t size, uint32_t offset)
 
     /* Close destination file and LitePCIe device. */
     fclose(f);
-    CloseHandle(fd);
+    litepcie_close(fd);
 }
 
 static void flash_reload(void)
@@ -265,7 +272,7 @@ static void flash_reload(void)
     file_t fd;
 
     /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_ATTRIBUTE_NORMAL);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -364,7 +371,7 @@ static int check_pn_data(const uint32_t* buf, int count, uint32_t* pseed, int da
 
 static void dma_test(uint8_t zero_copy, uint8_t external_loopback, int data_width, int auto_rx_delay)
 {
-    static struct litepcie_dma_ctrl dma = { 0 };
+    static struct litepcie_dma_ctrl dma = {0};
     dma.use_reader = 1;
     dma.use_writer = 1;
     dma.loopback = external_loopback ? 0 : 1;
@@ -397,8 +404,6 @@ static void dma_test(uint8_t zero_copy, uint8_t external_loopback, int data_widt
 
     if (litepcie_dma_init(&dma, "\\DMA0", zero_copy))
         exit(1);
-
-    //litepcie_writel(dma.dma_fd, CSR_ADC_TRIGGER_CONTROL_ADDR, 0x1);
 
 #ifdef DMA_CHECK_DATA
     /* DMA-TX Write. */
@@ -491,18 +496,18 @@ static void dma_test(uint8_t zero_copy, uint8_t external_loopback, int data_widt
                 printf("\x1b[1mDMA_SPEED(Gbps)\tTX_BUFFERS\tRX_BUFFERS\tDIFF\tERRORS\x1b[0m\n");
             i++;
             /* Print statistics. */
-            printf("%14.2f\t%10" PRIu64 "\t%10" PRIu64 "\t%4" PRIi64 "\t%6u\n",
-                (double)(dma.reader_sw_count - reader_sw_count_last) * DMA_BUFFER_SIZE * 8 * data_width / (get_next_pow2(data_width) * (double)duration * 1e6),
-                dma.reader_sw_count,
-                dma.writer_sw_count,
-                dma.reader_sw_count - dma.writer_sw_count,
-                errors);
-            printf("\t\t%10.2f\t%10.2f\n",
+            printf("%14.2f\t%10" PRIu64 "\t%10" PRIu64 "\t%4" PRIu64 "\t%6u\n",
+                   (double)(dma.reader_sw_count - reader_sw_count_last) * DMA_BUFFER_SIZE * 8 * data_width / (get_next_pow2(data_width) * (double)duration * 1e6),
+                   dma.reader_sw_count,
+                   dma.writer_sw_count,
+                   dma.reader_sw_count - dma.writer_sw_count,
+                   errors);
+            printf("%14.2f Gbps TX \t%14.2f Gbps RX\n",
                 (double)(dma.reader_hw_count - reader_hw_count_last) * DMA_BUFFER_SIZE * 8 / ((double)duration * 1e6),
                 (double)(dma.writer_hw_count - writer_hw_count_last) * DMA_BUFFER_SIZE * 8 / ((double)duration * 1e6));
             printf("\t\t%10" PRIi64 "\t%10" PRIi64 "\n",
-                (dma.reader_hw_count - reader_hw_count_last),
-                (dma.writer_hw_count - writer_hw_count_last));
+                (dma.reader_hw_count - dma.reader_sw_count),
+                (dma.writer_hw_count - dma.writer_sw_count));
             /* Update errors/time/count. */
             errors = 0;
             last_time = get_time_ms();

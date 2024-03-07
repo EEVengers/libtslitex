@@ -1,9 +1,21 @@
+set(CMAKE_C_EXTENSIONS ON) # gnu17 expected for linux lib
+
 set(litepcie_INTERFACE_HEADERS
     public_h/csr.h
-    public_h/litepcie_dmadrv.h
-    public_h/litepcie_public.h
+    public_h/config.h
+    public_h/litepcie.h
     public_h/soc.h
     )
+
+if(WIN32)
+set(litepcie_PLATFORM_HEADERS
+    public_h/litepcie_win.h
+    )
+else()
+set(litepcie_PLATFORM_HEADERS
+    public_h/litepcie_linux.h
+    )
+endif()
 
 set(litepcie_HEADERS
     include/liblitepcie.h
@@ -17,5 +29,10 @@ set(litepcie_SOURCES
     src/litepcie_helpers.c
     )
 
-add_library(litepcie STATIC ${litepcie_SOURCES} ${litepcie_HEADERS} ${litepcie_INTERFACE_HEADERS})
+add_library(litepcie STATIC ${litepcie_SOURCES}
+            ${litepcie_HEADERS}
+            ${litepcie_INTERFACE_HEADERS}
+            ${litepcie_PLATFORM_HEADERS}
+            )
+
 target_include_directories(litepcie PUBLIC public_h include)

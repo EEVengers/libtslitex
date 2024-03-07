@@ -16,19 +16,20 @@
 #else
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <fcntl.h>
 #endif
 
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
-
-#include <litepcie_public.h>
 #include "litepcie_helpers.h"
+#include "litepcie.h"
 
 
- //Find Devices
-static void getDeviceName(PWCHAR devName, DWORD maxLen)
+#if defined (_WIN32)
+//Find Devices
+static void getDeviceName(PWCHAR devName, DWORD maxLen, DWORD devIdx)
 {
     DWORD detailLen = 0;
     DWORD dataSize = 0;
@@ -80,48 +81,35 @@ cleanup:
     SetupDiDestroyDeviceInfoList(hwDevInfo);
     return;
 }
-
+#endif
 
 uint32_t litepcie_readl(file_t fd, uint32_t addr) {
     struct litepcie_ioctl_reg regData = { 0 };
-    DWORD len = 0;
 
-    regData.reg = addr;
+    regData.addr = addr;
     regData.is_write = 0;
-    checked_ioctl(fd, LITEPCIE_IOCTL_REG,
-        &regData, sizeof(struct litepcie_ioctl_reg),
-        &regData, sizeof(struct litepcie_ioctl_reg), &len, 0);
-    if (len != sizeof(struct litepcie_ioctl_reg))
-    {
-        fprintf(stderr, "read_reg returned bad len data. %d\n", len);
-    }
+    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_REG, regData));
     return regData.val;
 }
 
 void litepcie_writel(file_t fd, uint32_t addr, uint32_t val) {
     struct litepcie_ioctl_reg regData;
-    DWORD len = 0;
 
-    regData.reg = addr;
+    regData.addr = addr;
     regData.val = val;
     regData.is_write = 1;
-    checked_ioctl(fd, LITEPCIE_IOCTL_REG,
-        &regData, sizeof(struct litepcie_ioctl_reg),
-        NULL, 0, &len, 0);
+    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_REG, regData));
 }
 
 void litepcie_reload(file_t fd) {
     struct litepcie_ioctl_icap m;
     m.addr = 0x4;
     m.data = 0xf;
-    DWORD len = 0;
 
-    checked_ioctl(fd, LITEPCIE_IOCTL_ICAP,
-        &m, sizeof(struct litepcie_ioctl_reg),
-        NULL, 0, NULL, 0);
+    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_ICAP, m));
 }
 
-void _check_ioctl(bool status, const char* file, int line)
+void _check_ioctl(int status, const char *file, int line)
 {
     if (status)
     {
@@ -137,17 +125,25 @@ void _check_ioctl(bool status, const char* file, int line)
 file_t litepcie_open(const char* name, int32_t flags)
 {
     file_t fd;
+#if defined(_WIN32)
     /* Open LitePCIe device. */
     WCHAR devName[1024] = { 0 };
-    getDeviceName(devName, 1024);
+    getDeviceName(devName, 1024, 0);
     UINT32 devLen = lstrlenW(devName);
     mbstowcs(&devName[devLen], name, 1024-devLen);
     fd = CreateFile(devName, (GENERIC_READ | GENERIC_WRITE), 0, NULL,
         OPEN_EXISTING, flags, NULL);
+#else
+    fd = open(name, flags);
+#endif
     return fd;
 }
 
 void litepcie_close(file_t fd)
 {
+#if defined(_WIN32)
     CloseHandle(fd);
+#else
+    close(fd);
+#endif
 }

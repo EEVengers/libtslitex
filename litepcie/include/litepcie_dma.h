@@ -13,21 +13,22 @@
 
 #include <stdint.h>
 
+#include "litepcie_helpers.h"
+#include "litepcie.h"
+
 #if defined(_WIN32)
-typedef void* pollfd_s;
+typedef struct pollfd_s
+{
+    file_t fd;
+} pollfd_t;
 #else
 #include <poll.h>
-typedef struct pollfd pollfd_s;
+typedef struct pollfd pollfd_t;
 #endif
-
-#include "litepcie_public.h"
-#include "litepcie_helpers.h"
-
 
 struct litepcie_dma_ctrl {
     uint8_t use_reader, use_writer, loopback, zero_copy;
-    file_t dma_fd;
-    pollfd_s fds;
+    pollfd_t fds;
     char *buf_rd, *buf_wr;
     int64_t reader_hw_count, reader_sw_count;
     int64_t writer_hw_count, writer_sw_count;

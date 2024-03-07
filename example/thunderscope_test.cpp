@@ -14,7 +14,6 @@
 #include <string.h>
 #include <stdarg.h>
 #include <inttypes.h>
-//#include <unistd.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <time.h>
@@ -27,16 +26,23 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-//#include <SetupAPI.h>
-//#include <INITGUID.H>
-//#include <ioapiset.h>
 #endif
 
 #include "liblitepcie.h"
-#include "litepcie_thunderscope.h"
-//#include "litepcie_public.h"
-#include <csr.h>
-#include <soc.h>
+#include "thunderscope_test.h"
+
+
+#if !defined(_WIN32)
+#define INVALID_HANDLE_VALUE (-1)
+#endif
+
+
+#ifdef _WIN32
+#define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
+#else
+#define FILE_FLAGS  (O_RDWR)
+#endif
+
 
 #define DMA_EN
 #define FLASH_EN
@@ -50,7 +56,6 @@
 /* Variables */
 /*-----------*/
 
-static WCHAR litepcie_device[1024];
 static int litepcie_device_num;
 
 sig_atomic_t keep_running = 1;
@@ -68,58 +73,59 @@ static int64_t get_time_ms(void)
     return timeMS;
 }
 
-UINT32 AFE_CONTROL_LDO_EN = (1 << 0);
-UINT32 AFE_CONTROL_COUPLING = (1 << 8);
-UINT32 AFE_CONTROL_ATTENUATION = (1 << 16);
 
-UINT32 AFE_STATUS_LDO_PWR_GOOD = (1 << 0);
+uint32_t AFE_CONTROL_LDO_EN = (1 << 0);
+uint32_t AFE_CONTROL_COUPLING = (1 << 8);
+uint32_t AFE_CONTROL_ATTENUATION = (1 << 16);
 
-UINT32 AFE_AC_COUPLING = 0;
-UINT32 AFE_DC_COUPLING = 1;
+uint32_t AFE_STATUS_LDO_PWR_GOOD = (1 << 0);
 
-UINT32 AFE_1X_ATTENUATION = 0;
-UINT32 AFE_10X_ATTENUATION = 1;
+uint32_t AFE_AC_COUPLING = 0;
+uint32_t AFE_DC_COUPLING = 1;
+
+uint32_t AFE_1X_ATTENUATION = 0;
+uint32_t AFE_10X_ATTENUATION = 1;
 
 // ADC Constants------------------------------------------------------------------------------------
 
-UINT32 ADC_CONTROL_LDO_EN = (1 << 0);
-UINT32 ADC_CONTROL_PLL_EN = (1 << 1);
-UINT32 ADC_CONTROL_RST = (1 << 2);
-UINT32 ADC_CONTROL_PWR_DOWN = (1 << 3);
+uint32_t ADC_CONTROL_LDO_EN = (1 << 0);
+uint32_t ADC_CONTROL_PLL_EN = (1 << 1);
+uint32_t ADC_CONTROL_RST = (1 << 2);
+uint32_t ADC_CONTROL_PWR_DOWN = (1 << 3);
 
-UINT32 ADC_STATUS_LDO_PWR_GOOD = (1 << 0);
+uint32_t ADC_STATUS_LDO_PWR_GOOD = (1 << 0);
 
-UINT32 _SPI_CONTROL_START = (1 << 0);
-UINT32 _SPI_CONTROL_LENGTH = (1 << 8);
-UINT32 _SPI_STATUS_DONE = (1 << 0);
+uint32_t _SPI_CONTROL_START = (1 << 0);
+uint32_t _SPI_CONTROL_LENGTH = (1 << 8);
+uint32_t _SPI_STATUS_DONE = (1 << 0);
 
 
 /* Main */
 /*------*/
 
-void configure_frontend_ldo(HANDLE fd, UINT32 enable) {
-    UINT32 control_value = litepcie_readl(fd, CSR_FRONTEND_CONTROL_ADDR);
+void configure_frontend_ldo(file_t fd, uint32_t enable) {
+    uint32_t control_value = litepcie_readl(fd, CSR_FRONTEND_CONTROL_ADDR);
     control_value &= ~(1 * AFE_CONTROL_LDO_EN);
     control_value |= (enable * AFE_CONTROL_LDO_EN);
     litepcie_writel(fd, CSR_FRONTEND_CONTROL_ADDR, control_value);
 }
 
-void configure_adc_ldo(HANDLE fd, UINT32 enable) {
-    UINT32 control_value = litepcie_readl(fd, CSR_ADC_CONTROL_ADDR);
+void configure_adc_ldo(file_t fd, uint32_t enable) {
+    uint32_t control_value = litepcie_readl(fd, CSR_ADC_CONTROL_ADDR);
     control_value &= ~(1 * ADC_CONTROL_LDO_EN);
     control_value |= (enable * ADC_CONTROL_LDO_EN);
     litepcie_writel(fd, CSR_ADC_CONTROL_ADDR, control_value);
 }
 
-void configure_pll_en(HANDLE fd, UINT32 enable) {
-    UINT32 control_value = litepcie_readl(fd, CSR_ADC_CONTROL_ADDR);
+void configure_pll_en(file_t fd, uint32_t enable) {
+    uint32_t control_value = litepcie_readl(fd, CSR_ADC_CONTROL_ADDR);
     control_value &= ~(1 * ADC_CONTROL_PLL_EN);
     control_value |= (enable * ADC_CONTROL_PLL_EN);
     litepcie_writel(fd, CSR_ADC_CONTROL_ADDR, control_value);
 }
 
-void control_led(HANDLE fd, UINT32 enable) {
-    UINT32 control_value = litepcie_readl(fd, CSR_LEDS_OUT_ADDR);
+void control_led(file_t fd, uint32_t enable) {
+    uint32_t control_value = litepcie_readl(fd, CSR_LEDS_OUT_ADDR);
     control_value &= ~(1 * AFE_STATUS_LDO_PWR_GOOD);
     control_value |= (enable * AFE_STATUS_LDO_PWR_GOOD);
     litepcie_writel(fd, CSR_LEDS_OUT_ADDR, control_value);
@@ -147,7 +153,7 @@ extern "C" {
 
     // I2C
 
-    HANDLE fd;
+    file_t fd;
 
 #define U_SECOND	(1000000)
 #define I2C_PERIOD	(U_SECOND / I2C_FREQ_HZ)
@@ -385,7 +391,7 @@ extern "C" {
     }
 
     //  SPI
-    void spi_write(HANDLE fd, int cs, char reg, char data[2]) {
+    void spi_write(file_t fd, int cs, char reg, char data[2]) {
 
         litepcie_writel(fd, CSR_MAIN_SPI_CS_ADDR, (1 << cs));
 
@@ -418,10 +424,10 @@ int main(int argc, char** argv)
     litepcie_auto_rx_delay = 0;
     litepcie_device_zero_copy = 0;
     litepcie_device_external_loopback = 0;
-    //HANDLE fd;
+    //file_t fd;
     int i;
     unsigned char fpga_identifier[256];
-    fd = litepcie_open("\\CTRL", GENERIC_READ | GENERIC_WRITE);
+    fd = litepcie_open("\\CTRL", FILE_FLAGS);
     if (fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
