@@ -38,3 +38,7 @@ add_library(litepcie STATIC ${litepcie_SOURCES}
 set_target_properties(litepcie PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
 target_include_directories(litepcie PUBLIC public_h include)
+
+if(WIN32)
+    target_link_libraries(litepcie setupapi)
+endif()

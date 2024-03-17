@@ -15,10 +15,10 @@
 extern "C" {
 #endif
 
+#include "litepcie.h"
 #include "litepcie_dma.h"
 #include "litepcie_flash.h"
 #include "litepcie_helpers.h"
-#include "litepcie.h"
 
 #ifdef __cplusplus
 }

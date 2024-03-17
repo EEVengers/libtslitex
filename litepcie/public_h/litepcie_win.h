@@ -19,6 +19,8 @@ extern "C" {
 #include <stdint.h>
 #pragma warning (pop)
 
+#include <Windows.h>
+
 #include "csr.h"
 #include "soc.h"
 #include "config.h"
