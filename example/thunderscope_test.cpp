@@ -1,12 +1,12 @@
-#
-# This file is part of libtslitex.
-#
-# Copyright (c) 2020-2021 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
-# Copyright (c) 2020 Antmicro <www.antmicro.com>
-# Copyright (c) 2024 John Simons <jammsimons@gmail.com>
-# SPDX-License-Identifier: BSD-2-Clause
-
+/**
+ * This file is part of libtslitex.
+ *
+ * Copyright (c) 2020-2021 Florent Kermarrec <florent@enjoy-digital.fr>
+ * Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
+ * Copyright (c) 2020 Antmicro <www.antmicro.com>
+ * Copyright (c) 2024 John Simons <jammsimons@gmail.com>
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 
 #include <iostream>
 #include <stdlib.h>
