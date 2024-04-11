@@ -1,7 +1,12 @@
-// litepcie_thunderscope.cpp : This file contains the 'main test' function. Program execution begins and ends there.
-//
-// This file contains parts Copyright (c) 2020 Antmicro <www.antmicro.com>
-// This file contains parts Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
+#
+# This file is part of libtslitex.
+#
+# Copyright (c) 2020-2021 Florent Kermarrec <florent@enjoy-digital.fr>
+# Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
+# Copyright (c) 2020 Antmicro <www.antmicro.com>
+# Copyright (c) 2024 John Simons <jammsimons@gmail.com>
+# SPDX-License-Identifier: BSD-2-Clause
+
 
 #include <iostream>
 #include <stdlib.h>
@@ -438,7 +443,7 @@ int main(int argc, char** argv)
         litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1));
 #endif
 #ifdef CSR_XADC_BASE
-    printf("FPGA Temperature: %0.1f °C\n",
+    printf("FPGA Temperature: %0.1f ï¿½C\n",
         (double)litepcie_readl(fd, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
     printf("FPGA VCC-INT:     %0.2f V\n",
         (double)litepcie_readl(fd, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
