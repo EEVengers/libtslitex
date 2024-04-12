@@ -5,6 +5,7 @@
  * Copyright (c) 2022 Franck Jullien <franck.jullien@collshade.fr>
  * Copyright (c) 2020 Antmicro <www.antmicro.com>
  * Copyright (c) 2024 John Simons <jammsimons@gmail.com>
+ * Copyright (c) 2024 Nate Meyer <nate.devel@gmail.com>
  * SPDX-License-Identifier: BSD-2-Clause
  */
 
@@ -57,12 +58,6 @@
 /*-----------*/
 
 static int litepcie_device_num;
-
-sig_atomic_t keep_running = 1;
-
-void intHandler(int dummy) {
-    keep_running = 0;
-}
 
 static int64_t get_time_ms(void)
 {
@@ -463,13 +458,6 @@ int main(int argc, char** argv)
     printf("\x1b[1m[> Scratch register test:\x1b[0m\n");
     printf("-------------------------\n");
 
-    /* Open LitePCIe device. */
-    fd = litepcie_open("\\CTRL", FILE_ATTRIBUTE_NORMAL);
-    if (fd == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Could not init driver\n");
-        exit(1);
-    }
-
 
     /* Write to scratch register. */
     printf("Write 0x12345678 to Scratch register:\n");
@@ -495,8 +483,6 @@ int main(int argc, char** argv)
     printf("Enabling PLL EN:\n");
     configure_pll_en(fd, 1);
 
-
-    fd = fd;
 //    I2CDriver i2cDriver = I2CDriver(fd);
     //init_zl30250Driver(i2cDriver);
 
@@ -525,11 +511,8 @@ int main(int argc, char** argv)
         
     }
 
-
     /* Close LitePCIe device. */
     litepcie_close(fd);
 
-
     return 0;
-
 }
