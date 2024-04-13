@@ -13,4 +13,4 @@ For the Windows build, requires:
 > cmake ..
 > cmake --build .
 ```
-Output binaries are in the `artifacts` folder.
+Output binaries are in the `build/artifacts` folder.

@@ -11,9 +11,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
 set(CMAKE_CXX_EXTENSIONS OFF) # use c++17 instead of gnu++17
 
-project(libthunderscope)
+project(libtslitex)
 
-set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/thunderscope")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
@@ -41,14 +41,14 @@ set(TS_LIB_HEADERS
     include/afe.h
     )
 
-add_library(thunderscope SHARED ${TS_SOURCES}
+add_library(tslitex SHARED ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
-set_target_properties(thunderscope PROPERTIES POSITION_INDEPENDENT_CODE 1)
+set_target_properties(tslitex PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
 
-target_link_libraries(thunderscope litepcie)
-target_include_directories(thunderscope PUBLIC include)
+target_link_libraries(tslitex litepcie)
+target_include_directories(tslitex PUBLIC include)
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
