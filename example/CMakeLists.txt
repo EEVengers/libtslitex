@@ -1,3 +1,5 @@
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/example")
+
 add_executable(litepcie_test litepcie_test.cpp)
 add_executable(thunderscope_test thunderscope_test.cpp)
 

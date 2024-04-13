@@ -35,4 +35,6 @@ add_library(litepcie STATIC ${litepcie_SOURCES}
             ${litepcie_PLATFORM_HEADERS}
             )
 
+set_target_properties(litepcie PROPERTIES POSITION_INDEPENDENT_CODE 1)
+
 target_include_directories(litepcie PUBLIC public_h include)
