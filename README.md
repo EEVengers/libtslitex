@@ -1,5 +1,9 @@
 # Thunderscope Library
 
+This repository provides a library for the LiteX Thunderscope gateware.  It is built upon the litepcie driver and includes the register definition files from the Thunderscope gateware build.  The Thunderscope litepcie driver should be built separately.
+
+![image](doc/thunderscope.png)
+
 ## Requirements
 
 For the Windows build, requires:
