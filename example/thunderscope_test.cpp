@@ -24,14 +24,16 @@
 #include <thread>
 
 
-
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
 #include "liblitepcie.h"
-#include "thunderscope_test.h"
 
+// Test low-level library functions
+#include "../src/spi.h"
+#include "../src/i2c.h"
+#include "../src/gpio.h"
 
 #if !defined(_WIN32)
 #define INVALID_HANDLE_VALUE (-1)
@@ -45,29 +47,13 @@
 #endif
 
 
-#define DMA_EN
-#define FLASH_EN
-
 /* Parameters */
 /*------------*/
-
-//#define DMA_CHECK_DATA   /* Un-comment to disable data check */
-//#define DMA_RANDOM_DATA  /* Un-comment to disable data random */
 
 /* Variables */
 /*-----------*/
 
 static int litepcie_device_num;
-
-static int64_t get_time_ms(void)
-{
-    struct timespec timeNow;
-    timespec_get(&timeNow, TIME_UTC);
-
-    int64_t timeMS = (timeNow.tv_sec * 1000) + (timeNow.tv_nsec / 1000000);
-    return timeMS;
-}
-
 
 uint32_t AFE_CONTROL_LDO_EN = (1 << 0);
 uint32_t AFE_CONTROL_COUPLING = (1 << 8);
@@ -142,266 +128,6 @@ auto awake_time()
     return now() + 500ms;
 }
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-    // I2C
-
-    file_t fd;
-
-#define U_SECOND	(1000000)
-#define I2C_PERIOD	(U_SECOND / I2C_FREQ_HZ)
-#define I2C_DELAY(n)	std::this_thread::sleep_for(std::chrono::microseconds((n * I2C_PERIOD)));
-
-
-    char I2C_SCL = 0x01;
-    char I2C_SDAOE = 0x02;
-    char I2C_SDAOUT = 0x04;
-    char I2C_SDAIN = 0x01;
-
-    char I2C_DELAY = 1;
-    char I2C_WRITE = 0;
-    char I2C_READ = 1;
-
-    static inline void i2c_oe_scl_sda(bool oe, bool scl, bool sda)
-    {
-        //struct i2c_ops ops = i2c_devs[current_i2c_dev].ops;
-
-        litepcie_writel(fd, CSR_I2C_W_ADDR, ((oe & 1) << CSR_I2C_W_OE_OFFSET) |
-            ((scl & 1) << CSR_I2C_W_SCL_OFFSET) |
-            ((sda & 1) << CSR_I2C_W_SDA_OFFSET));
-
-    }
-
-    // START condition: 1-to-0 transition of SDA when SCL is 1
-    static void i2c_start(void)
-    {
-        i2c_oe_scl_sda(1, 1, 1);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(1, 1, 0);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(1, 0, 0);
-        I2C_DELAY(1);
-    }
-
-    // STOP condition: 0-to-1 transition of SDA when SCL is 1
-    static void i2c_stop(void)
-    {
-        i2c_oe_scl_sda(1, 0, 0);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(1, 1, 0);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(1, 1, 1);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(0, 1, 1);
-    }
-
-    // Call when in the middle of SCL low, advances one clk period
-    static void i2c_transmit_bit(int value)
-    {
-        i2c_oe_scl_sda(1, 0, value);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(1, 1, value);
-        I2C_DELAY(2);
-        i2c_oe_scl_sda(1, 0, value);
-        I2C_DELAY(1);
-    }
-
-    // Call when in the middle of SCL low, advances one clk period
-    static int i2c_receive_bit(void)
-    {
-        int value;
-        i2c_oe_scl_sda(0, 0, 0);
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(0, 1, 0);
-        I2C_DELAY(1);
-        // read in the middle of SCL high
-        value = litepcie_readl(fd, CSR_I2C_R_ADDR) & 1;
-        I2C_DELAY(1);
-        i2c_oe_scl_sda(0, 0, 0);
-        I2C_DELAY(1);
-        return value;
-    }
-
-    // Send data byte and return 1 if slave sends ACK
-    static bool i2c_transmit_byte(unsigned char data)
-    {
-        int i;
-        int ack;
-
-        // SCL should have already been low for 1/4 cycle
-        // Keep SDA low to avoid short spikes from the pull-ups
-        i2c_oe_scl_sda(1, 0, 0);
-        for (i = 0; i < 8; ++i) {
-            // MSB first
-            i2c_transmit_bit((data & (1 << 7)) != 0);
-            data <<= 1;
-        }
-        i2c_oe_scl_sda(0, 0, 0); // release line
-        ack = i2c_receive_bit();
-
-        // 0 from slave means ack
-        return ack == 0;
-    }
-
-    // Read data byte and send ACK if ack=1
-    static unsigned char i2c_receive_byte(bool ack)
-    {
-        int i;
-        unsigned char data = 0;
-
-        for (i = 0; i < 8; ++i) {
-            data <<= 1;
-            data |= i2c_receive_bit();
-        }
-        i2c_transmit_bit(!ack);
-        i2c_oe_scl_sda(0, 0, 0); // release line
-
-        return data;
-    }
-
-    // Reset line state
-    void i2c_reset(void)
-    {
-        int i;
-        i2c_oe_scl_sda(1, 1, 1);
-        I2C_DELAY(8);
-        for (i = 0; i < 9; ++i) {
-            i2c_oe_scl_sda(1, 0, 1);
-            I2C_DELAY(2);
-            i2c_oe_scl_sda(1, 1, 1);
-            I2C_DELAY(2);
-        }
-        i2c_oe_scl_sda(0, 0, 1);
-        I2C_DELAY(1);
-        i2c_stop();
-        i2c_oe_scl_sda(0, 1, 1);
-        I2C_DELAY(8);
-    }
-
-    /*
-     * Read slave memory over I2C starting at given address
-     *
-     * First writes the memory starting address, then reads the data:
-     *   START WR(slaveaddr) WR(addr) STOP START WR(slaveaddr) RD(data) RD(data) ... STOP
-     * Some chips require that after transmiting the address, there will be no STOP in between:
-     *   START WR(slaveaddr) WR(addr) START WR(slaveaddr) RD(data) RD(data) ... STOP
-     */
-    bool i2c_read(unsigned char slave_addr, unsigned int addr, unsigned char* data, unsigned int len, bool send_stop, unsigned int addr_size)
-    {
-        int i, j;
-
-        if ((addr_size < 1) || (addr_size > 4)) {
-            return false;
-        }
-
-        i2c_start();
-
-        if (!i2c_transmit_byte(I2C_ADDR_WR(slave_addr))) {
-            i2c_stop();
-            return false;
-        }
-        for (j = addr_size - 1; j >= 0; j--) {
-            if (!i2c_transmit_byte((unsigned char)(0xff & (addr >> (8 * j))))) {
-                i2c_stop();
-                return false;
-            }
-        }
-
-        if (send_stop) {
-            i2c_stop();
-        }
-        i2c_start();
-
-        if (!i2c_transmit_byte(I2C_ADDR_RD(slave_addr))) {
-            i2c_stop();
-            return false;
-        }
-        for (i = 0; i < len; ++i) {
-            data[i] = i2c_receive_byte(i != len - 1);
-        }
-
-        i2c_stop();
-
-        return true;
-    }
-
-    /*
-     * Write slave memory over I2C starting at given address
-     *
-     * First writes the memory starting address, then writes the data:
-     *   START WR(slaveaddr) WR(addr) WR(data) WR(data) ... STOP
-     */
-    bool i2c_write(unsigned char slave_addr, unsigned int addr, const unsigned char* data, unsigned int len, unsigned int addr_size)
-    {
-        int i, j;
-
-        if ((addr_size < 1) || (addr_size > 4)) {
-            return false;
-        }
-
-        i2c_start();
-
-        if (!i2c_transmit_byte(I2C_ADDR_WR(slave_addr))) {
-            i2c_stop();
-            return false;
-        }
-        for (j = addr_size - 1; j >= 0; j--) {
-            if (!i2c_transmit_byte((unsigned char)(0xff & (addr >> (8 * j))))) {
-                i2c_stop();
-                return false;
-            }
-        }
-        for (i = 0; i < len; ++i) {
-            if (!i2c_transmit_byte(data[i])) {
-                i2c_stop();
-                return false;
-            }
-        }
-
-        i2c_stop();
-
-        return true;
-    }
-
-    /*
-     * Poll I2C slave at given address, return true if it sends an ACK back
-     */
-    bool i2c_poll(unsigned char slave_addr)
-    {
-        bool result;
-
-        i2c_start();
-        result = i2c_transmit_byte(I2C_ADDR_WR(slave_addr));
-        if (!result) {
-            i2c_start();
-            result |= i2c_transmit_byte(I2C_ADDR_RD(slave_addr));
-            if (result)
-                i2c_receive_byte(false);
-        }
-        i2c_stop();
-
-        return result;
-    }
-
-    //  SPI
-    void spi_write(file_t fd, int cs, char reg, char data[2]) {
-
-        litepcie_writel(fd, CSR_MAIN_SPI_CS_ADDR, (1 << cs));
-
-        uint32_t mosi_data = (reg << 16) + (data[1] << 8) + data[0];
-
-        litepcie_writel(fd, CSR_MAIN_SPI_MOSI_ADDR, mosi_data);
-
-        litepcie_writel(fd, CSR_MAIN_SPI_CONTROL_ADDR, 24 * _SPI_CONTROL_LENGTH | _SPI_CONTROL_START);
-
-        while (litepcie_readl(fd, CSR_MAIN_SPI_STATUS_ADDR) != SPI_STATUS_DONE)
-        {
-            continue;
-        }
-    }
-}
 
 /* Main */
 /*------*/
@@ -419,7 +145,7 @@ int main(int argc, char** argv)
     litepcie_auto_rx_delay = 0;
     litepcie_device_zero_copy = 0;
     litepcie_device_external_loopback = 0;
-    //file_t fd;
+    file_t fd;
     int i;
     unsigned char fpga_identifier[256];
     fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
@@ -483,32 +209,35 @@ int main(int argc, char** argv)
     printf("Enabling PLL EN:\n");
     configure_pll_en(fd, 1);
 
-//    I2CDriver i2cDriver = I2CDriver(fd);
-    //init_zl30250Driver(i2cDriver);
+    i2c_t i2cDev;
+    i2cDev.fd = fd;
 
     for (unsigned char addr = 0; addr < 0x80; addr++) {
-        auto result = i2c_poll(addr);
+        i2cDev.devAddr = addr;
+        bool result = i2c_poll(i2cDev);
         if (addr % 0x10 == 0) {
             printf("\n0x%02X", addr);
         }
-        if (result == 1) {
+        if (result) {
             printf(" %02X", addr);
         }
         else {
             printf(" --");
         }
-
     }
 
-    char data[2] = {0x01, 0x02};
+    spi_bus_t spimaster;
+    spi_bus_init(&spimaster, fd, CSR_MAIN_SPI_BASE, CSR_MAIN_SPI_CS_SEL_SIZE);
+
+    uint8_t data[2] = {0x01, 0x02};
 
     for (int i = 0; i < CSR_MAIN_SPI_CS_SEL_SIZE; i++) {
+        spi_dev_t spiDev;
+        spi_dev_init(&spiDev, &spimaster, i);
         for (int reg = 0; reg < 10; reg++) {
-
-            spi_write(fd, i, reg, data);
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
+            spi_write(spiDev, reg, data, 2);
+            spi_busy_wait(spiDev);
         }
-        
     }
 
     /* Close LitePCIe device. */
