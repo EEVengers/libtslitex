@@ -8,6 +8,7 @@
  * Copyright (C) 2024 / Nate Meyer  / nate.devel@gmail.com
  *
  */
+#include "ts_common.h"
 #include "spi.h"
 #include "lmh6518.h"
 
@@ -68,6 +69,7 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
 
     if(NULL == conf)
     {
+        //Return zero on Error
         return 0;
     }
     
@@ -115,6 +117,12 @@ uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
     int32_t bw_actual = 0;
     uint8_t filter_index = 1;
 
+    if(NULL == conf)
+    {
+        //Return zero on Error
+        return 0;
+    }
+
     while(++filter_index < LMH6518_ATTEN_STEPS)
     {
         if(g_filterTable[filter_index] >= bw_MHz)
@@ -145,7 +153,7 @@ int32_t lmh6518_apply_config(spi_dev_t dev, lmh6518Config_t conf)
     if((conf.filter > LMH6518_FILTER_MAX_VAL) ||
         (conf.atten > LMH6518_ATTEN_MAX_VAL))
     {
-        retVal = -1;
+        retVal = TS_STATUS_ERROR;
         return retVal;
     }
 

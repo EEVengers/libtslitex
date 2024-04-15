@@ -48,7 +48,7 @@ typedef struct lmh6518Config_s {
  * 
  * @param conf Pointer to the configuration structure
  * @param gain_mdB Requested Gain value in milli-dB
- * @return int32_t Actual gain calculated
+ * @return int32_t Actual gain calculated. Zero indicates error
  */
 int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB);
 
@@ -57,7 +57,7 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB);
  * 
  * @param conf Pointer to the configuration structure
  * @param bw_MHz Requested bandwidth in MHz
- * @return uint32_t Actual Bandwidth setting in MHz
+ * @return uint32_t Actual Bandwidth setting in MHz. Zero indicates error
  */
 uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz);
 

@@ -16,10 +16,8 @@ extern "C" {
 
 #include <stdint.h>
 
-
-#include "channel.h"
-#include "adc.h"
-#include "afe.h"
+#include "ts_common.h"
+#include "ts_channel.h"
 
 
 int32_t thunderscopeInit(void);

@@ -11,6 +11,7 @@
  * Copyright (c) 2024 Nate Meyer <nate.devel@gmail.com>
  *
  */
+#include "ts_common.h"
 #include "spi.h"
 #include "liblitepcie.h"
 
@@ -41,7 +42,7 @@ int32_t spi_bus_init(spi_bus_t* bus, file_t fd, uint32_t spi_base, uint32_t num_
 {
     if(bus == NULL)
     {
-        return -1;
+        return TS_STATUS_ERROR;
     }
 
     bus->fd = fd;
@@ -50,20 +51,20 @@ int32_t spi_bus_init(spi_bus_t* bus, file_t fd, uint32_t spi_base, uint32_t num_
     bus->num_cs = num_cs;
     bus->cs_mask = SPI_CS_SEL_MASK(num_cs);
 
-    return 0;
+    return TS_STATUS_OK;
 }
 
 int32_t spi_dev_init(spi_dev_t* dev, spi_bus_t* bus, uint32_t cs_index)
 {
     if(bus == NULL || dev == NULL)
     {
-        return -1;
+        return TS_STATUS_ERROR;
     }
 
     dev->bus = bus;
     dev->cs = cs_index;
 
-    return 0;
+    return TS_STATUS_OK;
 }
 
 void spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len) {
@@ -93,7 +94,7 @@ bool spi_is_busy(spi_dev_t dev)
 // Wait SPI Xfer to be done.
 int32_t spi_busy_wait(spi_dev_t dev)
 {
-    int32_t busyError = -1;
+    int32_t busyError = TS_STATUS_ERROR;
     struct timespec timeStart;
     timespec_get(&timeStart, TIME_UTC);
 
