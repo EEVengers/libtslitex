@@ -13,10 +13,18 @@
 extern "C" {
 #endif
 
+#include <stdint.h>
+
 #define TS_STATUS_OK                (0)
 #define TS_STATUS_ERROR             (-1)
 
-typedef void* tsHandle_t;
+
+#if defined(_WIN32)
+#include <windows.h>
+typedef HANDLE tsHandle_t;
+#else
+typedef int32_t tsHandle_t;
+#endif
 
 #ifdef __cplusplus
 }

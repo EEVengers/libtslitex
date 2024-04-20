@@ -12,6 +12,7 @@
 #include "spi.h"
 #include "lmh6518.h"
 
+#include <stddef.h>
 
 #define LMH6518_CMD_READ        (0x80)
 #define LMH6518_CMD_WRITE       (0x00)
