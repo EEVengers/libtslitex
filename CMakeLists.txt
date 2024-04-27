@@ -47,9 +47,7 @@ set(TS_LIB_HEADERS
     include/ts_common.h
     )
 
-add_library(tslitex STATIC ${TS_SOURCES}
-            ${TS_LIB_HEADERS}
-            )
+add_library(tslitex SHARED ${TS_SOURCES} ${TS_LIB_HEADERS} )
 
 set_target_properties(tslitex PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
