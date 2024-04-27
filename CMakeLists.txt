@@ -25,6 +25,9 @@ set(TS_SOURCES
     src/i2c.c
     src/gpio.c
     src/spi.c
+    src/afe.c
+    src/lmh6518.c
+    src/ts_channel.c
     src/thunderscope.c
     )
 
@@ -32,16 +35,19 @@ set(TS_HEADERS
     src/i2c.h
     src/gpio.h
     src/spi.h
+    src/adc.h
+    src/afe.h
+    src/platform.h
+    src/lmh6518.h
+    src/ts_channel.h
     )
 
 set(TS_LIB_HEADERS 
     include/thunderscope.h
-    include/channel.h
-    include/adc.h
-    include/afe.h
+    include/ts_common.h
     )
 
-add_library(tslitex SHARED ${TS_SOURCES}
+add_library(tslitex STATIC ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
