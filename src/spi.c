@@ -24,7 +24,7 @@
 #define SPI_LOOPBACK(base)      ((base) + 0x14)
 
 #define SPI_CTRL_START      (1 << 0)
-#define SPI_CTRL_LENGTH(x)  ((x) << 8)
+#define SPI_CTRL_LENGTH(x)  ((8*x) << 8)
 #define SPI_STATUS_DONE     (1 << 0)
 #define SPI_TIMEOUT_US      100000 /* in us */
 
@@ -82,7 +82,7 @@ void spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len) {
 
     // Start SPI Xfer.
     addr = SPI_CONTROL(dev.bus->spi_base);
-    litepcie_writel(dev.bus->fd, addr, SPI_CTRL_LENGTH(len) | SPI_CTRL_START);
+    litepcie_writel(dev.bus->fd, addr, SPI_CTRL_LENGTH(len + 1) | SPI_CTRL_START);
 }
 
 bool spi_is_busy(spi_dev_t dev)
