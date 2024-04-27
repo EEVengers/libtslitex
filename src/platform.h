@@ -11,7 +11,6 @@
 #include "ts_common.h"
 #include "csr.h"
 
-#define TS_NUM_CHANNELS         (4)
 
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
