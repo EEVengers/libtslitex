@@ -16,13 +16,10 @@ extern "C" {
 
 #include <stdint.h>
 
-
-#include "channel.h"
-#include "adc.h"
-#include "afe.h"
-
+#include "ts_common.h"
 
 int32_t thunderscopeInit(void);
+int32_t thunderscopeListDevices(void);
 int32_t thunderscopeOpen(void);
 
 #ifdef __cplusplus

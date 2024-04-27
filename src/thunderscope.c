@@ -16,10 +16,10 @@
 
 int32_t thunderscopeInit(void)
 {
-    return 0;
+    return TS_STATUS_OK;
 }
 
 int32_t thunderscopeOpen(void)
 {
-    return 0;
+    return TS_STATUS_OK;
 }
