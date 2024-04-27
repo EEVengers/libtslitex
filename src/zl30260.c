@@ -1,10 +1,11 @@
-#
-# This file is part of tslitex project.
-#
-# Copyright (c) 2023 Florent Kermarrec <florent@enjoy-digital.fr>
-# Copyright (c) 2023 Aleksa Bjelogrlic <aleksa@eevengers.com>
-# Copyright (c) 2024 John Simons <jammsimons@gmail.com>
-# SPDX-License-Identifier: BSD-2-Clause
+/* SPDX-License-Identifier: BSD-2-Clause
+ *
+ * This file is part of libtslitex.
+ * Control the ZL30260 in the Thunderscope LiteX design
+ *
+ * Copyright (c) 2024 John Simons <jammsimons@gmail.com>
+ * SPDX-License-Identifier: BSD-2-Clause
+ */
 
 #include "i2c.h"
 #include "liblitepcie.h"
@@ -47,7 +48,8 @@ const uint32_t zl30260_I2C_CONF[] = {
 
 void init(i2c_t device) {
 
-    for(size_t i = 0; i < sizeof(zl30260_I2C_CONF) / sizeof(uint32_t); i++)
+    int totalSize = sizeof(zl30260_I2C_CONF);
+    for(size_t i = 0; i < totalSize / sizeof(uint32_t); i++)
     {
         uint8_t[] data = {reg >> 16, reg >> 8, reg && 0xFF}
         i2c_write(device, zl30260_I2C_WRITE_COMMAND, data, 3);
