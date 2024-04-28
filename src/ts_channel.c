@@ -28,7 +28,7 @@ typedef struct ts_channel_s {
 } ts_channel_t;
 
 
-struct ts_channel_conf_s {
+struct ts_channel_hw_conf_s {
     uint32_t afe_amp_cs;
     uint32_t afe_term_reg;
     uint32_t afe_term_mask;
@@ -67,7 +67,7 @@ struct ts_channel_conf_s {
     }
 };
 
-int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, tsHandle_t ts)
+int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 {
     int32_t retVal = TS_STATUS_OK;
 
@@ -86,12 +86,12 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, tsHandle_t ts)
     }
 
     //TODO: Placeholder. Replace with DAC and DPot driver instances?
-    i2c_t trimDac = {(file_t)ts, TS_TRIM_DAC_I2C_ADDR};
-    i2c_t trimPot = {(file_t)ts, TS_TRIM_DPOT_I2C_ADDR};
+    i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
+    i2c_t trimPot = {ts, TS_TRIM_DPOT_I2C_ADDR};
     
     for(uint32_t chanIdx = 0; chanIdx < TS_NUM_CHANNELS; chanIdx++)
     {
-        retVal = spi_bus_init(&pChan[chanIdx].spibus, (file_t)ts,
+        retVal = spi_bus_init(&pChan[chanIdx].spibus, ts,
                                 TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_CS_NUM);
         if(retVal != TS_STATUS_OK)
         {
@@ -106,11 +106,11 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, tsHandle_t ts)
             return retVal;
         }
 
-        gpio_t afe_term = {(file_t)ts, g_channelConf[chanIdx].afe_term_reg,
+        gpio_t afe_term = {ts, g_channelConf[chanIdx].afe_term_reg,
                                 g_channelConf[chanIdx].afe_term_mask};
-        gpio_t afe_coupling = {(file_t)ts, g_channelConf[chanIdx].afe_cpl_reg,
+        gpio_t afe_coupling = {ts, g_channelConf[chanIdx].afe_cpl_reg,
                                 g_channelConf[chanIdx].afe_cpl_mask};
-        gpio_t afe_atten = {(file_t)ts, g_channelConf[chanIdx].afe_atten_reg,
+        gpio_t afe_atten = {ts, g_channelConf[chanIdx].afe_atten_reg,
                                 g_channelConf[chanIdx].afe_atten_mask};
 
         retVal = ts_afe_init(&pChan[chanIdx].afe, chanIdx, 
