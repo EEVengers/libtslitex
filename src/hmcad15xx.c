@@ -16,7 +16,7 @@
 #include "spi.h"
 
 static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data);
-static void hmcad15xxLvdsMode(hmcad15xxADC_t* adc);
+static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc);
 static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc);
 static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc);
 static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc);
@@ -192,7 +192,7 @@ static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data)
     spi_write(adc->dev, reg, bytes, 2);
 }
 
-static void hmcad15xxLvdsMode(hmcad15xxADC_t* adc)
+static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
 {
     uint16_t data = 0;
 
@@ -233,7 +233,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
     }
-    hmcad15xxRegWRite(adc, HMCAD15_REG_CHAN_MODE, data);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_MODE, data);
 }
 
 static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
