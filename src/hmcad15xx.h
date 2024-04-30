@@ -232,7 +232,7 @@ int32_t hmcad15xx_set_channel_config(hmcad15xxADC_t* adc);
  * @return int32_t TS_STATUS_OK if successful, TS_INVALID_PARAM if the value is
  * out of the allowable range
  */
-int32_t hmcad15x_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment);
+int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment);
 
 /**
  * @brief Put the HMCAD15xx into a test mode that sends test data out the LVDS

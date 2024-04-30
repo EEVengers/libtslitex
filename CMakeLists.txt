@@ -26,6 +26,7 @@ set(TS_SOURCES
     src/gpio.c
     src/spi.c
     src/afe.c
+    src/adc.c
     src/hmcad15xx.c
     src/lmh6518.c
     src/ts_channel.c

@@ -127,7 +127,7 @@ int32_t hmcad15xx_power_mode(hmcad15xxADC_t* adc, hmcad15xxPower_t power)
     return TS_STATUS_OK;
 }
 
-int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc)
+int32_t hmcad15xx_set_channel_config(hmcad15xxADC_t* adc)
 {
     uint16_t data = 0;
     if(!adc)
@@ -151,7 +151,7 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc)
     return TS_STATUS_OK;
 }
 
-int32_t hmcad15x_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment)
+int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment)
 {
     if(!adc)
     {

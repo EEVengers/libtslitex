@@ -13,6 +13,8 @@
 
 #define TS_NUM_CHANNELS         (4)
 
+#define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x0010)
+
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
 #define TS_ADC_CS               (0)
