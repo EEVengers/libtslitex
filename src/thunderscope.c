@@ -80,7 +80,7 @@ int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelP
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeDataEnable(tsHandle_t ts, bool enable)
+int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 {
     //TODO
     return TS_STATUS_ERROR;

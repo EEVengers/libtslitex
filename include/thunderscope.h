@@ -73,7 +73,7 @@ int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelP
  * @param enable Flag to enable or disable the ADC data
  * @return int32_t TS_STATUS_OK if the command was applied correctly
  */
-int32_t thunderscopeDataEnable(tsHandle_t ts, bool enable);
+int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable);
 
 /**
  * @brief Read data into a buffer

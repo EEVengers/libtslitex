@@ -37,11 +37,11 @@ typedef enum tsChannelCoupling_e
 
 typedef struct tsChannelParam_s
 {
-    bool active;
+    uint8_t active;
     uint32_t volt_scale;
     uint32_t bandwidth;
     tsChannelCoupling_t coupling;
-    bool attenuation;
+    uint8_t attenuation;
 } tsChannelParam_t;
 
 typedef struct tsChannelConfig_s
