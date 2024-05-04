@@ -67,9 +67,17 @@ int32_t spi_dev_init(spi_dev_t* dev, spi_bus_t* bus, uint32_t cs_index)
     return TS_STATUS_OK;
 }
 
-void spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len) {
+int32_t spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len) {
 
     uintptr_t addr = dev.bus->spi_base;
+    int32_t retVal = TS_STATUS_OK;
+
+    if(spi_is_busy(dev))
+    {
+        //ERROR
+        retVal = TS_STATUS_ERROR;
+        return retVal;
+    }
 
     // Set Chip Select.
     addr = SPI_CS(dev.bus->spi_base);
@@ -84,6 +92,8 @@ void spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len) {
     // Start SPI Xfer.
     addr = SPI_CONTROL(dev.bus->spi_base);
     litepcie_writel(dev.bus->fd, addr, SPI_CTRL_LENGTH(len + 1) | SPI_CTRL_START);
+
+    return retVal;
 }
 
 bool spi_is_busy(spi_dev_t dev)
@@ -101,6 +111,7 @@ int32_t spi_busy_wait(spi_dev_t dev)
     do {
         if (litepcie_readl(dev.bus->fd, SPI_STATUS(dev.bus->spi_base)) == SPI_STATUS_DONE)
         {
+            //TODO: Add small wait here
             break;
         }
     } while (!spi_check_timeout(&timeStart, SPI_TIMEOUT_US));

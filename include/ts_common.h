@@ -17,6 +17,7 @@ extern "C" {
 
 #define TS_STATUS_OK                (0)
 #define TS_STATUS_ERROR             (-1)
+#define TS_INVALID_PARAM            (-2)
 
 
 #if defined(_WIN32)

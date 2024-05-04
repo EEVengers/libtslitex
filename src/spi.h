@@ -41,7 +41,7 @@ typedef struct spi_dev_s
 int32_t spi_bus_init(spi_bus_t* bus, file_t fd, uint32_t spi_base, uint32_t num_cs);
 int32_t spi_dev_init(spi_dev_t* dev, spi_bus_t* bus, uint32_t cs_index);
 
-void spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len);
+int32_t spi_write(spi_dev_t dev, uint8_t reg, uint8_t* data, uint8_t len);
 bool spi_is_busy(spi_dev_t dev);
 int32_t spi_busy_wait(spi_dev_t dev);
 
