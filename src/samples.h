@@ -8,6 +8,12 @@
  *
  */
 
+#ifndef _SAMPLES_H_
+#define _SAMPLES_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include "ts_common.h"
 #include "liblitepcie.h"
@@ -64,3 +70,10 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
  * @return int32_t TS_STATUS_OK if successful
  */
 int32_t samples_teardown(sampleStream_t* inst);
+
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

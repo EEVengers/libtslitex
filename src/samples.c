@@ -35,6 +35,7 @@
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL |
                              FILE_FLAG_NO_BUFFERING)
 #else
+#define INVALID_HANDLE_VALUE (-1)
 #define TS_DMA_NAME         "/dev/litepciedma%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_OS_FLAGS     (O_RDWR | O_CLOEXEC)
@@ -56,7 +57,8 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
 
         inst->dma = litepcie_open(devName, TS_DMA_OS_FLAGS);
         
-        if(inst->dma && litepcie_request_dma(inst->dma, 0, 1))
+        if((INVALID_HANDLE_VALUE != inst->dma) &&
+            litepcie_request_dma(inst->dma, 0, 1))
         {
             retVal = TS_STATUS_OK;
         }
