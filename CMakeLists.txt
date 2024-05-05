@@ -3,13 +3,13 @@ cmake_minimum_required(VERSION 3.20)
 enable_language(C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON) # error if compiler doesn't support c17
-set(CMAKE_C_EXTENSIONS OFF) # use c17 instead of gnu17
+set(CMAKE_C_EXTENSIONS ON)
 
 
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
-set(CMAKE_CXX_EXTENSIONS OFF) # use c++17 instead of gnu++17
+set(CMAKE_CXX_EXTENSIONS ON)
 
 project(libtslitex)
 
@@ -31,6 +31,7 @@ set(TS_SOURCES
     src/adc.c
     src/hmcad15xx.c
     src/lmh6518.c
+    src/samples.c
     src/ts_channel.c
     src/thunderscope.c
     )
@@ -44,6 +45,7 @@ set(TS_HEADERS
     src/platform.h
     src/lmh6518.h
     src/hmcad15xx.h
+    src/samples.h
     src/ts_channel.h
     )
 

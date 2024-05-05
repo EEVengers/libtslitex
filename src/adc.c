@@ -7,6 +7,8 @@
  *
  */
 
+#include <stddef.h>
+
 #include "adc.h"
 
 
