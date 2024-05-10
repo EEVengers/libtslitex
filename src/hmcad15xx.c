@@ -158,8 +158,8 @@ int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment)
         return TS_STATUS_ERROR;
     }
 
-    if((HMCAD15_FULL_SCALE_MIN < adjustment) ||
-        (adjustment < HMCAD15_FULL_SCALE_MAX))
+    if((HMCAD15_FULL_SCALE_MAX < adjustment) ||
+        (adjustment < HMCAD15_FULL_SCALE_MIN))
     {
         return TS_INVALID_PARAM;   
     }
@@ -238,7 +238,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
 
 static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
 {
-    uint16_t in12, in34, inv = 0;
+    uint16_t in12 = 0, in34 = 0, inv = 0;
 
     switch(adc->mode)
     {

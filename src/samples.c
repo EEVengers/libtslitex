@@ -30,13 +30,13 @@
 
 
 #if defined(_WIN32)
-#define TS_DMA_NAME         "\\DMA%u"
+#define TS_DMA_NAME         "\\DMA%u%u"
 #define TS_DMA_NAME_LEN     (16)
-#define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL |
+#define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #else
 #define INVALID_HANDLE_VALUE (-1)
-#define TS_DMA_NAME         "/dev/litepciedma%u"
+#define TS_DMA_NAME         "/dev/litepcie%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_OS_FLAGS     (O_RDWR | O_CLOEXEC)
 #endif
@@ -53,7 +53,7 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
         inst->driver_buffer_count = 0;
         inst->active = 0;
 
-        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, devIdx);
+        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, channel, devIdx);
 
         inst->dma = litepcie_open(devName, TS_DMA_OS_FLAGS);
         
@@ -76,6 +76,10 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
     }
 
     inst->active = en;
+    
+    //Enable Trigger
+    litepcie_writel(inst->dma, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
+
     //Start/Stop DMA
     litepcie_dma_writer(inst->dma, en,
                         &inst->dma_buffer_count,
@@ -103,8 +107,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         if (!ReadFile(inst->dma, sampleBuffer, bufferLen, &len, NULL))
         {
             fprintf(stderr, "Read failed: %d\n", GetLastError());
-            fprintf(stderr, "Read args: 0x%p - 0x%lx - 0x%x\n", dma->buf_rd, dma->buffers_available_read, retLen);
-            fprintf(stderr, "DMA Writer: 0x%llx - 0x%llx\n", dma->writer_hw_count, dma->writer_sw_count);
+            fprintf(stderr, "Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);
             samples_teardown(inst);
             abort();
         }

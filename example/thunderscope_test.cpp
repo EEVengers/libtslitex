@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -56,6 +57,7 @@
 /* Parameters */
 /*------------*/
 #define TS_TEST_SAMPLE_FILE     "test_data.bin"
+
 /* Variables */
 /*-----------*/
 
@@ -201,13 +203,17 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 {
     tsChannelHdl_t channels;
     ts_channel_init(&channels, fd);
+    if(channels == NULL)
+    {
+        printf("Failed to create channels handle");
+        return;
+    }
 
     sampleStream_t samp;
     samples_init(&samp, 0, 0);
 
-    uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 1024);
-    uint32_t sampleLen = 0;
-    file_t outFile = INVALID_HANDLE_VALUE;
+    uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 100000);
+    uint64_t sampleLen = 0;
 
     //Enable Channels
     //TODO TS Channel Setup
@@ -215,44 +221,31 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //Start Sample capture
     samples_enable_set(&samp, 1);
 
-    //Collect Samples
-    for(uint32_t i = 0; i < 1024/4; i++)
+    auto startTime = std::chrono::steady_clock::now();
+    if(sampleBuffer != NULL)
     {
-        int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*4));
+        //Collect Samples
+        int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*100000));
         if(readRes < 0)
         {
             printf("ERROR: Sample Get Buffers failed with %d", readRes);
-            goto cleanup;
         }
         sampleLen += readRes;
     }
+    auto endTime = std::chrono::steady_clock::now();
 
     //Stop Samples
     samples_enable_set(&samp, 0);
     //TODO TS Channel Disable
 
-#if defined(_WIN32)
-    outFile = CreateFile(TS_TEST_SAMPLE_FILE, GENERIC_WRITE, 0, NULL, OPEN_ALWAYS, FILE_ATTIBUTE_NORMAL, NULL);
-    if(outFile == INVALID_HANDLE_VALUE)
-    {
-        printf("Failed to open sample data file: ", GetLastError());
-        goto cleanup;
-    }
-    WriteFile(outFile, sampleBuffer, sampleLen, NULL, NULL);
-    CloseHandle(outFile);
+    auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+    auto bw = (sampleLen * 8 * 1000)/deltaNs.count();
+    printf("Collected %u samples in %ll ns", sampleLen, bw);
 
-#else
-    outFile = open(TS_TEST_SAMPLE_FILE, O_WRONLY | O_TRUNC | O_CREAT, 644);
-    if(outFile == INVALID_HANDLE_VALUE)
-    {
-        printf("Failed to open sample data file: ", errno);
-        goto cleanup;
-    }
-    write(outFile, sampleBuffer, sampleLen);
-    close(outFile);
-#endif
+    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+    outFile.close();
 
-cleanup:
     ts_channel_destroy(channels);
     samples_teardown(&samp);
 }
@@ -290,7 +283,8 @@ int main(int argc, char** argv)
         {0}
     };
 
-    char *arg;
+    auto argCount = 1;
+    char *arg = argv[argCount];
     int option;
     struct optparse options;
 
@@ -301,18 +295,23 @@ int main(int argc, char** argv)
         switch (option) {
         case 'b':
             bandwidth = atoi(options.optarg);
+            argCount++;
             break;
         case 'c':
             channelBitmap = atoi(options.optarg);
+            argCount++;
             break;
         case 'g':
             gain_dBx10 = atoi(options.optarg);
+            argCount++;
             break;
         case 'a':
             ac_couple = 1;
+            argCount++;
             break;
         case 't':
             term = 1;
+            argCount++;
             break;
         case '?':
             fprintf(stderr, "%s: %s\n", argv[0], options.errmsg);
@@ -320,7 +319,7 @@ int main(int argc, char** argv)
             exit(EXIT_FAILURE);
         }
     }
-
+    arg = argv[argCount];
 
     fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if(fd == INVALID_HANDLE_VALUE) {
@@ -355,12 +354,12 @@ int main(int argc, char** argv)
 #endif
 
     // Run Example IO
-    if(strcmp(argv[argc], "io"))
+    if(0 == strcmp(arg, "io"))
     {
         test_io(fd);
     }
     // Setup Channel, record samples to buffer, save buffer to file
-    else if(strcmp(argv[argc], "capture"))
+    else if(0 == strcmp(arg, "capture"))
     {
         test_capture(fd, channelBitmap, bandwidth, gain_dBx10, ac_couple, term);
     }

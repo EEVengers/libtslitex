@@ -19,7 +19,6 @@ add_definitions(-DUNICODE -D_UNICODE)
 
 add_subdirectory(litepcie)
 
-add_subdirectory(example)
 
 set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
 
@@ -79,3 +78,5 @@ target_link_libraries(tslitex_static litepcie)
 target_include_directories(tslitex_static PUBLIC include)
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
+
+add_subdirectory(example)
