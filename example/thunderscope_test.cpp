@@ -228,7 +228,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
         int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*100000));
         if(readRes < 0)
         {
-            printf("ERROR: Sample Get Buffers failed with %d", readRes);
+            printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
         }
         sampleLen += readRes;
     }
@@ -239,8 +239,8 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //TODO TS Channel Disable
 
     auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
-    auto bw = (sampleLen * 8 * 1000)/deltaNs.count();
-    printf("Collected %u samples in %ll ns", sampleLen, bw);
+    uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
+    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps", sampleLen, bw);
 
     auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary);
     outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);

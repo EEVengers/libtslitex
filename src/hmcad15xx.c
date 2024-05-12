@@ -47,7 +47,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     hmcad15xx_reset(adc);
 
     //Power Down
-    hmcad15xx_power_mode(adc, HMCAD15_PWR_MODE_POWERDN);
+    hmcad15xx_power_mode(adc, HMCAD15_CH_POWERDN);
 
     //LVDS Mode
     hmcad15xxApplyLvdsMode(adc);
@@ -61,7 +61,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     hmcad15xxApplyChannelGain(adc);
     
     //Set Sleep mode
-    hmcad15xx_power_mode(adc, HMCAD15_PWR_MODE_SLEEP);
+    hmcad15xx_power_mode(adc, HMCAD15_CH_SLEEP);
 
     return TS_STATUS_OK;
 }
@@ -187,7 +187,7 @@ static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data)
 {
     uint8_t bytes[2];
     bytes[0] = (data >> 8) & 0xFF;
-    bytes[0] = data & 0xFF;
+    bytes[1] = data & 0xFF;
     spi_busy_wait(adc->dev);
     spi_write(adc->dev, reg, bytes, 2);
 }
@@ -202,13 +202,13 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
             HMCAD15_LVDS_DS_DATA(adc->drive));
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_CURRENT, data);
 
-    // Set LVDS Data Width (bits per sample
+    // Set LVDS Data Width (bits per sample)
     data = HMCAD15_DATA_WIDTH(adc->width);
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_MISC, data);
 
     // Set LVDS DDR Phase
     data = HMCAD15_LVDS_PHASE(adc->lvdsPhase);
-    hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_MISC, data);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_LCLK_PHASE, data);
 }
 
 static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)

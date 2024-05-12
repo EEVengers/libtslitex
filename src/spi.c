@@ -25,7 +25,7 @@
 #define SPI_LOOPBACK(base)      ((base) + 0x14)
 
 #define SPI_CTRL_START      (1 << 0)
-#define SPI_CTRL_LENGTH(x)  ((8*x) << 8)
+#define SPI_CTRL_LENGTH(x)  ((8*(x)) << 8)
 #define SPI_STATUS_DONE     (1 << 0)
 #define SPI_TIMEOUT_US      100000 /* in us */
 
