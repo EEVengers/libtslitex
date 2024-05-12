@@ -32,12 +32,14 @@
 #if defined(_WIN32)
 #define TS_DMA_NAME         "\\DMA%u%u"
 #define TS_DMA_NAME_LEN     (16)
+#define TS_DMA_NAME_ARGS(chan, dev)     ((chan), (dev))
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #else
 #define INVALID_HANDLE_VALUE (-1)
 #define TS_DMA_NAME         "/dev/litepcie%u"
 #define TS_DMA_NAME_LEN     (24)
+#define TS_DMA_NAME_ARGS(chan, dev)     ((dev))
 #define TS_DMA_OS_FLAGS     (O_RDWR | O_CLOEXEC)
 #endif
 
@@ -53,13 +55,14 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
         inst->driver_buffer_count = 0;
         inst->active = 0;
 
-        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, channel, devIdx);
+        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
 
         inst->dma = litepcie_open(devName, TS_DMA_OS_FLAGS);
         
         if((INVALID_HANDLE_VALUE != inst->dma) &&
             litepcie_request_dma(inst->dma, 0, 1))
         {
+            litepcie_dma_set_loopback(inst->dma, 0);
             retVal = TS_STATUS_OK;
         }
         //else, DMA Unavailable
@@ -113,7 +116,19 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         }
         retVal = (int32_t)len;
 #else
-        retVal = (int32_t)read(inst->dma, sampleBuffer, bufferLen);
+        do
+        {
+            int32_t len = (int32_t)read(inst->dma, &sampleBuffer[retVal], (bufferLen - retVal));
+            if( len > 0)
+            {
+                retVal += (int32_t)len;
+            }
+            else
+            {
+                retVal = len;
+                break;
+            }
+        } while(retVal < bufferLen);
 #endif
     }
 
