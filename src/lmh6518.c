@@ -166,7 +166,7 @@ int32_t lmh6518_apply_config(spi_dev_t dev, lmh6518Config_t conf)
     data[0] = (config >> 8) & 0xFF;
     data[1] = config & 0xFF;
 
-    spi_write(dev, LMH6518_CMD_WRITE, data, 2);
-    retVal = spi_busy_wait(dev);
+    spi_busy_wait(dev);
+    retVal = spi_write(dev, LMH6518_CMD_WRITE, data, 2);
     return retVal; 
 }
