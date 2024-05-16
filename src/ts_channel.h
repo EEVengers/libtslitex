@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdint.h>
 #include "ts_common.h"
+#include "liblitepcie.h"
 
 typedef void* tsChannelHdl_t;
 
@@ -26,7 +27,7 @@ typedef void* tsChannelHdl_t;
  * @param ts    Thunderscope device handle
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
-int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, tsHandle_t ts);
+int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts);
 
 /**
  * @brief Tear down and clean up Thunderscope Channel object(s)

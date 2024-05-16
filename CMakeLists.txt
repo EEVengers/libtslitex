@@ -28,6 +28,8 @@ set(TS_SOURCES
     src/gpio.c
     src/spi.c
     src/afe.c
+    src/adc.c
+    src/hmcad15xx.c
     src/lmh6518.c
     src/ts_channel.c
     src/thunderscope.c
@@ -41,6 +43,7 @@ set(TS_HEADERS
     src/afe.h
     src/platform.h
     src/lmh6518.h
+    src/hmcad15xx.h
     src/ts_channel.h
     )
 
