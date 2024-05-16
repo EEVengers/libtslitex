@@ -61,10 +61,10 @@ int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelP
  * 
  * @param ts Handle to the Thunderscope device
  * @param channel Channel number
- * @param conf Channel configuration structure
+ * @param conf Reference to the Channel configuration structure
  * @return int32_t TS_STATUS_OK if the channel was configured
  */
-int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t conf);
+int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf);
 
 /**
  * @brief Enable or Disable 

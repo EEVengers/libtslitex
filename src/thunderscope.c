@@ -74,7 +74,7 @@ int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelP
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t conf)
+int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf)
 {
     //TODO
     return TS_STATUS_ERROR;

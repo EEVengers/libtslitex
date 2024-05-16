@@ -35,13 +35,19 @@ typedef enum tsChannelCoupling_e
     TS_COUPLE_AC = 1
 } tsChannelCoupling_t;
 
+typedef enum tsChannelTerm_e {
+    TS_TERM_1M = 0,
+    TS_TERM_50 = 1,
+} tsChannelTerm_t;
+
 typedef struct tsChannelParam_s
 {
-    uint8_t active;
-    uint32_t volt_scale;
-    uint32_t bandwidth;
-    tsChannelCoupling_t coupling;
-    uint8_t attenuation;
+    uint32_t volt_scale_mV;     /**< Set full scale voltage in millivolts */
+    uint32_t volt_offset_mV;    /**< Set offset voltage in millivolts */
+    uint32_t bandwidth;         /**< Set Bandwidth Filter in MHz. Next highest filter will be selected */
+    uint8_t coupling;           /**< Select AD/DC coupling for channel.  Use tsChannelCoupling_t enum */
+    uint8_t term;               /**< Select Termination mode for channel.  Use tsChannelTerm_t enum */
+    uint8_t active;             /**< Active flag for the channel. 1 to enable, 0 to disable */
 } tsChannelParam_t;
 
 typedef struct tsChannelConfig_s
