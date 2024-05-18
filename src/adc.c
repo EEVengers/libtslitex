@@ -37,6 +37,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
 
     if(adc != NULL)
     {
+        retVal = TS_STATUS_OK;
         adc->tsChannels[channel].input = input;
         adc->tsChannels[channel].invert = invert;
 
