@@ -11,7 +11,6 @@
 #include "ts_common.h"
 #include "csr.h"
 
-#define TS_NUM_CHANNELS         (4)
 
 #define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x0010)
 

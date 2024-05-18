@@ -21,6 +21,8 @@ add_subdirectory(litepcie)
 
 add_subdirectory(example)
 
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
 set(TS_SOURCES
     src/i2c.c
     src/gpio.c
@@ -50,12 +52,28 @@ set(TS_LIB_HEADERS
     include/ts_common.h
     )
 
-add_library(tslitex SHARED ${TS_SOURCES} ${TS_LIB_HEADERS} )
-
-set_target_properties(tslitex PROPERTIES POSITION_INDEPENDENT_CODE 1)
-
+####
+# LIBTSLITEX SHARED LIBRARY
+####
+add_library(tslitex SHARED ${TS_SOURCES}
+            ${TS_LIB_HEADERS}
+            )
 
 target_link_libraries(tslitex litepcie)
 target_include_directories(tslitex PUBLIC include)
+
+####
+# LIBTSLITEX STATIC LIBRARY
+####    
+add_library(tslitex_static STATIC ${TS_SOURCES}
+            ${TS_LIB_HEADERS}
+            )
+
+#target_compile_definitions(tslitex_static tslitex_static_STATIC)
+set_target_properties(tslitex_static PROPERTIES POSITION_INDEPENDENT_CODE 1)
+
+
+target_link_libraries(tslitex_static litepcie)
+target_include_directories(tslitex_static PUBLIC include)
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
