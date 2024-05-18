@@ -27,7 +27,14 @@
 #define TS_TRIM_DAC_I2C_ADDR    (0x60)
 #define TS_TRIM_DPOT_I2C_ADDR   (0x2C)
 
-#define TS_PLL_I2C_ADDR         (0x74)
+#define ZL30250_I2C_ADDR        (0x6C)
+#define ZL30260_I2C_ADDR        (0x74)
+
+#ifdef TS_REV_3
+#define TS_PLL_I2C_ADDR         ZL30250_I2C_ADDR
+#else
+#define TS_PLL_I2C_ADDR         ZL30260_I2C_ADDR
+#endif
 
 #define TS_AFE_0_TERM_REG       CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_0_TERM_MASK      (1 << 20)
@@ -65,6 +72,12 @@
 #define TS_AFE_3_COUPLING_REG   CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_3_COUPLING_MASK  (1 << (CSR_FRONTEND_CONTROL_COUPLING_OFFSET + 3))
 
+extern const uint32_t ZL30260_CONF[];
+extern const uint32_t ZL30260_CONF_SIZE;
+
+
+extern const uint32_t ZL30250_CONF[];
+extern const uint32_t ZL30250_CONF_SIZE;
 
 
 #endif
