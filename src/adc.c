@@ -7,6 +7,8 @@
  *
  */
 
+#include <stddef.h>
+
 #include "adc.h"
 
 
@@ -14,14 +16,9 @@ static uint8_t ts_adc_active_channels(ts_adc_t* adc);
 
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
 {
-    int32_t retVal;
+    int32_t retVal = TS_STATUS_ERROR;
 
-    if(adc == NULL)
-    {
-        retVal = TS_STATUS_ERROR;
-    }
-    
-    if(retVal == TS_STATUS_OK)
+    if(adc != NULL)
     {
         retVal = hmcad15xx_init(&adc->adcDev, spi);
     }
@@ -36,14 +33,11 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
 
 int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, uint8_t invert)
 {
-    int32_t retVal = TS_STATUS_OK;
+    int32_t retVal = TS_STATUS_ERROR;
 
-    if(adc == NULL)
+    if(adc != NULL)
     {
-        retVal = TS_STATUS_ERROR;
-    }
-    else
-    {
+        retVal = TS_STATUS_OK;
         adc->tsChannels[channel].input = input;
         adc->tsChannels[channel].invert = invert;
 
@@ -61,7 +55,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
         }
     }
 
-    return TS_STATUS_OK;
+    return retVal;
 }
 
 int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int32_t gainFine)
@@ -123,7 +117,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     if(activeCount == 0)
     {
         // Put ADC to sleep
-        retVal = hmcad15xx_power_mode(&adc->adcDev, HMCAD15_PWR_MODE_SLEEP);
+        retVal = hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_SLEEP);
     }
     else 
     {
@@ -156,7 +150,7 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
 
     if(retVal == TS_STATUS_OK)
     {
-        hmcad15xx_power_mode(&adc->adcDev, HMCAD15_PWR_MODE_POWERDN);
+        hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_POWERDN);
     }
 
     return retVal; 

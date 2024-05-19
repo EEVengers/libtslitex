@@ -25,7 +25,7 @@
 #define SPI_LOOPBACK(base)      ((base) + 0x14)
 
 #define SPI_CTRL_START      (1 << 0)
-#define SPI_CTRL_LENGTH(x)  ((8*x) << 8)
+#define SPI_CTRL_LENGTH(x)  ((8*(x)) << 8)
 #define SPI_STATUS_DONE     (1 << 0)
 #define SPI_TIMEOUT_US      100000 /* in us */
 
@@ -111,9 +111,10 @@ int32_t spi_busy_wait(spi_dev_t dev)
     do {
         if (litepcie_readl(dev.bus->fd, SPI_STATUS(dev.bus->spi_base)) == SPI_STATUS_DONE)
         {
-            //TODO: Add small wait here
+            busyError = TS_STATUS_OK;
             break;
         }
+        //TODO: Add small wait here
     } while (!spi_check_timeout(&timeStart, SPI_TIMEOUT_US));
     
     return busyError;

@@ -10,6 +10,7 @@
  */
 
 #include <iostream>
+#include <fstream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,12 +29,18 @@
 #include <Windows.h>
 #endif
 
+#define OPTPARSE_IMPLEMENTATION
+#include "optparse.h"
+
 #include "liblitepcie.h"
 
 // Test low-level library functions
 #include "../src/spi.h"
 #include "../src/i2c.h"
 #include "../src/gpio.h"
+
+#include "../src/ts_channel.h"
+#include "../src/samples.h"
 
 #if !defined(_WIN32)
 #define INVALID_HANDLE_VALUE (-1)
@@ -49,6 +56,7 @@
 
 /* Parameters */
 /*------------*/
+#define TS_TEST_SAMPLE_FILE     "test_data.bin"
 
 /* Variables */
 /*-----------*/
@@ -128,59 +136,8 @@ auto awake_time()
     return now() + 500ms;
 }
 
-
-/* Main */
-/*------*/
-
-int main(int argc, char** argv)
+static void test_io(file_t fd)
 {
-    const char* cmd = argv[0];
-    static uint8_t litepcie_device_zero_copy;
-    static uint8_t litepcie_device_external_loopback;
-    static int litepcie_data_width;
-    static int litepcie_auto_rx_delay;
-
-    litepcie_device_num = 0;
-    litepcie_data_width = 16;
-    litepcie_auto_rx_delay = 0;
-    litepcie_device_zero_copy = 0;
-    litepcie_device_external_loopback = 0;
-    file_t fd;
-    int i;
-    unsigned char fpga_identifier[256];
-    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
-    if (fd == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Could not init driver\n");
-        exit(1);
-    }
-
-
-    printf("\x1b[1m[> FPGA/SoC Information:\x1b[0m\n");
-    printf("------------------------\n");
-
-    for (i = 0; i < 256; i++)
-    {
-        fpga_identifier[i] = litepcie_readl(fd, CSR_IDENTIFIER_MEM_BASE + 4 * i);
-    }
-    printf("FPGA Identifier:  %s.\n", fpga_identifier);
-
-#ifdef CSR_DNA_BASE
-    printf("FPGA DNA:         0x%08x%08x\n",
-        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),
-        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1));
-#endif
-#ifdef CSR_XADC_BASE
-    printf("FPGA Temperature: %0.1f �C\n",
-        (double)litepcie_readl(fd, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
-    printf("FPGA VCC-INT:     %0.2f V\n",
-        (double)litepcie_readl(fd, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
-    printf("FPGA VCC-AUX:     %0.2f V\n",
-        (double)litepcie_readl(fd, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
-    printf("FPGA VCC-BRAM:    %0.2f V\n",
-        (double)litepcie_readl(fd, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
-#endif
-
-
     printf("\x1b[1m[> Scratch register test:\x1b[0m\n");
     printf("-------------------------\n");
 
@@ -238,6 +195,178 @@ int main(int argc, char** argv)
             spi_write(spiDev, reg, data, 2);
             spi_busy_wait(spiDev);
         }
+    }
+}
+
+static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
+    uint32_t gain_dBx10, uint8_t ac_couple, uint8_t term)
+{
+    tsChannelHdl_t channels;
+    ts_channel_init(&channels, fd);
+    if(channels == NULL)
+    {
+        printf("Failed to create channels handle");
+        return;
+    }
+
+    sampleStream_t samp;
+    samples_init(&samp, 0, 0);
+
+    uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 100000);
+    uint64_t sampleLen = 0;
+
+    //Enable Channels
+    //TODO TS Channel Setup
+
+    //Start Sample capture
+    samples_enable_set(&samp, 1);
+
+    auto startTime = std::chrono::steady_clock::now();
+    if(sampleBuffer != NULL)
+    {
+        //Collect Samples
+        int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*100000));
+        if(readRes < 0)
+        {
+            printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+        }
+        sampleLen += readRes;
+    }
+    auto endTime = std::chrono::steady_clock::now();
+
+    //Stop Samples
+    samples_enable_set(&samp, 0);
+    //TODO TS Channel Disable
+
+    auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+    uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
+    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps", sampleLen, bw);
+
+    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary);
+    outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+    outFile.close();
+
+    ts_channel_destroy(channels);
+    samples_teardown(&samp);
+}
+
+static void print_help(void)
+{
+    printf("TS Test Util Usage:\r\n");
+    printf("\t io - run I/O Test\r\n");
+    printf("\t capture - run Sample Capture Test\r\n");
+}
+
+/* Main */
+/*------*/
+
+int main(int argc, char** argv)
+{
+    const char* cmd = argv[0];
+    unsigned char fpga_identifier[256];
+
+
+    file_t fd;
+    int i;
+    uint8_t channelBitmap = 1;
+    uint16_t bandwidth = 0;
+    uint32_t gain_dBx10 = 0;
+    uint8_t ac_couple = 0;
+    uint8_t term = 0;
+
+    struct optparse_long argList[] = {
+        {"chan",    'c', OPTPARSE_REQUIRED},
+        {"bw",      'b', OPTPARSE_REQUIRED},
+        {"gain",    'g', OPTPARSE_REQUIRED},
+        {"ac",      'a', OPTPARSE_NONE},
+        {"term",    't', OPTPARSE_NONE},
+        {0}
+    };
+
+    auto argCount = 1;
+    char *arg = argv[argCount];
+    int option;
+    struct optparse options;
+
+    (void)argc;
+    optparse_init(&options, argv);
+    while ((option = optparse_long(&options, argList, NULL)) != -1)
+    {
+        switch (option) {
+        case 'b':
+            bandwidth = atoi(options.optarg);
+            argCount++;
+            break;
+        case 'c':
+            channelBitmap = atoi(options.optarg);
+            argCount++;
+            break;
+        case 'g':
+            gain_dBx10 = atoi(options.optarg);
+            argCount++;
+            break;
+        case 'a':
+            ac_couple = 1;
+            argCount++;
+            break;
+        case 't':
+            term = 1;
+            argCount++;
+            break;
+        case '?':
+            fprintf(stderr, "%s: %s\n", argv[0], options.errmsg);
+            print_help();
+            exit(EXIT_FAILURE);
+        }
+    }
+    arg = argv[argCount];
+
+    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
+    if(fd == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "Could not init driver\n");
+        exit(1);
+    }
+
+
+    printf("\x1b[1m[> FPGA/SoC Information:\x1b[0m\n");
+    printf("------------------------\n");
+
+    for (i = 0; i < 256; i++)
+    {
+        fpga_identifier[i] = litepcie_readl(fd, CSR_IDENTIFIER_MEM_BASE + 4 * i);
+    }
+    printf("FPGA Identifier:  %s.\n", fpga_identifier);
+
+#ifdef CSR_DNA_BASE
+    printf("FPGA DNA:         0x%08x%08x\n",
+        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),
+        litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 1));
+#endif
+#ifdef CSR_XADC_BASE
+    printf("FPGA Temperature: %0.1f �C\n",
+        (double)litepcie_readl(fd, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
+    printf("FPGA VCC-INT:     %0.2f V\n",
+        (double)litepcie_readl(fd, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
+    printf("FPGA VCC-AUX:     %0.2f V\n",
+        (double)litepcie_readl(fd, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
+    printf("FPGA VCC-BRAM:    %0.2f V\n",
+        (double)litepcie_readl(fd, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
+#endif
+
+    // Run Example IO
+    if(0 == strcmp(arg, "io"))
+    {
+        test_io(fd);
+    }
+    // Setup Channel, record samples to buffer, save buffer to file
+    else if(0 == strcmp(arg, "capture"))
+    {
+        test_capture(fd, channelBitmap, bandwidth, gain_dBx10, ac_couple, term);
+    }
+    //Print Help
+    else
+    {
+        print_help();
     }
 
     /* Close LitePCIe device. */
