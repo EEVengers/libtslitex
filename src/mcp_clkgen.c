@@ -9,6 +9,7 @@
  */
 
 #include <stddef.h>
+#include <time.h>
 
 #include "ts_common.h"
 #include "mcp_clkgen.h"
@@ -17,7 +18,7 @@
 
 #define ZL302XX_ADDR_LEN    (2)
 
-int32_t mcp_clkgen_config(i2c_t device, uint32_t* confData, uint32_t confLen)
+int32_t mcp_clkgen_config(i2c_t device, mcp_clkgen_conf_t* confData, uint32_t confLen)
 {
     if(NULL == confData)
     {
@@ -27,14 +28,33 @@ int32_t mcp_clkgen_config(i2c_t device, uint32_t* confData, uint32_t confLen)
 
     for(uint32_t i = 0; i < confLen; i++)
     {
-        //Two bytes of address
-        uint32_t addr = (confData[i] >> 8) & 0xFFFF;
-        //One byte of data
-        uint8_t reg = confData[i] & 0xFF;
-
-        if(!i2c_write(device, addr, &reg, 1, ZL302XX_ADDR_LEN))
+        switch(confData[i].action)
         {
-            return TS_STATUS_ERROR;
+        case MCP_CLKGEN_DELAY:
+        {
+            struct timespec start, now;
+            timespec_get(&start, TIME_UTC);
+            do
+            {
+                timespec_get(&now, TIME_UTC);
+                if((((int64_t)(now.tv_sec - start.tv_sec) * 1000000000)
+                    +(now.tv_nsec - start.tv_nsec))
+                    >= (confData[i].delay_us * 1000)) { break; }
+            } while(1);
+            break;
+        }
+        case MCP_CLKGEN_WRITE_REG:
+        {
+            if(!i2c_write(device, (uint32_t)(confData[i].addr),
+                            &confData[i].value, 1, ZL302XX_ADDR_LEN))
+            {
+                return TS_STATUS_ERROR;
+            }
+            break;
+        }
+        default:
+            //Error
+            break;    
         }
     }
     return TS_STATUS_OK;

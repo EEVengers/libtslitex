@@ -15,6 +15,21 @@ extern "C" {
 
 #include "i2c.h"
 
+typedef enum mcp_clkgen_action_e {
+    MCP_CLKGEN_DELAY,
+    MCP_CLKGEN_WRITE_REG
+}mcp_clkgen_action_t;
+
+typedef struct mcp_clkgen_conf_s {
+    mcp_clkgen_action_t action;
+    union {
+        uint32_t delay_us;
+        struct {
+            uint16_t addr;
+            uint8_t value;
+        };
+    };
+}mcp_clkgen_conf_t;
 
 /**
  * @brief Configure the PLL with a list of registers.
@@ -24,7 +39,7 @@ extern "C" {
  * @param confLen Length of the configuration array
  * @return int32_t TS_STATUS_OK if the configuration was applied, else TS_STATUS_ERROR
  */
-int32_t mcp_clkgen_config(i2c_t device, uint32_t* confData, uint32_t confLen);
+int32_t mcp_clkgen_config(i2c_t device, mcp_clkgen_conf_t* confData, uint32_t confLen);
 
 #ifdef __cplusplus
 }
