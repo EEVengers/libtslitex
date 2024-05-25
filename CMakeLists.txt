@@ -31,6 +31,7 @@ set(TS_SOURCES
     src/hmcad15xx.c
     src/lmh6518.c
     src/mcp_clkgen.c
+    src/platform.c
     src/samples.c
     src/ts_channel.c
     src/thunderscope.c

@@ -39,7 +39,7 @@ typedef struct mcp_clkgen_conf_s {
  * @param confLen Length of the configuration array
  * @return int32_t TS_STATUS_OK if the configuration was applied, else TS_STATUS_ERROR
  */
-int32_t mcp_clkgen_config(i2c_t device, mcp_clkgen_conf_t* confData, uint32_t confLen);
+int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
 
 #ifdef __cplusplus
 }

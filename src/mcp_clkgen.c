@@ -18,7 +18,7 @@
 
 #define ZL302XX_ADDR_LEN    (2)
 
-int32_t mcp_clkgen_config(i2c_t device, mcp_clkgen_conf_t* confData, uint32_t confLen)
+int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen)
 {
     if(NULL == confData)
     {
