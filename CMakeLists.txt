@@ -49,6 +49,7 @@ set(TS_HEADERS
     src/hmcad15xx.h
     src/samples.h
     src/ts_channel.h
+    src/util.h
     )
 
 set(TS_LIB_HEADERS 

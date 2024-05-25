@@ -85,7 +85,7 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
 
     //Remove DMA Channel from file name
     dma->channel = atoi(&device_name[strlen(device_name) - 1]);
-    strncpy(devName, devName,strlen(device_name)); 
+    strncpy(devName, device_name, strlen(device_name)); 
     devName[strlen(devName) - 1] = '\0';
 
 #if defined(_WIN32)

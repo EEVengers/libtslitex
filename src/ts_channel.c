@@ -22,6 +22,7 @@
 #include "gpio.h"
 #include "afe.h"
 #include "adc.h"
+#include "util.h"
 
 
 #define TS_ADC_CH_NO_INVERT     (0)
@@ -112,15 +113,9 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->pll.nRst.bit_mask = TS_PLL_NRST_MASK;
     gpio_clear(pChan->pll.nRst);
     //sleep 10 ms
-    struct timespec start, now;
-    timespec_get(&start, TIME_UTC);
-    do{
-        timespec_get(&now, TIME_UTC);
-        if((((int64_t)(now.tv_sec - start.tv_sec) * 1000000000)
-            +(now.tv_nsec - start.tv_nsec))
-            >= (10000000)) { break; }
-    } while(1);
+    NS_DELAY(10000000);
     gpio_set(pChan->pll.nRst);
+    NS_DELAY(10000000);
 
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
