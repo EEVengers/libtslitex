@@ -21,9 +21,9 @@
                             timespec_get(&start, TIME_UTC); \
                             do{ \
                                 timespec_get(&now, TIME_UTC); \
-                                if((((int64_t)(now.tv_sec - start.tv_sec) * 1000000000) \
+                                if((((int64_t)(now.tv_sec - start.tv_sec) * N_SECOND) \
                                     +(now.tv_nsec - start.tv_nsec)) \
-                                    >= (n)) { break; } \
+                                    >= (I2C_PERIOD*(n))) { break; } \
                             } while(1);}
 
 
