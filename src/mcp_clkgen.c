@@ -15,6 +15,7 @@
 #include "mcp_clkgen.h"
 #include "i2c.h"
 #include "liblitepcie.h"
+#include "util.h"
 
 #define ZL302XX_ADDR_LEN    (2)
 
@@ -32,15 +33,7 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
         {
         case MCP_CLKGEN_DELAY:
         {
-            struct timespec start, now;
-            timespec_get(&start, TIME_UTC);
-            do
-            {
-                timespec_get(&now, TIME_UTC);
-                if((((int64_t)(now.tv_sec - start.tv_sec) * 1000000000)
-                    +(now.tv_nsec - start.tv_nsec))
-                    >= (confData[i].delay_us * 1000)) { break; }
-            } while(1);
+            NS_DELAY(confData[i].delay_us * 1000);
             break;
         }
         case MCP_CLKGEN_WRITE_REG:
