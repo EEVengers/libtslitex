@@ -12,20 +12,10 @@
  */
 
 #include "i2c.h"
-#include <time.h>
+#include "util.h"
 
-#define N_SECOND	(1000000000)
-#define I2C_PERIOD	(N_SECOND / I2C_FREQ_HZ)
-#define I2C_DELAY(n)    { \
-                            struct timespec start, now; \
-                            timespec_get(&start, TIME_UTC); \
-                            do{ \
-                                timespec_get(&now, TIME_UTC); \
-                                if((((int64_t)(now.tv_sec - start.tv_sec) * 1000000000) \
-                                    +(now.tv_nsec - start.tv_nsec)) \
-                                    >= (n)) { break; } \
-                            } while(1);}
-
+#define I2C_PERIOD	(NANOSECOND / I2C_FREQ_HZ)
+#define I2C_DELAY(n)    NS_DELAY(I2C_PERIOD * (n))
 
 #define I2C_SCL     (0x01)
 #define I2C_SDAOE   (0x02)
@@ -157,7 +147,7 @@ void i2c_reset(i2c_t dev)
     */
 bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool send_stop, uint32_t addr_size)
 {
-    int i, j;
+    int32_t i, j;
 
     if ((addr_size < 1) || (addr_size > 4)) {
         return false;
@@ -185,8 +175,8 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
         i2c_stop(device);
         return false;
     }
-    for (i = 0; i < len; ++i) {
-        data[i] = i2c_receive_byte(device, (i != (len - 1)));
+    for (i = 0; (uint32_t)i < len; ++i) {
+        data[i] = i2c_receive_byte(device, ((uint32_t)i != (len - 1)));
     }
 
     i2c_stop(device);
@@ -202,7 +192,7 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
     */
 bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, uint32_t addr_size)
 {
-    int i, j;
+    int32_t i, j;
 
     if ((addr_size < 1) || (addr_size > 4)) {
         return false;
@@ -220,7 +210,7 @@ bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, u
             return false;
         }
     }
-    for (i = 0; i < len; ++i) {
+    for (i = 0; (uint32_t)i < len; ++i) {
         if (!i2c_transmit_byte(device, data[i])) {
             i2c_stop(device);
             return false;

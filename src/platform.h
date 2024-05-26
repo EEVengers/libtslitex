@@ -9,6 +9,7 @@
 #define _PLATFORM_H_
 
 #include "ts_common.h"
+#include "mcp_clkgen.h"
 #include "csr.h"
 
 
@@ -27,7 +28,27 @@
 #define TS_TRIM_DAC_I2C_ADDR    (0x60)
 #define TS_TRIM_DPOT_I2C_ADDR   (0x2C)
 
-#define TS_PLL_I2C_ADDR         (0x74)
+#define ZL30250_I2C_ADDR        (0x6C)
+#define ZL30260_I2C_ADDR        (0x74)
+
+extern const mcp_clkgen_conf_t ZL30250_CONF[];
+extern const uint32_t ZL30250_CONF_SIZE;
+
+extern const mcp_clkgen_conf_t ZL30260_CONF[];
+extern const uint32_t ZL30260_CONF_SIZE;
+
+#ifdef TS_REV_3
+#define TS_PLL_I2C_ADDR         ZL30250_I2C_ADDR
+#define TS_PLL_CONF             ZL30250_CONF
+#define TS_PLL_CONF_SIZE        ZL30250_CONF_SIZE
+#else
+#define TS_PLL_I2C_ADDR         ZL30260_I2C_ADDR
+#define TS_PLL_CONF             ZL30260_CONF
+#define TS_PLL_CONF_SIZE        ZL30260_CONF_SIZE
+#endif
+
+#define TS_PLL_NRST_ADDR        CSR_ADC_CONTROL_OSC_EN_OFFSET
+#define TS_PLL_NRST_MASK        (1 << 0)
 
 #define TS_AFE_0_TERM_REG       CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_0_TERM_MASK      (1 << 20)
@@ -64,7 +85,6 @@
 
 #define TS_AFE_3_COUPLING_REG   CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_3_COUPLING_MASK  (1 << (CSR_FRONTEND_CONTROL_COUPLING_OFFSET + 3))
-
 
 
 #endif

@@ -30,6 +30,8 @@ set(TS_SOURCES
     src/adc.c
     src/hmcad15xx.c
     src/lmh6518.c
+    src/mcp_clkgen.c
+    src/platform.c
     src/samples.c
     src/ts_channel.c
     src/thunderscope.c
@@ -41,11 +43,13 @@ set(TS_HEADERS
     src/spi.h
     src/adc.h
     src/afe.h
+    src/mcp_clkgen.h
     src/platform.h
     src/lmh6518.h
     src/hmcad15xx.h
     src/samples.h
     src/ts_channel.h
+    src/util.h
     )
 
 set(TS_LIB_HEADERS 

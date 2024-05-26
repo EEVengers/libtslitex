@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "ts_channel.h"
 
@@ -21,6 +22,7 @@
 #include "gpio.h"
 #include "afe.h"
 #include "adc.h"
+#include "util.h"
 
 
 #define TS_ADC_CH_NO_INVERT     (0)
@@ -33,6 +35,10 @@ typedef struct ts_channel_s {
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
     spi_bus_t spibus;
+    struct {
+        i2c_t clkGen;
+        gpio_t nRst;
+    }pll;
 } ts_channel_t;
 
 
@@ -99,6 +105,26 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         retVal = TS_STATUS_ERROR;
         return retVal;
     }
+
+    //Initialize PLL Clock Gen
+    // Toggle reset pin
+    pChan->pll.nRst.fd = ts;
+    pChan->pll.nRst.reg = TS_PLL_NRST_ADDR;
+    pChan->pll.nRst.bit_mask = TS_PLL_NRST_MASK;
+    gpio_clear(pChan->pll.nRst);
+    //sleep 10 ms
+    NS_DELAY(10000000);
+    gpio_set(pChan->pll.nRst);
+    NS_DELAY(10000000);
+
+    pChan->pll.clkGen.fd = ts;
+    pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
+    retVal = mcp_clkgen_config(pChan->pll.clkGen, TS_PLL_CONF, TS_PLL_CONF_SIZE);
+    if(retVal != TS_STATUS_OK)
+    {
+        goto channel_init_error;
+    }
+
 
     //TODO: Placeholder. Replace with DAC and DPot driver instances?
     i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
