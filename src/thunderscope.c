@@ -8,11 +8,14 @@
  *
  */
 #include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
 
 #include "thunderscope.h"
 #include "ts_common.h"
 #include "ts_channel.h"
 #include "samples.h"
+#include "util.h"
 
 #include "litepcie.h"
 
@@ -39,7 +42,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
     char testPath[TS_IDENT_STR_LEN];
     
     // Find device path by index
-    snprintf(testPath, LITEPCIE_CTRL_NAME() "%d", devIndex, TS_IDENT_STR_LEN);
+    snprintf(testPath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME("") "%d", devIndex);
     file_t testDev = litepcie_open((const char*)testPath, FILE_FLAGS);
 
     //If index valid

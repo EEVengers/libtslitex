@@ -16,6 +16,12 @@ extern "C" {
 #include <time.h>
 #include <stdio.h>
 
+
+#if !defined(_WIN32)
+#define INVALID_HANDLE_VALUE (-1)
+#endif
+
+
 #define NANOSECOND	(1000000000)
 #define NS_DELAY(ns)    { \
                         struct timespec start, now; \

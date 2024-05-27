@@ -12,6 +12,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 #include <time.h>
 
 #include "ts_channel.h"

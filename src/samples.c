@@ -25,6 +25,7 @@
 
 #include "samples.h"
 #include "ts_common.h"
+#include "util.h"
 
 #include "liblitepcie.h"
 
@@ -36,7 +37,6 @@
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #else
-#define INVALID_HANDLE_VALUE (-1)
 #define TS_DMA_NAME         "/dev/litepcie%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_NAME_ARGS(chan, dev)     (dev)

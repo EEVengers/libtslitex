@@ -38,14 +38,10 @@
 #include "../src/spi.h"
 #include "../src/i2c.h"
 #include "../src/gpio.h"
+#include "../src/util.h"
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
-
-#if !defined(_WIN32)
-#define INVALID_HANDLE_VALUE (-1)
-#endif
-
 
 #ifdef _WIN32
 #define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
