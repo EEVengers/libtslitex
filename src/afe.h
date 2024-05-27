@@ -77,7 +77,7 @@ int32_t ts_afe_set_bw_filter(ts_afe_t* afe, uint32_t bw_MHz);
 int32_t ts_afe_termination_control(ts_afe_t* afe, uint8_t enable);
 
 /**
- * @brief Enable/Disable the AFE 10x Attenuation
+ * @brief Enable/Disable the AFE 50x Attenuation
  * 
  * @param afe   Pointer to an AFE instance
  * @param enable 1 to enable, 0 to disable

@@ -37,6 +37,53 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts);
  */
 int32_t ts_channel_destroy(tsChannelHdl_t tsChannels);
 
+/**
+ * @brief Start and Stop the ADC capture
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param en Flag to enable the ADC. 1 to start, 0 to stop.
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_run(tsChannelHdl_t thChannels, uint8_t en);
+
+/**
+ * @brief Set the operating parameters for a channel
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param chanIdx Channel Index
+ * @param param Pointer to the parameter structure to set
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param);
+
+/**
+ * @brief Get the current operating parameters for a channel
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param chanIdx Channel Index
+ * @param param Pointer to the parameter structure to return the retrieved values
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_params_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param);
+
+/**
+ * @brief Get the current state of the Thunderscope
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @return tsScopeState_t Current State information of the Thunderscope device
+ */
+tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels);
+
+/**
+ * @brief Set the sampling format for the Thunderscope
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param rate Samples per Second
+ * @param resolution Number of bits in each sample.  Valid values are 2^8 (256), 2^12 (4096), and 2^14 (16384).
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution);
+
 #ifdef __cplusplus
 }
 #endif

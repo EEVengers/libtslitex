@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdlib.h>
+#include <math.h>
 #include <time.h>
 
 #include "ts_channel.h"
@@ -31,6 +32,7 @@
 typedef struct ts_channel_s {
     struct {
         uint8_t channelNo;
+        tsChannelParam_t params;
         ts_afe_t afe;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
@@ -39,6 +41,8 @@ typedef struct ts_channel_s {
         i2c_t clkGen;
         gpio_t nRst;
     }pll;
+    gpio_t afe_power;
+    gpio_t acq_power;
 } ts_channel_t;
 
 
@@ -105,6 +109,18 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         retVal = TS_STATUS_ERROR;
         return retVal;
     }
+
+    //Enable Power Rails
+    pChan->afe_power.fd = ts;
+    pChan->afe_power.reg = TS_AFE_POWER_REG;
+    pChan->afe_power.bit_mask = TS_AFE_POWER_MASK;
+    gpio_set(pChan->afe_power);
+
+    pChan->acq_power.fd = ts;
+    pChan->acq_power.reg = TS_ACQ_POWER_REG;
+    pChan->acq_power.bit_mask = TS_ACQ_POWER_MASK;
+    gpio_set(pChan->acq_power);
+
 
     //Initialize PLL Clock Gen
     // Toggle reset pin
@@ -191,6 +207,9 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
 channel_init_error:
     *pTsChannels = NULL;
+    gpio_clear(pChan->pll.nRst);
+    gpio_clear(pChan->acq_power);
+    gpio_clear(pChan->afe_power);
     free(pChan);
     return retVal;
 }
@@ -202,8 +221,146 @@ int32_t ts_channel_destroy(tsChannelHdl_t tsChannels)
     //TODO Any cleanup on AFE/ADC as needed
     ts_adc_shutdown(&pChan->adc);
 
-
+    //Hold PLL in reset
+    gpio_clear(pChan->pll.nRst);
+    
+    //Power down
+    gpio_clear(pChan->acq_power);
+    gpio_clear(pChan->afe_power);
+    
     free(tsChannels);
 
     return TS_STATUS_OK;
+}
+
+int32_t ts_channel_run(tsChannelHdl_t thChannels, uint8_t en)
+{
+    //Start
+
+    //Stop
+
+    return TS_STATUS_OK;
+}
+
+int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
+{
+    int32_t retVal = TS_STATUS_OK;
+
+    if(tsChannels == NULL || param == NULL)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    if(chanIdx >= TS_NUM_CHANNELS)
+    {
+        return TS_INVALID_PARAM;
+    }
+
+    ts_channel_t* pInst = (ts_channel_t*)tsChannels;
+
+    //Set AFE Bandwidth
+    if(param->bandwidth != pInst->chan[chanIdx].params.bandwidth)
+    {
+        retVal = ts_afe_set_bw_filter(&pInst->chan[chanIdx].afe, param->bandwidth);
+        if(retVal > 0)
+        {
+            pInst->chan[chanIdx].params.bandwidth = retVal;
+        }
+        else
+        {
+            LOG_ERROR("Unable to set Channel %d bandwidth %d", chanIdx, retVal);
+            return TS_INVALID_PARAM;
+        }
+    }
+
+    //Set AC/DC Coupling
+    if(param->coupling != pInst->chan[chanIdx].params.coupling)
+    {
+        if(TS_STATUS_OK == ts_afe_coupling_control(&pInst->chan[chanIdx].afe, 
+                                    (param->coupling == TS_COUPLE_DC ? 1 : 0)))
+        {
+            pInst->chan[chanIdx].params.coupling = param->coupling;
+        }
+        else
+        {
+            LOG_ERROR("Unable to set Channel %d AC/DC Coupling: %x", chanIdx, param->coupling);
+            return TS_INVALID_PARAM;
+        }
+    }
+
+    //Set Termination
+    if(param->term != pInst->chan[chanIdx].params.term)
+    {
+        if(TS_STATUS_OK == ts_afe_termination_control(&pInst->chan[chanIdx].afe, 
+                                    (param->term == TS_TERM_50 ? 1 : 0)))
+        {
+            pInst->chan[chanIdx].params.coupling = param->coupling;
+        }
+        else
+        {
+            LOG_ERROR("Unable to set Channel %d Termination: %x", chanIdx, param->coupling);
+            return TS_INVALID_PARAM;
+        }
+    }
+
+    //Set Voltage Scale
+    if(param->volt_scale_mV != pInst->chan[chanIdx].params.volt_scale_mV)
+    {
+        //TODO: Calculate dB gain value
+        int32_t afe_gain_mdB = (int32_t)(20000 * log10((double)param->volt_scale_mV / 700.0));
+        retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
+        if(TS_STATUS_ERROR == retVal)
+        {
+            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->coupling);
+            return TS_INVALID_PARAM;
+        }
+        else
+        {
+            LOG_DEBUG("Channel %d AFE set to %.1f mdB gain", chanIdx, retVal);
+            retVal = (int32_t)pow(10.0, (double)retVal/20000.0);
+            pInst->chan[chanIdx].params.volt_scale_mV = retVal;
+        }
+    }
+
+    //Set Voltage Offset
+    //TODO
+
+    //Set Active
+
+    return TS_STATUS_OK;
+}
+
+int32_t ts_channel_params_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
+{
+    if(tsChannels == NULL || param == NULL)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    if(chanIdx >= TS_NUM_CHANNELS)
+    {
+        return TS_INVALID_PARAM;
+    }
+
+    memcpy(param, &((ts_channel_t*)tsChannels)->chan[chanIdx].params, sizeof(tsChannelParam_t));
+    return TS_STATUS_OK;
+}
+
+tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
+{
+    //TODO
+    tsScopeState_t state = {0};
+    return state;
+}
+
+int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution)
+{
+    //Input validation
+    //TODO - Support valid rate/resolution combinations
+    if((rate != 1000000000) || (resolution != 256))
+    {
+        return TS_INVALID_PARAM;
+    }
+    //TODO - Apply resolution,rate configuration
+    return  TS_STATUS_OK;
 }

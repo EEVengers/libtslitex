@@ -52,10 +52,19 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
 {
     int32_t gain_actual = 0;
+    bool need_atten = false;
     if(NULL == afe)
     {
         //ERROR
         return TS_STATUS_ERROR;
+    }
+
+    // Update Attenuation if needed
+    if(gain_mdB > TS_ATTENUATION_THRESHOLD_MV)
+    {
+        need_atten = true;
+        ts_afe_termination_control(afe, 1);
+        gain_mdB -= TS_ATTENUATION_VALUE_mdB;
     }
 
     gain_actual = lmh6518_calc_gain_config(&afe->ampConf, gain_mdB);
@@ -64,6 +73,12 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
         (TS_STATUS_OK != lmh6518_apply_config(afe->amp, afe->ampConf)))
     {
         return TS_STATUS_ERROR;
+    }
+
+    if(need_atten)
+    {
+        gain_actual += TS_ATTENUATION_VALUE_mdB;
+        ts_afe_termination_control(afe, 0);
     }
 
     return gain_actual;

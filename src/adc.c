@@ -12,8 +12,6 @@
 #include "adc.h"
 
 
-static uint8_t ts_adc_active_channels(ts_adc_t* adc);
-
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
 {
     int32_t retVal = TS_STATUS_ERROR;
@@ -154,19 +152,4 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     }
 
     return retVal; 
-}
-
-static uint8_t ts_adc_active_channels(ts_adc_t* adc)
-{
-    uint8_t count = 0;
-
-    for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
-    {
-        if(adc->tsChannels[i].active)
-        {
-            count++;
-        }
-    }
-
-    return count;
 }

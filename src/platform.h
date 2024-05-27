@@ -15,6 +15,9 @@
 
 #define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x0010)
 
+#define TS_ATTENUATION_THRESHOLD_MV             (700)
+#define TS_ATTENUATION_VALUE_mdB                (33979) /**< 50x Attenuation = 20 * log(50) * 1000 */
+
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
 #define TS_ADC_CS               (0)
@@ -47,8 +50,14 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_PLL_CONF_SIZE        ZL30260_CONF_SIZE
 #endif
 
-#define TS_PLL_NRST_ADDR        CSR_ADC_CONTROL_OSC_EN_OFFSET
-#define TS_PLL_NRST_MASK        (1 << 0)
+#define TS_PLL_NRST_ADDR        CSR_ADC_CONTROL_ADDR
+#define TS_PLL_NRST_MASK        (1 << (CSR_ADC_CONTROL_OSC_EN_OFFSET))
+
+#define TS_AFE_POWER_REG        CSR_FRONTEND_CONTROL_ADDR
+#define TS_AFE_POWER_MASK       (1 << (CSR_FRONTEND_CONTROL_FE_EN_OFFSET))
+
+#define TS_ACQ_POWER_REG        CSR_ADC_CONTROL_ADDR
+#define TS_ACQ_POWER_MASK       (1 << (CSR_ADC_CONTROL_ACQ_EN_OFFSET))
 
 #define TS_AFE_0_TERM_REG       CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_0_TERM_MASK      (1 << 20)

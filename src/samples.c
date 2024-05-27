@@ -149,6 +149,7 @@ int32_t samples_teardown(sampleStream_t* inst)
                             &inst->dma_buffer_count,
                             &inst->driver_buffer_count);
 
+        litepcie_release_dma(inst->dma, 0, 1);
         litepcie_close(inst->dma);
     }
 
