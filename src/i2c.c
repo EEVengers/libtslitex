@@ -15,7 +15,7 @@
 #include "util.h"
 
 #define I2C_PERIOD	(NANOSECOND / I2C_FREQ_HZ)
-#define I2C_DELAY(n)    NS_DELAY(I2C_PERIOD * (n))
+#define I2C_DELAY(n)    NS_DELAY(I2C_PERIOD * (n) / 4)
 
 #define I2C_SCL     (0x01)
 #define I2C_SDAOE   (0x02)
@@ -157,11 +157,13 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
 
     if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
         i2c_stop(device);
+        LOG_ERROR("I2C NACK writing slave RD addr 0x%02X", device.devAddr);
         return false;
     }
     for (j = addr_size - 1; j >= 0; j--) {
         if (!i2c_transmit_byte(device, (uint8_t)(0xff & (addr >> (8 * j))))) {
             i2c_stop(device);
+            LOG_ERROR("I2C NACK writing RD register 0x%X", addr);
             return false;
         }
     }
@@ -173,6 +175,7 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
 
     if (!i2c_transmit_byte(device, I2C_ADDR_RD(device.devAddr))) {
         i2c_stop(device);
+        LOG_ERROR("I2C NACK reading slave RD addr 0x%02X", device.devAddr);
         return false;
     }
     for (i = 0; (uint32_t)i < len; ++i) {
@@ -202,17 +205,20 @@ bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, u
 
     if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
         i2c_stop(device);
+        LOG_ERROR("I2C NACK writing slave WR addr 0x%02X", device.devAddr);
         return false;
     }
     for (j = addr_size - 1; j >= 0; j--) {
         if (!i2c_transmit_byte(device, (unsigned char)(0xff & (addr >> (8 * j))))) {
             i2c_stop(device);
+            LOG_ERROR("I2C NACK writing WR register 0x%X", addr);
             return false;
         }
     }
     for (i = 0; (uint32_t)i < len; ++i) {
         if (!i2c_transmit_byte(device, data[i])) {
             i2c_stop(device);
+            LOG_ERROR("I2C NACK writing %d byte 0x%X", i, data[i]);
             return false;
         }
     }

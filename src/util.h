@@ -34,15 +34,15 @@ extern "C" {
                         } while(1);}
 
 #ifdef EN_LOGGING
-#define LOG_ERROR(...)      fprintf(stderr, "[%s:%d] %s\r\n", __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_ERROR(fmt, ...)      fprintf(stderr, "[%s:%d] " fmt "\r\n", __FILE__, __LINE__, __VA_ARGS__)
 #else
-#define LOG_ERROR(...)
+#define LOG_ERROR(fmt, ...)
 #endif
 
 #ifdef EN_LOGGING_DEBUG
-#define LOG_DEBUG(...)      fprintf(stdout, "[%s:%d] %s\r\n", __FILE__, __LINE__, __VA_ARGS__)
+#define LOG_DEBUG(fmt, ...)      fprintf(stdout, "[%s:%d] " fmt "\r\n", __FILE__, __LINE__, __VA_ARGS__)
 #else
-#define LOG_DEBUG(...)
+#define LOG_DEBUG(fmt, ...)
 #endif
 
 #ifdef __cplusplus

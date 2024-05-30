@@ -322,7 +322,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         }
         else
         {
-            LOG_DEBUG("Channel %d AFE set to %.1f mdB gain", chanIdx, retVal);
+            LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
             retVal = (int32_t)pow(10.0, (double)retVal/20000.0);
             pInst->chan[chanIdx].params.volt_scale_mV = retVal;
         }
