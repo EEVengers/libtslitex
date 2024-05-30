@@ -117,29 +117,36 @@ int32_t thunderscopeClose(tsHandle_t ts)
 
 int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf)
 {
-    //TODO
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst)
+    {
+        return ts_channel_params_get(&pInst->pChannel, channel, conf);
+    }
+
     return TS_STATUS_ERROR;
 }
 
 int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf)
 {
-    //TODO
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst)
+    {
+        return ts_channel_params_set(&pInst->pChannel, channel, conf);
+    }
+
     return TS_STATUS_ERROR;
 }
 
 int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf)
 {
-    if(!conf)
+    if(!conf || !ts)
     {
         return TS_STATUS_ERROR;
     }
 
-    //TODO
-    conf->adc_sample_rate = 1000000000;
-    conf->adc_sample_bits = 8;
-    conf->adc_sample_resolution = 256;
-    conf->adc_lost_buffer_count = 0;
-    conf->flags = 0;
+    *conf = ts_channel_scope_status((tsChannelHdl_t)ts);
 
     return TS_STATUS_OK;
 }
@@ -167,7 +174,7 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
     int32_t status = TS_STATUS_OK;
     ts_inst_t* pInst = (ts_inst_t*)ts;
     status = ts_channel_run(pInst->pChannel, enable);
-    if(status = TS_STATUS_OK)
+    if(status != TS_STATUS_OK)
     {
         return status;
     }

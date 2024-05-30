@@ -79,6 +79,12 @@ typedef struct tsScopeState_s
             uint8_t afe_state:1;
         };
     };
+    struct {
+        uint32_t temp_c;
+        uint32_t vcc_int;
+        uint32_t vcc_aux;
+        uint32_t vcc_bram;
+    } sys_health;
 } tsScopeState_t;
 
 #ifdef __cplusplus

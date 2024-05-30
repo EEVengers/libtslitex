@@ -211,10 +211,17 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 100000);
     uint64_t sampleLen = 0;
 
-    //Enable Channels
-    //TODO TS Channel Setup
+    //Setup and Enable Channels
+    tsChannelParam_t chConfig = {0};
+    chConfig.volt_scale_mV = 1000;
+    chConfig.bandwidth = 350;
+    chConfig.coupling = TS_COUPLE_DC;
+    chConfig.term = TS_TERM_1M;
+    chConfig.active = 1;
+    ts_channel_params_set(channels, 0, &chConfig);
 
     //Start Sample capture
+    ts_channel_run(channels, 1);
     samples_enable_set(&samp, 1);
 
     auto startTime = std::chrono::steady_clock::now();
@@ -232,7 +239,12 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 
     //Stop Samples
     samples_enable_set(&samp, 0);
-    //TODO TS Channel Disable
+    ts_channel_run(channels, 0);
+
+    //Disable channel
+    ts_channel_params_get(channels, 0, &chConfig);
+    chConfig.active = 0;
+    ts_channel_params_set(channels, 0, &chConfig);
 
     auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
     uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();

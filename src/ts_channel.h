@@ -44,7 +44,7 @@ int32_t ts_channel_destroy(tsChannelHdl_t tsChannels);
  * @param en Flag to enable the ADC. 1 to start, 0 to stop.
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
-int32_t ts_channel_run(tsChannelHdl_t thChannels, uint8_t en);
+int32_t ts_channel_run(tsChannelHdl_t tsChannels, uint8_t en);
 
 /**
  * @brief Set the operating parameters for a channel

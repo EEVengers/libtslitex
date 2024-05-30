@@ -44,6 +44,7 @@ typedef struct ts_channel_s {
     }pll;
     gpio_t afe_power;
     gpio_t acq_power;
+    tsScopeState_t status;
 } ts_channel_t;
 
 
@@ -160,7 +161,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     {
         goto channel_init_error;
     }
-    retVal = ts_adc_init(&pChan->adc, adcDev);
+    retVal = ts_adc_init(&pChan->adc, adcDev, ts);
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
@@ -234,13 +235,16 @@ int32_t ts_channel_destroy(tsChannelHdl_t tsChannels)
     return TS_STATUS_OK;
 }
 
-int32_t ts_channel_run(tsChannelHdl_t thChannels, uint8_t en)
+int32_t ts_channel_run(tsChannelHdl_t tsChannels, uint8_t en)
 {
-    //Start
+    if(!tsChannels)
+    {
+        return TS_STATUS_ERROR;
+    }
+    ts_channel_t* pChan = (ts_channel_t*)tsChannels;
 
-    //Stop
+    return ts_adc_run(&pChan->adc, en);
 
-    return TS_STATUS_OK;
 }
 
 int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
@@ -307,7 +311,8 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     //Set Voltage Scale
     if(param->volt_scale_mV != pInst->chan[chanIdx].params.volt_scale_mV)
     {
-        //TODO: Calculate dB gain value
+        //Calculate dB gain value
+        //TODO: Set both AFE and ADC gain?
         int32_t afe_gain_mdB = (int32_t)(20000 * log10((double)param->volt_scale_mV / 700.0));
         retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
@@ -327,6 +332,21 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     //TODO
 
     //Set Active
+    if(param->active != pInst->chan[chanIdx].params.active)
+    {
+        retVal = ts_adc_channel_enable(&pInst->adc, chanIdx, param->active);
+
+        if(TS_STATUS_OK != retVal)
+        {
+            LOG_ERROR("Unable to %s Channel %d: %d", (param->active == 0 ? "disable" : "enable"),
+                        chanIdx, retVal);
+            return retVal;
+        }
+        else
+        {
+            LOG_DEBUG("Channel %d %s", chanIdx, (param->active == 0 ? "disabled" : "enabled"));
+        }
+    }
 
     return TS_STATUS_OK;
 }
@@ -349,13 +369,25 @@ int32_t ts_channel_params_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
 
 tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
 {
-    //TODO
-    tsScopeState_t state = {0};
-    return state;
+    if(tsChannels == NULL)
+    {
+        //Return empty state
+        tsScopeState_t state = {0};
+        return state;
+    }
+    //TODO: Update XADC values
+
+    return ((ts_channel_t*)tsChannels)->status;
 }
 
 int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution)
 {
+    if(tsChannels == NULL)
+    {
+        //Return empty state
+        tsScopeState_t state = {0};
+        return TS_STATUS_ERROR;
+    }
     //Input validation
     //TODO - Support valid rate/resolution combinations
     if((rate != 1000000000) || (resolution != 256))
@@ -363,5 +395,6 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
         return TS_INVALID_PARAM;
     }
     //TODO - Apply resolution,rate configuration
+
     return  TS_STATUS_OK;
 }

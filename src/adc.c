@@ -12,7 +12,7 @@
 #include "adc.h"
 
 
-int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
+int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 {
     int32_t retVal = TS_STATUS_ERROR;
 
@@ -25,6 +25,8 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
     {
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
+
+    adc->ctrl = fd;
 
     return retVal;
 }
@@ -152,4 +154,15 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     }
 
     return retVal; 
+}
+
+int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
+{
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+    //Enable Trigger
+    litepcie_writel(adc->ctrl, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
+    return TS_STATUS_OK;
 }

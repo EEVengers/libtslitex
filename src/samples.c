@@ -79,9 +79,6 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
     }
 
     inst->active = en;
-    
-    //Enable Trigger
-    litepcie_writel(inst->dma, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
 
     //Start/Stop DMA
     litepcie_dma_writer(inst->dma, en,
