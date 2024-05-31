@@ -60,7 +60,7 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     }
 
     // Update Attenuation if needed
-    if(gain_mdB > TS_ATTENUATION_THRESHOLD_MV)
+    if(gain_mdB > TS_ATTENUATION_VALUE_mdB)
     {
         need_atten = true;
         ts_afe_termination_control(afe, 1);
