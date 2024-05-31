@@ -14,6 +14,7 @@
 #include "ts_common.h"
 #include "hmcad15xx.h"
 #include "spi.h"
+#include "util.h"
 
 static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data);
 static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc);
@@ -190,6 +191,7 @@ static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data)
     bytes[1] = data & 0xFF;
     spi_busy_wait(adc->dev);
     spi_write(adc->dev, reg, bytes, 2);
+    LOG_DEBUG("hmcad SPI R: 0x%02X V: 0x%04X", reg, data);
 }
 
 static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
@@ -228,6 +230,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_14BIT_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_4;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);

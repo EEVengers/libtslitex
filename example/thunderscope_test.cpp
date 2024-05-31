@@ -219,6 +219,9 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.term = TS_TERM_1M;
     chConfig.active = 1;
     ts_channel_params_set(channels, 0, &chConfig);
+    ts_channel_params_set(channels, 1, &chConfig);
+    ts_channel_params_set(channels, 2, &chConfig);
+    ts_channel_params_set(channels, 3, &chConfig);
 
     //Start Sample capture
     ts_channel_run(channels, 1);
@@ -241,10 +244,19 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     samples_enable_set(&samp, 0);
     ts_channel_run(channels, 0);
 
-    //Disable channel
+    //Disable channels
     ts_channel_params_get(channels, 0, &chConfig);
     chConfig.active = 0;
     ts_channel_params_set(channels, 0, &chConfig);
+    ts_channel_params_get(channels, 1, &chConfig);
+    chConfig.active = 0;
+    ts_channel_params_set(channels, 1, &chConfig);
+    ts_channel_params_get(channels, 2, &chConfig);
+    chConfig.active = 0;
+    ts_channel_params_set(channels, 2, &chConfig);
+    ts_channel_params_get(channels, 3, &chConfig);
+    chConfig.active = 0;
+    ts_channel_params_set(channels, 3, &chConfig);
 
     auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
     uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();

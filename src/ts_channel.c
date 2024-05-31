@@ -269,6 +269,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         retVal = ts_afe_set_bw_filter(&pInst->chan[chanIdx].afe, param->bandwidth);
         if(retVal > 0)
         {
+            LOG_DEBUG("Channel %d AFE BW set to %i MHz", chanIdx, retVal);
             pInst->chan[chanIdx].params.bandwidth = retVal;
         }
         else
@@ -284,6 +285,8 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         if(TS_STATUS_OK == ts_afe_coupling_control(&pInst->chan[chanIdx].afe, 
                                     (param->coupling == TS_COUPLE_DC ? 1 : 0)))
         {
+            
+            LOG_DEBUG("Channel %d AFE set to %s coupling", chanIdx, param->coupling == TS_COUPLE_DC ? "DC" : "AC");
             pInst->chan[chanIdx].params.coupling = param->coupling;
         }
         else
@@ -299,11 +302,12 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         if(TS_STATUS_OK == ts_afe_termination_control(&pInst->chan[chanIdx].afe, 
                                     (param->term == TS_TERM_50 ? 1 : 0)))
         {
-            pInst->chan[chanIdx].params.coupling = param->coupling;
+            LOG_DEBUG("Channel %d AFE termination set to %s", chanIdx, param->term == TS_TERM_1M ? "1M" : "50");
+            pInst->chan[chanIdx].params.term = param->term;
         }
         else
         {
-            LOG_ERROR("Unable to set Channel %d Termination: %x", chanIdx, param->coupling);
+            LOG_ERROR("Unable to set Channel %d Termination: %x", chanIdx, param->term);
             return TS_INVALID_PARAM;
         }
     }
@@ -317,7 +321,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->coupling);
+            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_mV);
             return TS_INVALID_PARAM;
         }
         else
@@ -345,6 +349,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         else
         {
             LOG_DEBUG("Channel %d %s", chanIdx, (param->active == 0 ? "disabled" : "enabled"));
+            pInst->chan[chanIdx].params.active = param->active;
         }
     }
 

@@ -60,7 +60,7 @@ extern "C" {
 #define HMCAD15_FULL_SCALE_MAX      (97)
 #define HMCAD15_FULL_SCALE_MIN      (-100)
 
-#define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x03)
+#define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x0F)
 
 #define HMCAD15_CLK_DIV_SET(x)      (((x) & 0x03) << 8)
 #define HMCAD15_CLK_DIV_1           (0)
@@ -143,7 +143,8 @@ typedef enum hmcad15xxMode_e
 {
     HMCAD15_SINGLE_CHANNEL = 1,
     HMCAD15_DUAL_CHANNEL = 2,
-    HMCAD15_QUAD_CHANNEL = 4
+    HMCAD15_QUAD_CHANNEL = 4,
+    HMCAD15_14BIT_QUAD_CHANNEL = 8
 } hmcad15xxMode_t;
 
 typedef enum hmcad15xxDataWidth_e
