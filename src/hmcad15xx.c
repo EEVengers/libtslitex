@@ -54,7 +54,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     hmcad15xxApplyLvdsMode(adc);
 
     //Gain dB mode
-    hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 1);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
 
     //Channel Conf
     hmcad15xxApplySampleMode(adc);

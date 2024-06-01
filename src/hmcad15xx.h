@@ -137,7 +137,7 @@ extern "C" {
 
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
-#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_90DEG)
+#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
 
 typedef enum hmcad15xxMode_e
 {
