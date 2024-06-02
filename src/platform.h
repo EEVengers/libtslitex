@@ -15,6 +15,8 @@
 
 #define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x0010)
 
+#define TS_ADC_CH_INVERT        (1)
+
 #define TS_ATTENUATION_THRESHOLD_MV             (700)
 #define TS_ATTENUATION_VALUE_mdB                (33979) /**< 50x Attenuation = 20 * log(50) * 1000 */
 

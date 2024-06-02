@@ -10,7 +10,8 @@
 #include <stddef.h>
 
 #include "adc.h"
-
+#include "platform.h"
+#include "util.h"
 
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 {
@@ -18,7 +19,7 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 
     if(adc != NULL)
     {
-        retVal = hmcad15xx_init(&adc->adcDev, spi);
+        retVal = hmcad15xx_init(&adc->adcDev, spi, TS_ADC_CH_INVERT);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -31,7 +32,7 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
     return retVal;
 }
 
-int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, uint8_t invert)
+int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input)
 {
     int32_t retVal = TS_STATUS_ERROR;
 
@@ -39,7 +40,6 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
     {
         retVal = TS_STATUS_OK;
         adc->tsChannels[channel].input = input;
-        adc->tsChannels[channel].invert = invert;
 
         if(adc->tsChannels[channel].active)
         {
@@ -47,7 +47,6 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
             {
                 if(adc->tsChannels[channel].input == adc->adcDev.channelCfg[i].input)
                 {
-                    adc->adcDev.channelCfg[i].invert = invert;
                     break;
                 }
             }
@@ -103,6 +102,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         if(adc->tsChannels[i].active)
         {
             // Copy Active Channel Configs to ADC in order
+            LOG_DEBUG("Enabling IN %d as CH %d", activeCount, i);
             adc->adcDev.channelCfg[activeCount] = adc->tsChannels[i];
             activeCount++;
         }
@@ -111,6 +111,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     //Disable Unused channels in config
     for(uint8_t i=activeCount; i < HMCAD15_NUM_CHANNELS; i++)
     {
+        LOG_DEBUG("Disable CH %d", i);
+
         adc->adcDev.channelCfg[i].active = 0;
     }
 
