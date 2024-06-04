@@ -39,6 +39,7 @@
 #include "../src/i2c.h"
 #include "../src/gpio.h"
 #include "../src/util.h"
+#include "../src/hmcad15xx.h"
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
@@ -208,7 +209,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     sampleStream_t samp;
     samples_init(&samp, 0, 0);
 
-    uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 100000);
+    uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 10000, 1);
     uint64_t sampleLen = 0;
 
     //Setup and Enable Channels
@@ -219,9 +220,45 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.term = TS_TERM_1M;
     chConfig.active = 1;
     ts_channel_params_set(channels, 0, &chConfig);
-    ts_channel_params_set(channels, 1, &chConfig);
-    ts_channel_params_set(channels, 2, &chConfig);
-    ts_channel_params_set(channels, 3, &chConfig);
+    // ts_channel_params_set(channels, 1, &chConfig);
+    // ts_channel_params_set(channels, 2, &chConfig);
+    // ts_channel_params_set(channels, 3, &chConfig);
+
+    //Use Test Pattern
+    ts_channel_set_adc_test(channels, HMCAD15_TEST_RAMP, 0, 0);
+    NS_DELAY(10000000);
+
+    printf("- Checking HMCAD1520 Sample Rate...");
+    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);
+    NS_DELAY(500000000);
+    uint32_t rate = litepcie_readl(fd, CSR_ADC_HAD1511_SAMPLE_COUNT_ADDR) * 2;
+    printf(" %d Samples/S\r\n", rate);
+
+    printf("- Checking HAD1511<->FPGA Synchronization...");
+    // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
+    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
+    // bitslip_count_last = bus.regs.adc_had1511_bitslip_count.read()
+    uint32_t bitslip_count_last = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
+    // for d in range(32):
+    for(uint32_t idx=0; idx < 32; idx++)
+    {
+    //     bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_INC)
+        litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_INC_OFFSET);    
+    //     time.sleep(0.01)
+        NS_DELAY(10000000);
+    //     bitslip_count = bus.regs.adc_had1511_bitslip_count.read()
+        uint32_t bitslip_count = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
+    //     bitslip_diff  = (bitslip_count - bitslip_count_last) # FIXME: Handle rollover.
+    //     bitslip_count_last = bitslip_count
+    //     print("1" if bitslip_diff == 0 else "0", end="")
+        printf("%d", bitslip_count == bitslip_count_last ? 1 : 0);
+        bitslip_count_last = bitslip_count;
+    //     sys.stdout.flush()
+    }
+    // print("")
+    printf("\r\n");
+    // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
+    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
 
     //Start Sample capture
     ts_channel_run(channels, 1);
@@ -230,13 +267,23 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     auto startTime = std::chrono::steady_clock::now();
     if(sampleBuffer != NULL)
     {
-        //Collect Samples
-        int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*100000));
-        if(readRes < 0)
+        uint32_t offset = 0;
+        for(uint32_t loop=0; loop < 100; loop++)
         {
-            printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+            uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*100;
+            //Collect Samples
+            int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[offset], readReq);
+            if(readRes < 0)
+            {
+                printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+            }
+            if(readRes < readReq)
+            {
+                printf("WARN: Did not read complete buffer %" PRIu32 ", %" PRIu32, loop, readReq);
+            }
+            offset += readReq;
+            sampleLen += readRes;
         }
-        sampleLen += readRes;
     }
     auto endTime = std::chrono::steady_clock::now();
 
@@ -262,8 +309,9 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
     printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps", sampleLen, bw);
 
-    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary);
+    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
     outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+    outFile.flush();
     outFile.close();
 
     ts_channel_destroy(channels);

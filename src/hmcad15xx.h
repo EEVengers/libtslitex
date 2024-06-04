@@ -123,6 +123,9 @@ extern "C" {
 #define HMCAD15_TEST_MODE_DUAL      (1 << 5)
 #define HMCAD15_TEST_MODE_RAMP      (1 << 6)
 
+#define HMCAD15_TEST_PAT_DESKEW     (1 << 0)
+#define HMCAD15_TEST_PAT_SYNC       (1 << 1)
+
 #define HMCAD15_LVDS_PHASE_270DEG   (0)
 #define HMCAD15_LVDS_PHASE_180DEG   (1)
 #define HMCAD15_LVDS_PHASE_90DEG    (2)
@@ -167,7 +170,9 @@ typedef enum hmcad15xxTestMode_e
 {
     HMCAD15_TEST_SINGLE,
     HMCAD15_TEST_DUAL,
-    HMCAD15_TEST_RAMP
+    HMCAD15_TEST_RAMP,
+    HMCAD15_TEST_DESKEW,
+    HMCAD15_TEST_SYNC
 } hmcad15xxTestMode_t;
 
 typedef struct hmcad15xxChCfg_s

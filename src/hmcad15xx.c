@@ -179,7 +179,33 @@ int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode
     {
         return TS_STATUS_ERROR;
     }
-    //TODO
+    //Clear both test modes
+    hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, 0);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, 0);
+
+    switch(mode)
+    {
+        case HMCAD15_TEST_RAMP:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_RAMP);
+        break;
+        case HMCAD15_TEST_SINGLE:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT1, testData1);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_SINGLE);
+        break;
+        case HMCAD15_TEST_DUAL:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT1, testData1);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT2, testData2);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_DUAL);
+        break;
+        case HMCAD15_TEST_DESKEW:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, HMCAD15_TEST_PAT_DESKEW);
+        break;
+        case HMCAD15_TEST_SYNC:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, HMCAD15_TEST_PAT_SYNC);
+        break;
+        default:
+        LOG_ERROR("Invalid Test Mode");
+    }
 
     return TS_STATUS_OK;
 }

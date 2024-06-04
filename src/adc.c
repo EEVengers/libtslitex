@@ -12,6 +12,8 @@
 #include "adc.h"
 #include "platform.h"
 #include "util.h"
+#include "liblitepcie.h"
+
 
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 {
@@ -19,15 +21,16 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 
     if(adc != NULL)
     {
+        adc->ctrl = fd;
         retVal = hmcad15xx_init(&adc->adcDev, spi, TS_ADC_CH_INVERT);
     }
 
     if(retVal == TS_STATUS_OK)
     {
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DOWNSAMPLING_ADDR, 1);
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
-
-    adc->ctrl = fd;
 
     return retVal;
 }
