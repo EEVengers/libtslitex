@@ -28,6 +28,7 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
         //Error
         return TS_STATUS_ERROR;
     }
+    LOG_DEBUG("Write Regs:");
 
     for(uint32_t i = 0; i < confLen; i++)
     {
@@ -35,16 +36,20 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
         {
         case MCP_CLKGEN_DELAY:
         {
+            LOG_DEBUG("\tDelay %d us", confData[i].delay_us);
             NS_DELAY(confData[i].delay_us * 1000);
             break;
         }
         case MCP_CLKGEN_WRITE_REG:
         {
+            LOG_DEBUG("\t%06X : %02X ", (uint32_t)ZL302XX_WRITE_REG(confData[i].addr), confData[i].value);
             if(!i2c_write(device, (uint32_t)ZL302XX_WRITE_REG(confData[i].addr),
                             &confData[i].value, 1, ZL302XX_ADDR_LEN))
             {
+                LOG_DEBUG("(NACK!)");
                 return TS_STATUS_ERROR;
             }
+            LOG_DEBUG("(ack)");
             break;
         }
         default:
@@ -87,11 +92,11 @@ void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_
             
             if(data[1] == confData[i].value)
             {
-                printf("\t%04X : %02X\r\n", confData[i].addr, data[1]);
+                printf("\t%06X : %02X\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[1]);
             }
             else
             {
-                printf("\t%04X : %02X (expected %02X)\r\n", confData[i].addr, data[1], confData[i].value);
+                printf("\t%06X : %02X (expected %02X)\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[1], confData[i].value);
             }
 
             break;
