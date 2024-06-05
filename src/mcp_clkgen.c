@@ -52,3 +52,51 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
     }
     return TS_STATUS_OK;
 }
+
+void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen)
+{
+    
+    if(NULL == confData)
+    {
+        //Error
+        return;
+    }
+
+    printf("Confirming Regs:\r\n");
+    for(uint32_t i = 0; i < confLen; i++)
+    {
+        switch(confData[i].action)
+        {
+        case MCP_CLKGEN_DELAY:
+        {
+            //skip
+            break;
+        }
+        case MCP_CLKGEN_WRITE_REG:
+        {
+            uint8_t data[1] = {0};
+            
+            if(!i2c_read(device, (uint32_t)(confData[i].addr),
+                            data, 1, true, ZL302XX_ADDR_LEN))
+            {
+                LOG_ERROR("MCP CLKGEN REG DUMP Failed to read reg %d", confData[i].addr);
+                return;
+            }
+            
+            if(data[1] == confData[i].value)
+            {
+                printf("\t%04X : %02X\r\n", confData[i].addr, data[1]);
+            }
+            else
+            {
+                printf("\t%04X : %02X (expected %02X)\r\n", confData[i].addr, data[1], confData[i].value);
+            }
+
+            break;
+        }
+        default:
+            //Error
+            break;    
+        }
+    }
+}

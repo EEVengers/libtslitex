@@ -41,6 +41,8 @@ typedef struct mcp_clkgen_conf_s {
  */
 int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
 
+void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
+
 #ifdef __cplusplus
 }
 #endif
