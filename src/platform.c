@@ -45,8 +45,8 @@ const mcp_clkgen_conf_t ZL30260_CONF[] = {
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0430, .value=0x0C},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0430, .value=0x00},
     {.action=MCP_CLKGEN_DELAY, .delay_us=10000},
-    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0001, .value=0x02},
-    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0001, .value=0x42},
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x02},
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x42},
     {.action=MCP_CLKGEN_DELAY, .delay_us=10000}
 };
 
