@@ -209,6 +209,8 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     sampleStream_t samp;
     samples_init(&samp, 0, 0);
 
+    std::this_thread::sleep_for(std::chrono::seconds(30));
+
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 10000, 1);
     uint64_t sampleLen = 0;
 
