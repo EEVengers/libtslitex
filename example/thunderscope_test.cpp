@@ -209,8 +209,6 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     sampleStream_t samp;
     samples_init(&samp, 0, 0);
 
-    std::this_thread::sleep_for(std::chrono::seconds(30));
-
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 10000, 1);
     uint64_t sampleLen = 0;
 
@@ -229,6 +227,8 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //Use Test Pattern
     ts_channel_set_adc_test(channels, HMCAD15_TEST_RAMP, 0, 0);
     NS_DELAY(10000000);
+
+    std::this_thread::sleep_for(std::chrono::seconds(5));
 
     printf("- Checking HMCAD1520 Sample Rate...");
     litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);
@@ -309,7 +309,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 
     auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
     uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
-    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps", sampleLen, bw);
+    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", sampleLen, bw);
 
     auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
     outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);

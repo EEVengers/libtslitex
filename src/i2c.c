@@ -74,7 +74,7 @@ static int i2c_receive_bit(i2c_t device)
     i2c_oe_scl_sda(device, 0, 1, 0);
     I2C_DELAY(1);
     // read in the middle of SCL high
-    value = litepcie_readl(device.fd, CSR_I2C_R_ADDR) & 1;
+    value = litepcie_readl(device.fd, CSR_I2C_R_ADDR) & I2C_SDAIN;
     I2C_DELAY(1);
     i2c_oe_scl_sda(device, 0, 0, 0);
     I2C_DELAY(1);

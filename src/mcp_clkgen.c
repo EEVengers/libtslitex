@@ -42,14 +42,13 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
         }
         case MCP_CLKGEN_WRITE_REG:
         {
-            LOG_DEBUG("\t%06X : %02X ", (uint32_t)ZL302XX_WRITE_REG(confData[i].addr), confData[i].value);
             if(!i2c_write(device, (uint32_t)ZL302XX_WRITE_REG(confData[i].addr),
                             &confData[i].value, 1, ZL302XX_ADDR_LEN))
             {
-                LOG_DEBUG("(NACK!)");
+                LOG_DEBUG("\t%06X : %02X (NACK!)", (uint32_t)ZL302XX_WRITE_REG(confData[i].addr), confData[i].value);
                 return TS_STATUS_ERROR;
             }
-            LOG_DEBUG("(ack)");
+            LOG_DEBUG("\t%06X : %02X (ack)", (uint32_t)ZL302XX_WRITE_REG(confData[i].addr), confData[i].value);
             break;
         }
         default:
