@@ -262,36 +262,44 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
     litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
 
-    //Start Sample capture
-    ts_channel_run(channels, 1);
-    samples_enable_set(&samp, 1);
-
-    auto startTime = std::chrono::steady_clock::now();
-    if(sampleBuffer != NULL)
+    //Only start taking samples if the rate is non-zero
+    if(rate > 0)
     {
-        uint32_t offset = 0;
-        for(uint32_t loop=0; loop < 100; loop++)
-        {
-            uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*100;
-            //Collect Samples
-            int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[offset], readReq);
-            if(readRes < 0)
-            {
-                printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
-            }
-            if(readRes < readReq)
-            {
-                printf("WARN: Did not read complete buffer %" PRIu32 ", %" PRIu32, loop, readReq);
-            }
-            offset += readReq;
-            sampleLen += readRes;
-        }
-    }
-    auto endTime = std::chrono::steady_clock::now();
+        //Start Sample capture
+        ts_channel_run(channels, 1);
+        samples_enable_set(&samp, 1);
 
-    //Stop Samples
-    samples_enable_set(&samp, 0);
-    ts_channel_run(channels, 0);
+        auto startTime = std::chrono::steady_clock::now();
+        if(sampleBuffer != NULL)
+        {
+            uint32_t offset = 0;
+            for(uint32_t loop=0; loop < 100; loop++)
+            {
+                uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*100;
+                //Collect Samples
+                int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[offset], readReq);
+                if(readRes < 0)
+                {
+                    printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+                }
+                if(readRes < readReq)
+                {
+                    printf("WARN: Did not read complete buffer %" PRIu32 ", %" PRIu32, loop, readReq);
+                }
+                offset += readReq;
+                sampleLen += readRes;
+            }
+        }
+        auto endTime = std::chrono::steady_clock::now();
+
+        //Stop Samples
+        samples_enable_set(&samp, 0);
+        ts_channel_run(channels, 0);
+        
+        auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+        uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
+        printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", sampleLen, bw);
+    }
 
     //Disable channels
     ts_channel_params_get(channels, 0, &chConfig);
@@ -307,14 +315,14 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.active = 0;
     ts_channel_params_set(channels, 3, &chConfig);
 
-    auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
-    uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
-    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", sampleLen, bw);
 
-    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
-    outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
-    outFile.flush();
-    outFile.close();
+    if(sampleLen > 0)
+    {
+        auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
+        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+        outFile.flush();
+        outFile.close();
+    }
 
     ts_channel_destroy(channels);
     samples_teardown(&samp);
