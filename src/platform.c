@@ -13,7 +13,7 @@
 #include "mcp_clkgen.h"
 
 const mcp_clkgen_conf_t ZL30260_CONF[] = {
-    // {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0423, .value=0x08},
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0423, .value=0x08},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0003, .value=0x01},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0004, .value=0x02},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0005, .value=0x21},
