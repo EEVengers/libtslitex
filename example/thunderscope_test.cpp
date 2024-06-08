@@ -399,6 +399,12 @@ int main(int argc, char** argv)
     }
     arg = argv[argCount];
 
+    if(argCount == argc)
+    {
+        print_help();
+        exit(EXIT_FAILURE);
+    }
+
     fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if(fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");

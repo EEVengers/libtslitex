@@ -89,13 +89,13 @@ void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_
                 return;
             }
             
-            if(data[1] == confData[i].value)
+            if(data[0] == confData[i].value)
             {
-                printf("\t%06X : %02X\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[1]);
+                printf("\t%06X : %02X\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[0]);
             }
             else
             {
-                printf("\t%06X : %02X (expected %02X)\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[1], confData[i].value);
+                printf("\t%06X : %02X (expected %02X)\r\n", (uint32_t)ZL302XX_READ_REG(confData[i].addr), data[0], confData[i].value);
             }
 
             break;
