@@ -42,12 +42,12 @@ const mcp_clkgen_conf_t ZL30260_CONF[] = {
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0201, .value=0x05},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0250, .value=0x80},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0251, .value=0x02},
-    // {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0430, .value=0x0C},
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0430, .value=0x0C},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0430, .value=0x00},
     {.action=MCP_CLKGEN_DELAY, .delay_us=10000},
-    // {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x02},
-    // {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x42},
-    // {.action=MCP_CLKGEN_DELAY, .delay_us=10000}
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x02},
+    {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0100, .value=0x42},
+    {.action=MCP_CLKGEN_DELAY, .delay_us=10000}
 };
 
 const uint32_t ZL30260_CONF_SIZE = sizeof(ZL30260_CONF)/sizeof(ZL30260_CONF[0]);

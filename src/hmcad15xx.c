@@ -50,6 +50,9 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev, uint8_t chInvert)
     //Power Down
     hmcad15xx_power_mode(adc, HMCAD15_CH_POWERDN);
 
+    //Input Inversion
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_INVERT, adc->invert ? 0x7F : 0x00);
+
     //LVDS Mode
     hmcad15xxApplyLvdsMode(adc);
 
@@ -125,6 +128,8 @@ int32_t hmcad15xx_power_mode(hmcad15xxADC_t* adc, hmcad15xxPower_t power)
     }
 
     hmcad15xxRegWrite(adc, HMCAD15_REG_POWER_CTRL, data);
+    //Delay 20us for power up
+    NS_DELAY(20000);
     return TS_STATUS_OK;
 }
 
@@ -185,6 +190,9 @@ int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode
 
     switch(mode)
     {
+        case HMCAD15_TEST_DISABLE:
+        //Test mode already cleared. Nothing else to do.
+        break;
         case HMCAD15_TEST_RAMP:
         hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_RAMP);
         break;

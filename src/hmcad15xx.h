@@ -168,6 +168,7 @@ typedef enum hmcad15xxPower_e
 
 typedef enum hmcad15xxTestMode_e
 {
+    HMCAD15_TEST_DISABLE,
     HMCAD15_TEST_SINGLE,
     HMCAD15_TEST_DUAL,
     HMCAD15_TEST_RAMP,

@@ -228,7 +228,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     ts_channel_set_adc_test(channels, HMCAD15_TEST_RAMP, 0, 0);
     NS_DELAY(10000000);
 
-    std::this_thread::sleep_for(std::chrono::seconds(5));
+    std::this_thread::sleep_for(std::chrono::seconds(10));
 
     printf("- Checking HMCAD1520 Sample Rate...");
     litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);
@@ -319,7 +319,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     if(sampleLen > 0)
     {
         auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
-        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen/32);
         outFile.flush();
         outFile.close();
     }

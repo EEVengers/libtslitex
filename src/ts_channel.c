@@ -135,8 +135,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
     retVal = mcp_clkgen_config(pChan->pll.clkGen, TS_PLL_CONF, TS_PLL_CONF_SIZE);
-    NS_DELAY(10000000);
-    mcp_clkgen_regdump(pChan->pll.clkGen, TS_PLL_CONF, TS_PLL_CONF_SIZE);
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
