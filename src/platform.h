@@ -22,11 +22,11 @@
 
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
-#define TS_ADC_CS               (0)
-#define TS_AFE_0_AMP_CS         (1)
-#define TS_AFE_1_AMP_CS         (2)
-#define TS_AFE_2_AMP_CS         (3)
-#define TS_AFE_3_AMP_CS         (4)
+#define TS_AFE_0_AMP_CS         (0)
+#define TS_AFE_1_AMP_CS         (1)
+#define TS_AFE_2_AMP_CS         (2)
+#define TS_AFE_3_AMP_CS         (3)
+#define TS_ADC_CS               (4)
 
 #define TS_I2C_BASE_ADDR        CSR_I2C_BASE
 
