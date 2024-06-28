@@ -119,7 +119,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->acq_power.reg = TS_ACQ_POWER_REG;
     pChan->acq_power.bit_mask = TS_ACQ_POWER_MASK;
     gpio_set(pChan->acq_power);
-    NS_DELAY(10000000);
 
 
     //Initialize PLL Clock Gen

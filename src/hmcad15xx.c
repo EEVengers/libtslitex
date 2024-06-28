@@ -62,7 +62,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     hmcad15xxApplyChannelGain(adc);
     
     //Set Sleep mode
-    hmcad15xx_power_mode(adc, HMCAD15_CH_ACTIVE);
+    hmcad15xx_power_mode(adc, HMCAD15_CH_SLEEP);
 
     return TS_STATUS_OK;
 }
@@ -125,8 +125,6 @@ int32_t hmcad15xx_power_mode(hmcad15xxADC_t* adc, hmcad15xxPower_t power)
     }
 
     hmcad15xxRegWrite(adc, HMCAD15_REG_POWER_CTRL, data);
-    //Delay 20us for power up
-    NS_DELAY(20000);
     return TS_STATUS_OK;
 }
 
