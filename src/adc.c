@@ -22,7 +22,7 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
     if(adc != NULL)
     {
         adc->ctrl = fd;
-        retVal = hmcad15xx_init(&adc->adcDev, spi, TS_ADC_CH_INVERT);
+        retVal = hmcad15xx_init(&adc->adcDev, spi);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -35,7 +35,7 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
     return retVal;
 }
 
-int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input)
+int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, uint8_t invert)
 {
     int32_t retVal = TS_STATUS_ERROR;
 
@@ -43,6 +43,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input)
     {
         retVal = TS_STATUS_OK;
         adc->tsChannels[channel].input = input;
+        adc->tsChannels[channel].invert = invert;
 
         if(adc->tsChannels[channel].active)
         {
@@ -50,6 +51,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input)
             {
                 if(adc->tsChannels[channel].input == adc->adcDev.channelCfg[i].input)
                 {
+                    adc->adcDev.channelCfg[i].invert = invert;
                     break;
                 }
             }

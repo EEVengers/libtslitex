@@ -22,7 +22,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc);
 static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc);
 static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc);
 
-int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev, uint8_t chInvert)
+int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
 {
     if(!adc)
     {
@@ -36,22 +36,19 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev, uint8_t chInvert)
     adc->width = HMCAD15_8_BIT;
     adc->channelCfg[0].active = 1;
     adc->channelCfg[0].input = HMCAD15_ADC_IN1;
+    adc->channelCfg[0].invert = 1;
     adc->channelCfg[0].coarse = 0;
     adc->channelCfg[0].fine = 0;
     adc->clockDiv = HMCAD15_CLK_DIV_1;
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
     adc->lvdsPhase = HMCAD15_LVDS_PHASE_DEFAULT;
-    adc->invert = chInvert;
 
     //Reset
     hmcad15xx_reset(adc);
 
     //Power Down
     hmcad15xx_power_mode(adc, HMCAD15_CH_POWERDN);
-
-    //Input Inversion
-    hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_INVERT, adc->invert ? 0x7F : 0x00);
 
     //LVDS Mode
     hmcad15xxApplyLvdsMode(adc);
@@ -275,27 +272,35 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
 
 static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
 {
-    uint16_t in12 = 0, in34 = 0;
+    uint16_t in12 = 0, in34 = 0, inv = 0;
 
     switch(adc->mode)
     {
         case HMCAD15_SINGLE_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
+            inv = HMCAD15_CH_INVERT_S1(adc->channelCfg[0].invert);
             break;
         case HMCAD15_DUAL_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
             in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
+            inv = HMCAD15_CH_INVERT_D1(adc->channelCfg[0].invert) | 
+                    HMCAD15_CH_INVERT_D2(adc->channelCfg[1].invert);
             break;
         case HMCAD15_QUAD_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
             in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
             in34 = HMCAD15_SEL_CH_3(adc->channelCfg[2].input);
             in34 |= HMCAD15_SEL_CH_4(adc->channelCfg[3].input);
+            inv = (HMCAD15_CH_INVERT_Q1(adc->channelCfg[0].invert) | 
+                    HMCAD15_CH_INVERT_Q2(adc->channelCfg[1].invert) |
+                    HMCAD15_CH_INVERT_Q3(adc->channelCfg[2].invert) |
+                    HMCAD15_CH_INVERT_Q4(adc->channelCfg[3].invert));
         break;
     }
 
     hmcad15xxRegWrite(adc, HMCAD15_REG_IN_SEL_1_2, in12);
     hmcad15xxRegWrite(adc, HMCAD15_REG_IN_SEL_3_4, in34);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_INVERT, inv);
 }
 
 static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc)

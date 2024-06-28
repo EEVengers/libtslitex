@@ -54,6 +54,7 @@ struct ts_channel_hw_conf_s {
     uint32_t afe_atten_reg;
     uint32_t afe_atten_mask;
     uint8_t adc_input;
+    uint8_t adc_invert;
 } g_channelConf[TS_NUM_CHANNELS] = {
     // Channel 1
     {
@@ -61,7 +62,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_0_TERM_REG,     TS_AFE_0_TERM_MASK,
         TS_AFE_0_COUPLING_REG, TS_AFE_0_COUPLING_MASK,
         TS_AFE_0_ATTEN_REG,    TS_AFE_0_ATTEN_MASK,
-        HMCAD15_ADC_IN1
+        HMCAD15_ADC_IN1,       TS_ADC_CH_INVERT
 
     },
     // Channel 2
@@ -70,7 +71,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_1_TERM_REG,     TS_AFE_1_TERM_MASK,
         TS_AFE_1_COUPLING_REG, TS_AFE_1_COUPLING_MASK,
         TS_AFE_1_ATTEN_REG,    TS_AFE_1_ATTEN_MASK,
-        HMCAD15_ADC_IN2
+        HMCAD15_ADC_IN2,       TS_ADC_CH_INVERT
     },
     // Channel 3
     {
@@ -78,7 +79,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_2_TERM_REG,     TS_AFE_2_TERM_MASK,
         TS_AFE_2_COUPLING_REG, TS_AFE_2_COUPLING_MASK,
         TS_AFE_2_ATTEN_REG,    TS_AFE_2_ATTEN_MASK,
-        HMCAD15_ADC_IN3
+        HMCAD15_ADC_IN3,       TS_ADC_CH_INVERT
     },
     // Channel 4
     {
@@ -86,7 +87,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_3_TERM_REG,     TS_AFE_3_TERM_MASK,
         TS_AFE_3_COUPLING_REG, TS_AFE_3_COUPLING_MASK,
         TS_AFE_3_ATTEN_REG,    TS_AFE_3_ATTEN_MASK,
-        HMCAD15_ADC_IN4
+        HMCAD15_ADC_IN4,       TS_ADC_CH_INVERT
     }
 };
 
@@ -166,7 +167,8 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     for(uint32_t chanIdx = 0; chanIdx < TS_NUM_CHANNELS; chanIdx++)
     {
         pChan->chan[chanIdx].channelNo = chanIdx;
-        retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input);
+        retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input,
+                                            g_channelConf[chanIdx].adc_invert);
         if(retVal != TS_STATUS_OK)
         {
             goto channel_init_error;

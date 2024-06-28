@@ -41,6 +41,13 @@ typedef struct mcp_clkgen_conf_s {
  */
 int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
 
+/**
+ * @brief Debug function to print all register values and compare them to written values
+ * 
+ * @param device I2C device for the zl30260/zl30250
+ * @param confData Array of configuration registers to verify
+ * @param confLen Length of the configuration array
+ */
 void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
 
 #ifdef __cplusplus

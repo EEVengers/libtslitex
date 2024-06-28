@@ -42,9 +42,10 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd);
  * @param adc Pointer to a ADC instance
  * @param channel Thunderscope Channel number to configure
  * @param input Input Channel of the ADC associated to the Thunderscope Channel
+ * @param invert Flag to indicate the ADC input is inverted
  * @return int32_t TS_STATUS_OK if channel is configured successfully
 */
-int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input);
+int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, uint8_t invert);
 
 /**
  * @brief Set the Gain parameters for a Thunderscope Channel

@@ -182,6 +182,7 @@ typedef struct hmcad15xxChCfg_s
     uint8_t input;
     uint8_t coarse;
     uint8_t fine;
+    uint8_t invert;
 } hmcad15xxChCfg_t;
 
 typedef struct hmcad15xxADC_s
@@ -194,7 +195,6 @@ typedef struct hmcad15xxADC_s
     uint8_t clockDiv;
     uint8_t lvdsPhase;
     uint8_t drive;
-    uint8_t invert;
 } hmcad15xxADC_t;
 
 /**
@@ -203,10 +203,9 @@ typedef struct hmcad15xxADC_s
  * 
  * @param adc Pointer to an ADC instance
  * @param dev SPI Device instance
- * @param chInvert Flag to configure inverted analog input pins
  * @return int32_t TS_STATUS_OK if successful
  */
-int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev, uint8_t chInvert);
+int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev);
 
 /**
  * @brief Perform a soft reset on the HMCAD15xx device
