@@ -209,7 +209,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     sampleStream_t samp;
     samples_init(&samp, 0, 0);
 
-    uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 10000, 1);
+    uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 0x8000, 1);
     uint64_t sampleLen = 0;
 
     //Setup and Enable Channels
@@ -275,16 +275,16 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
             uint32_t offset = 0;
             for(uint32_t loop=0; loop < 100; loop++)
             {
-                uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*100;
+                uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*256;
                 //Collect Samples
                 int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[offset], readReq);
                 if(readRes < 0)
                 {
                     printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
                 }
-                if(readRes < readReq)
+                if(readRes != readReq)
                 {
-                    printf("WARN: Did not read complete buffer %" PRIu32 ", %" PRIu32, loop, readReq);
+                    printf("WARN: Read returned different number of bytes for loop %" PRIu32 ", %" PRIu32 " / %" PRIu32 "\r\n", loop, readRes, readReq);
                 }
                 offset += readReq;
                 sampleLen += readRes;
@@ -319,7 +319,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     if(sampleLen > 0)
     {
         auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
-        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen/32);
+        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
         outFile.flush();
         outFile.close();
     }
