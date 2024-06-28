@@ -10,6 +10,9 @@
 #include <stddef.h>
 
 #include "adc.h"
+#include "platform.h"
+#include "util.h"
+#include "liblitepcie.h"
 
 
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
@@ -18,15 +21,16 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 
     if(adc != NULL)
     {
+        adc->ctrl = fd;
         retVal = hmcad15xx_init(&adc->adcDev, spi);
     }
 
     if(retVal == TS_STATUS_OK)
     {
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DOWNSAMPLING_ADDR, 1);
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
-
-    adc->ctrl = fd;
 
     return retVal;
 }
@@ -103,6 +107,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         if(adc->tsChannels[i].active)
         {
             // Copy Active Channel Configs to ADC in order
+            LOG_DEBUG("Enabling IN %d as CH %d", activeCount, i);
             adc->adcDev.channelCfg[activeCount] = adc->tsChannels[i];
             activeCount++;
         }
@@ -111,6 +116,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     //Disable Unused channels in config
     for(uint8_t i=activeCount; i < HMCAD15_NUM_CHANNELS; i++)
     {
+        LOG_DEBUG("Disable CH %d", i);
+
         adc->adcDev.channelCfg[i].active = 0;
     }
 

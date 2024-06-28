@@ -17,6 +17,7 @@ extern "C" {
 #include <stdint.h>
 #include "ts_common.h"
 #include "liblitepcie.h"
+#include "hmcad15xx.h"
 
 typedef void* tsChannelHdl_t;
 
@@ -83,6 +84,17 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels);
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
 int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution);
+
+/**
+ * @brief Set the ADC into a Test Mode
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param mode Test mode enum for the HMCAD15XX
+ * @param pattern1 First 16-bit Test Pattern value used in the SINGLE and DUAL test modes
+ * @param pattern2 Second 16-bit Test Pattern value used in the DUAL test mode
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t mode, uint16_t pattern1, uint16_t pattern2);
 
 #ifdef __cplusplus
 }

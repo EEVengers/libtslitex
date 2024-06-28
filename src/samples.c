@@ -106,7 +106,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
 #if defined(_WIN32)
             uint32_t len = 0;
             
-            if (!ReadFile(inst->dma, sampleBuffer, bufferLen, &len, NULL))
+            if (!ReadFile(inst->dma, &sampleBuffer[retVal], (bufferLen-retVal), &len, NULL))
             {
                 LOG_ERROR("Read failed: %d\n", GetLastError());
                 LOG_ERROR("Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);

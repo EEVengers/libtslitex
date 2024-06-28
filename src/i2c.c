@@ -17,10 +17,10 @@
 #define I2C_PERIOD	(NANOSECOND / I2C_FREQ_HZ)
 #define I2C_DELAY(n)    NS_DELAY(I2C_PERIOD * (n) / 4)
 
-#define I2C_SCL     (0x01)
-#define I2C_SDAOE   (0x02)
-#define I2C_SDAOUT  (0x04)
-#define I2C_SDAIN   (0x01)
+#define I2C_SCL     (1 << CSR_I2C_W_SCL_OFFSET)
+#define I2C_SDAOE   (1 << CSR_I2C_W_OE_OFFSET)
+#define I2C_SDAOUT  (1 << CSR_I2C_W_SDA_OFFSET)
+#define I2C_SDAIN   (1 << CSR_I2C_R_SDA_OFFSET)
 
 
 static inline void i2c_oe_scl_sda(i2c_t device, bool oe, bool scl, bool sda)
@@ -74,7 +74,7 @@ static int i2c_receive_bit(i2c_t device)
     i2c_oe_scl_sda(device, 0, 1, 0);
     I2C_DELAY(1);
     // read in the middle of SCL high
-    value = litepcie_readl(device.fd, CSR_I2C_R_ADDR) & 1;
+    value = (int)litepcie_readl(device.fd, CSR_I2C_R_ADDR) & I2C_SDAIN;
     I2C_DELAY(1);
     i2c_oe_scl_sda(device, 0, 0, 0);
     I2C_DELAY(1);

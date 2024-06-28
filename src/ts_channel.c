@@ -27,9 +27,6 @@
 #include "util.h"
 
 
-#define TS_ADC_CH_NO_INVERT     (0)
-#define TS_ADC_CH_INVERT        (1)
-
 typedef struct ts_channel_s {
     struct {
         uint8_t channelNo;
@@ -142,7 +139,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     {
         goto channel_init_error;
     }
-
 
     //TODO: Placeholder. Replace with DAC and DPot driver instances?
     i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
@@ -402,4 +398,10 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     //TODO - Apply resolution,rate configuration
 
     return  TS_STATUS_OK;
+}
+
+int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t mode, uint16_t pattern1, uint16_t pattern2)
+{
+    
+    return hmcad15xx_set_test_pattern(&((ts_channel_t*)tsChannels)->adc.adcDev, mode, pattern1, pattern2);
 }
