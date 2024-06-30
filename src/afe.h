@@ -26,7 +26,9 @@ typedef struct ts_afe_s
     spi_dev_t amp;
     lmh6518Config_t ampConf;
     i2c_t trimDac;
+    uint8_t trimDacCh;
     i2c_t trimPot;
+    uint8_t trimPotCh;
     gpio_t termPin;
     gpio_t attenuatorPin;
     gpio_t couplingPin;
@@ -39,14 +41,16 @@ typedef struct ts_afe_s
  * @param channel Channel Number
  * @param afe_amp AFE Amplifier SPI device
  * @param trimDac Trim DAC Device
+ * @param dacCh Channel on the Trim DAC
  * @param trimPot Trim digital Pot device
+ * @param potCh Channel on the Trim DPOT
  * @param termination AFE Termination Control GPIO
  * @param attenuator AFE Attenuation Relay GPIO
  * @param coupling AFE AC/DC Coupling Control GPIO
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t trimDac,
-            i2c_t trimPot, gpio_t termination, gpio_t attenuator, gpio_t coupling);
+int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t trimDac, uint8_t dacCh,
+            i2c_t trimPot, uint8_t potCh, gpio_t termination, gpio_t attenuator, gpio_t coupling);
 
 
 /**
@@ -57,6 +61,16 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
  * @return int32_t Actual gain value set. TS_STATUS_ERROR on error.
  */
 int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB);
+
+/**
+ * @brief Set the AFE input gain for a channel
+ * 
+ * @param afe   Pointer to an AFE instance
+ * @param offset_mV Offset in mV
+ * @param offset_mV Applied Offset in mV
+ * @return int32_t TS_STATUS_OK on success, else error
+ */
+int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actual);
 
 /**
  * @brief Set the AFE Bandwidth filter for a channel

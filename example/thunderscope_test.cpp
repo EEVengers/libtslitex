@@ -215,18 +215,18 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
     chConfig.volt_scale_mV = 1000;
+    chConfig.volt_offset_mV = 0;
     chConfig.bandwidth = 350;
     chConfig.coupling = TS_COUPLE_DC;
     chConfig.term = TS_TERM_1M;
     chConfig.active = 1;
     ts_channel_params_set(channels, 0, &chConfig);
-    // ts_channel_params_set(channels, 1, &chConfig);
-    // ts_channel_params_set(channels, 2, &chConfig);
-    // ts_channel_params_set(channels, 3, &chConfig);
+    ts_channel_params_set(channels, 1, &chConfig);
+    ts_channel_params_set(channels, 2, &chConfig);
+    ts_channel_params_set(channels, 3, &chConfig);
 
     //Use Test Pattern
-    ts_channel_set_adc_test(channels, HMCAD15_TEST_RAMP, 0, 0);
-    NS_DELAY(10000000);
+    // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
 
     std::this_thread::sleep_for(std::chrono::seconds(2));
 
@@ -266,8 +266,8 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     if(rate > 0)
     {
         //Start Sample capture
-        ts_channel_run(channels, 1);
         samples_enable_set(&samp, 1);
+        ts_channel_run(channels, 1);
 
         auto startTime = std::chrono::steady_clock::now();
         if(sampleBuffer != NULL)

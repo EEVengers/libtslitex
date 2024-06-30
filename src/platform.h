@@ -32,7 +32,20 @@
 #define TS_I2C_BASE_ADDR        CSR_I2C_BASE
 
 #define TS_TRIM_DAC_I2C_ADDR    (0x60)
+#define TS_TRIM_DAC_DEFAULT     (0x800)
+
+#define TS_AFE_0_TRIM_DAC       (0)
+#define TS_AFE_1_TRIM_DAC       (1)
+#define TS_AFE_2_TRIM_DAC       (2)
+#define TS_AFE_3_TRIM_DAC       (3)
+
 #define TS_TRIM_DPOT_I2C_ADDR   (0x2C)
+#define TS_TRIM_DPOT_DEFAULT    (0x00)
+
+#define TS_AFE_0_TRIM_DPOT      (0)
+#define TS_AFE_1_TRIM_DPOT      (1)
+#define TS_AFE_2_TRIM_DPOT      (2)
+#define TS_AFE_3_TRIM_DPOT      (3)
 
 #define ZL30250_I2C_ADDR        (0x6C)
 #define ZL30260_I2C_ADDR        (0x74)
