@@ -214,7 +214,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
-    chConfig.volt_scale_mV = 1000;
+    chConfig.volt_scale_mV = 10000;
     chConfig.volt_offset_mV = 0;
     chConfig.bandwidth = 350;
     chConfig.coupling = TS_COUPLE_DC;
@@ -227,8 +227,6 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 
     //Use Test Pattern
     // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
-
-    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     printf("- Checking HMCAD1520 Sample Rate...");
     litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);

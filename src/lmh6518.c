@@ -11,6 +11,7 @@
 #include "ts_common.h"
 #include "spi.h"
 #include "lmh6518.h"
+#include "util.h"
 
 #include <stddef.h>
 
@@ -154,6 +155,7 @@ int32_t lmh6518_apply_config(spi_dev_t dev, lmh6518Config_t conf)
     if((conf.filter > LMH6518_FILTER_MAX_VAL) ||
         (conf.atten > LMH6518_ATTEN_MAX_VAL))
     {
+        LOG_ERROR("Invalid Param Filter %x Atten %x", conf.filter, conf.atten);
         retVal = TS_STATUS_ERROR;
         return retVal;
     }
@@ -165,6 +167,8 @@ int32_t lmh6518_apply_config(spi_dev_t dev, lmh6518Config_t conf)
 
     data[0] = (config >> 8) & 0xFF;
     data[1] = config & 0xFF;
+
+    LOG_DEBUG("Set VGA Config 0x%04x", config);
 
     spi_busy_wait(dev);
     retVal = spi_write(dev, LMH6518_CMD_WRITE, data, 2);

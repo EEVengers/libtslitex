@@ -16,6 +16,7 @@
 #include "spi.h"
 #include "i2c.h"
 #include "gpio.h"
+#include "util.h"
 
 #include <stddef.h>
 
@@ -91,6 +92,7 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
         gain_actual += TS_ATTENUATION_VALUE_mdB;
         ts_afe_attenuation_control(afe, 0);
     }
+    LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
 
     return gain_actual;
 }
@@ -157,10 +159,12 @@ int32_t ts_afe_termination_control(ts_afe_t* afe, uint8_t enable)
     }
     if(enable)
     {
+        LOG_DEBUG("Set Termination %x", afe->termPin.bit_mask);
         gpio_set(afe->termPin);
     }
     else
     {
+        LOG_DEBUG("Clear Termination %x", afe->termPin.bit_mask);
         gpio_clear(afe->termPin);
     }
     return TS_STATUS_OK;
@@ -175,10 +179,12 @@ int32_t ts_afe_attenuation_control(ts_afe_t* afe, uint8_t enable)
     }
     if(enable)
     {
+        LOG_DEBUG("Set Attenuation %x", afe->attenuatorPin.bit_mask);
         gpio_set(afe->attenuatorPin);
     }
     else
     {
+        LOG_DEBUG("Clear Attenuation %x", afe->attenuatorPin.bit_mask);
         gpio_clear(afe->attenuatorPin);
     }
     return TS_STATUS_OK;
@@ -193,10 +199,12 @@ int32_t ts_afe_coupling_control(ts_afe_t* afe, uint8_t enable)
     }
     if(enable)
     {
+        LOG_DEBUG("Set Coupling %x", afe->couplingPin.bit_mask);
         gpio_set(afe->couplingPin);
     }
     else
     {
+        LOG_DEBUG("Clear Coupling %x", afe->couplingPin.bit_mask);
         gpio_clear(afe->couplingPin);
     }
     return TS_STATUS_OK;
