@@ -20,6 +20,7 @@ extern "C" {
 
 typedef struct ts_adc_s
 {
+    file_t ctrl;
     hmcad15xxADC_t adcDev;
     hmcad15xxChCfg_t tsChannels[TS_NUM_CHANNELS];
 } ts_adc_t;
@@ -30,9 +31,10 @@ typedef struct ts_adc_s
  * 
  * @param adc Pointer to a ADC instance
  * @param spi SPI device for the ADC
+ * @param fd Control file handle
  * @return int32_t TS_STATUS_OK if initialized successfully
 */
-int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi);
+int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd);
 
 /**
  * @brief Configure the ADC Channel Input
@@ -73,6 +75,15 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable);
  * @return int32_t TS_STATUS_OK if the ADC was shutdown successfully
 */
 int32_t ts_adc_shutdown(ts_adc_t* adc);
+
+/**
+ * @brief Enable/Disable the ADC data triggering
+ * 
+ * @param adc Pointer to a ADC instance
+ * @param en 1 to enable the ADC, 0 to disable.
+ * @return int32_t TS_STATUS_OK if the enable flag was applied successfully
+ */
+int32_t ts_adc_run(ts_adc_t* adc, uint8_t en);
 
 #ifdef __cplusplus
 }

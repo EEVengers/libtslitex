@@ -24,19 +24,18 @@ extern "C" {
  * @brief Get the name of a device from a list of available devices
  * 
  * @param devIndex Index to search
- * @param nameBuffer Pointer to the string buffer to return the device name
- * @param bufLen Length of the available space in the name buffer
+ * @param info Pointer to the device info stucture to return the device name and identifiers
  * @return int32_t TS_STATUS_OK if the name is valid, else TS_STATUS_ERROR
  */
-int32_t thunderscopeListDevices(uint32_t devIndex, char* nameBuffer, uint32_t bufLen);
+int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info);
 
 /**
  * @brief Open a new Thunderscope device instance
  * 
- * @param devName Path to the device
+ * @param devIdx Device index to open
  * @return tsHandle_t Handle to the Thunderscope device
  */
-tsHandle_t thunderscopeOpen(char* devName);
+tsHandle_t thunderscopeOpen(uint32_t devIdx);
 
 /**
  * @brief Close the Thunderscope device
@@ -52,7 +51,7 @@ int32_t thunderscopeClose(tsHandle_t ts);
  * @param ts Handle to the Thunderscope device
  * @param channel Channel number
  * @param conf Reference used to return the Channel configuration
- * @return int32_t 
+ * @return int32_t TS_STATUS_OK if the channel configuration was retrieved
  */
 int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf);
 
@@ -65,6 +64,34 @@ int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelP
  * @return int32_t TS_STATUS_OK if the channel was configured
  */
 int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf);
+
+/**
+ * @brief Get the status for the Thunderscope device
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param conf Reference to the Scope State structure
+ * @return int32_t TS_STATUS_OK if the Thunderscope configuration was retrieved
+*/
+int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf);
+
+/**
+ * @brief Set the sample rate and format for the Thunderscope device
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param rate Sample Rate to collect
+ * @return int32_t TS_STATUS_OK if the Thunderscope was configured
+*/
+int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution);
+
+/**
+ * @brief Set the calibration data for a channel on the Thunderscope device
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param channel Channel number
+ * @param cal TBD Calibration data
+ * @return int32_t TS_STATUS_OK if the calibration was accepted
+*/
+int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, uint32_t cal);
 
 /**
  * @brief Enable or Disable 

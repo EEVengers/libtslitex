@@ -14,6 +14,13 @@ extern "C" {
 #endif
 
 #include <time.h>
+#include <stdio.h>
+
+
+#if !defined(_WIN32)
+#define INVALID_HANDLE_VALUE (-1)
+#endif
+
 
 #define NANOSECOND	(1000000000)
 #define NS_DELAY(ns)    { \
@@ -25,6 +32,18 @@ extern "C" {
                                 +(now.tv_nsec - start.tv_nsec)) \
                                 >= (ns)) { break; } \
                         } while(1);}
+
+#ifdef EN_LOGGING
+#define LOG_ERROR(fmt, ...)      fprintf(stderr, "[%s:%d] " fmt "\r\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+#define LOG_ERROR(fmt, ...)
+#endif
+
+#ifdef EN_LOGGING_DEBUG
+#define LOG_DEBUG(fmt, ...)      fprintf(stdout, "[%s:%d] " fmt "\r\n", __FILE__, __LINE__, ##__VA_ARGS__)
+#else
+#define LOG_DEBUG(fmt, ...)
+#endif
 
 #ifdef __cplusplus
 }
