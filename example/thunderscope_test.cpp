@@ -32,6 +32,8 @@
 #define OPTPARSE_IMPLEMENTATION
 #include "optparse.h"
 
+#include "AudioFile.h"
+
 #include "liblitepcie.h"
 
 // Test low-level library functions
@@ -54,6 +56,7 @@
 /* Parameters */
 /*------------*/
 #define TS_TEST_SAMPLE_FILE     "test_data.bin"
+#define TS_TEST_WAV_FILE        "test_data.wav"
 
 /* Variables */
 /*-----------*/
@@ -198,6 +201,7 @@ static void test_io(file_t fd)
 static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
     uint32_t gain_dBx10, uint8_t ac_couple, uint8_t term)
 {
+    uint8_t numChan = 0;
     tsChannelHdl_t channels;
     ts_channel_init(&channels, fd);
     if(channels == NULL)
@@ -220,10 +224,14 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.coupling = TS_COUPLE_DC;
     chConfig.term = TS_TERM_1M;
     chConfig.active = 1;
-    ts_channel_params_set(channels, 0, &chConfig);
-    ts_channel_params_set(channels, 1, &chConfig);
-    ts_channel_params_set(channels, 2, &chConfig);
-    ts_channel_params_set(channels, 3, &chConfig);
+    while(channelBitmap > 0)
+    {
+        if(channelBitmap & 0x1)
+        {
+            ts_channel_params_set(channels, numChan++, &chConfig);
+        }
+        channelBitmap >>= 1;
+    }
 
     //Use Test Pattern
     // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
@@ -314,16 +322,57 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     ts_channel_params_set(channels, 3, &chConfig);
 
 
+    ts_channel_destroy(channels);
+    samples_teardown(&samp);
+
     if(sampleLen > 0)
     {
         auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
         outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
         outFile.flush();
         outFile.close();
-    }
+        
+        AudioFile<uint8_t> outWav;
+        outWav.setBitDepth(8);
+        outWav.setSampleRate(1000000000/numChan);
+        outWav.setNumChannels(numChan);
 
-    ts_channel_destroy(channels);
-    samples_teardown(&samp);
+        AudioFile<uint8_t>::AudioBuffer wavBuffer;
+        wavBuffer.resize(numChan);
+        wavBuffer[0].resize(sampleLen/numChan);
+        if(numChan > 1)
+        {
+            wavBuffer[1].resize(sampleLen/numChan);
+        }
+        if(numChan > 2)
+        {
+            wavBuffer[2].resize(sampleLen/numChan);
+            wavBuffer[3].resize(sampleLen/numChan);
+        }
+        uint64_t sample = 0;
+        uint64_t idx = 0;
+        while (idx < sampleLen)
+        {
+            wavBuffer[0][sample] = sampleBuffer[idx++];
+            wavBuffer[0][sample+1] = sampleBuffer[idx++];
+            if(numChan > 1)
+            {
+                wavBuffer[1][sample] = sampleBuffer[idx++];
+                wavBuffer[1][sample+1] = sampleBuffer[idx++];
+            }
+            if(numChan > 2)
+            {
+                wavBuffer[2][sample] = sampleBuffer[idx++];
+                wavBuffer[2][sample+1] = sampleBuffer[idx++];
+                wavBuffer[3][sample] = sampleBuffer[idx++];
+                wavBuffer[3][sample+1] = sampleBuffer[idx++];
+            }
+            sample += 2;
+        }
+        outWav.setAudioBuffer(wavBuffer);
+        outWav.printSummary();
+        outWav.save(TS_TEST_WAV_FILE);
+    }
 }
 
 static void print_help(void)
@@ -344,7 +393,7 @@ int main(int argc, char** argv)
 
     file_t fd;
     int i;
-    uint8_t channelBitmap = 1;
+    uint8_t channelBitmap = 0x0F;
     uint16_t bandwidth = 0;
     uint32_t gain_dBx10 = 0;
     uint8_t ac_couple = 0;
