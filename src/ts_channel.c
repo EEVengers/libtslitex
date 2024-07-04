@@ -65,7 +65,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_0_COUPLING_REG, TS_AFE_0_COUPLING_MASK,
         TS_AFE_0_ATTEN_REG,    TS_AFE_0_ATTEN_MASK,
         TS_AFE_0_TRIM_DAC,     TS_AFE_0_TRIM_DPOT,
-        HMCAD15_ADC_IN1,       TS_ADC_CH_INVERT
+        HMCAD15_ADC_IN4,       TS_ADC_CH_INVERT
 
     },
     // Channel 2
@@ -75,7 +75,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_1_COUPLING_REG, TS_AFE_1_COUPLING_MASK,
         TS_AFE_1_ATTEN_REG,    TS_AFE_1_ATTEN_MASK,
         TS_AFE_1_TRIM_DAC,     TS_AFE_1_TRIM_DPOT,
-        HMCAD15_ADC_IN2,       TS_ADC_CH_INVERT
+        HMCAD15_ADC_IN3,       TS_ADC_CH_INVERT
     },
     // Channel 3
     {
@@ -84,7 +84,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_2_COUPLING_REG, TS_AFE_2_COUPLING_MASK,
         TS_AFE_2_ATTEN_REG,    TS_AFE_2_ATTEN_MASK,
         TS_AFE_2_TRIM_DAC,     TS_AFE_2_TRIM_DPOT,
-        HMCAD15_ADC_IN3,       TS_ADC_CH_INVERT
+        HMCAD15_ADC_IN2,       TS_ADC_CH_INVERT
     },
     // Channel 4
     {
@@ -93,7 +93,7 @@ struct ts_channel_hw_conf_s {
         TS_AFE_3_COUPLING_REG, TS_AFE_3_COUPLING_MASK,
         TS_AFE_3_ATTEN_REG,    TS_AFE_3_ATTEN_MASK,
         TS_AFE_3_TRIM_DAC,     TS_AFE_3_TRIM_DPOT,
-        HMCAD15_ADC_IN4,       TS_ADC_CH_INVERT
+        HMCAD15_ADC_IN1,       TS_ADC_CH_INVERT
     }
 };
 
