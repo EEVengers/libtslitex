@@ -32,6 +32,8 @@
 #define OPTPARSE_IMPLEMENTATION
 #include "optparse.h"
 
+#include "AudioFile.h"
+
 #include "liblitepcie.h"
 
 // Test low-level library functions
@@ -54,6 +56,7 @@
 /* Parameters */
 /*------------*/
 #define TS_TEST_SAMPLE_FILE     "test_data.bin"
+#define TS_TEST_WAV_FILE        "test_data.wav"
 
 /* Variables */
 /*-----------*/
@@ -196,8 +199,9 @@ static void test_io(file_t fd)
 }
 
 static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t gain_dBx10, uint8_t ac_couple, uint8_t term)
+    uint32_t volt_scale_mV, uint8_t ac_couple, uint8_t term)
 {
+    uint8_t numChan = 0;
     tsChannelHdl_t channels;
     ts_channel_init(&channels, fd);
     if(channels == NULL)
@@ -220,10 +224,14 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.coupling = TS_COUPLE_DC;
     chConfig.term = TS_TERM_1M;
     chConfig.active = 1;
-    ts_channel_params_set(channels, 0, &chConfig);
-    ts_channel_params_set(channels, 1, &chConfig);
-    ts_channel_params_set(channels, 2, &chConfig);
-    ts_channel_params_set(channels, 3, &chConfig);
+    while(channelBitmap > 0)
+    {
+        if(channelBitmap & 0x1)
+        {
+            ts_channel_params_set(channels, numChan++, &chConfig);
+        }
+        channelBitmap >>= 1;
+    }
 
     //Use Test Pattern
     // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
@@ -234,31 +242,31 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     uint32_t rate = litepcie_readl(fd, CSR_ADC_HAD1511_SAMPLE_COUNT_ADDR) * 2;
     printf(" %d Samples/S\r\n", rate);
 
-    printf("- Checking HAD1511<->FPGA Synchronization...");
-    // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
-    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
-    // bitslip_count_last = bus.regs.adc_had1511_bitslip_count.read()
-    uint32_t bitslip_count_last = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
-    // for d in range(32):
-    for(uint32_t idx=0; idx < 32; idx++)
-    {
-    //     bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_INC)
-        litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_INC_OFFSET);    
-    //     time.sleep(0.01)
-        NS_DELAY(10000000);
-    //     bitslip_count = bus.regs.adc_had1511_bitslip_count.read()
-        uint32_t bitslip_count = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
-    //     bitslip_diff  = (bitslip_count - bitslip_count_last) # FIXME: Handle rollover.
-    //     bitslip_count_last = bitslip_count
-    //     print("1" if bitslip_diff == 0 else "0", end="")
-        printf("%d", bitslip_count == bitslip_count_last ? 1 : 0);
-        bitslip_count_last = bitslip_count;
-    //     sys.stdout.flush()
-    }
-    // print("")
-    printf("\r\n");
-    // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
-    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
+    // printf("- Checking HAD1511<->FPGA Synchronization...");
+    // // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
+    // litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
+    // // bitslip_count_last = bus.regs.adc_had1511_bitslip_count.read()
+    // uint32_t bitslip_count_last = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
+    // // for d in range(32):
+    // for(uint32_t idx=0; idx < 64; idx++)
+    // {
+    // //     bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_INC)
+    //        litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_INC_OFFSET);
+    // //     time.sleep(0.01)
+    //     NS_DELAY(10000000);
+    // //     bitslip_count = bus.regs.adc_had1511_bitslip_count.read()
+    //     uint32_t bitslip_count = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
+    // //     bitslip_diff  = (bitslip_count - bitslip_count_last) # FIXME: Handle rollover.
+    // //     bitslip_count_last = bitslip_count
+    // //     print("1" if bitslip_diff == 0 else "0", end="")
+    //     printf("%d", bitslip_count == bitslip_count_last ? 1 : 0);
+    //     bitslip_count_last = bitslip_count;
+    // //     sys.stdout.flush()
+    // }
+    // // print("")
+    // printf("\r\n");
+    // // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
+    // litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
 
     //Only start taking samples if the rate is non-zero
     if(rate > 0)
@@ -314,16 +322,67 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     ts_channel_params_set(channels, 3, &chConfig);
 
 
+    ts_channel_destroy(channels);
+    samples_teardown(&samp);
+
     if(sampleLen > 0)
     {
         auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
         outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
         outFile.flush();
         outFile.close();
-    }
+        
+        AudioFile<uint8_t> outWav;
+        outWav.setBitDepth(8);
+        outWav.setSampleRate(1000000000/numChan);
+        outWav.setNumChannels(numChan);
 
-    ts_channel_destroy(channels);
-    samples_teardown(&samp);
+        AudioFile<uint8_t>::AudioBuffer wavBuffer;
+        wavBuffer.resize(numChan);
+        wavBuffer[0].resize(sampleLen/numChan);
+        if(numChan > 1)
+        {
+            wavBuffer[1].resize(sampleLen/numChan);
+        }
+        if(numChan > 2)
+        {
+            wavBuffer[2].resize(sampleLen/numChan);
+            wavBuffer[3].resize(sampleLen/numChan);
+        }
+        uint64_t sample = 0;
+        uint64_t idx = 0;
+        while (idx < sampleLen)
+        {
+            wavBuffer[0][sample] = sampleBuffer[idx++];
+            wavBuffer[0][sample+1] = sampleBuffer[idx++];
+            if(numChan > 1)
+            {
+                if(numChan > 2)
+                {
+                    wavBuffer[1][sample] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[2][sample] = sampleBuffer[idx++];
+                    wavBuffer[2][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                    wavBuffer[3][sample+1] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    wavBuffer[0][sample+2] = sampleBuffer[idx++];
+                    wavBuffer[0][sample+3] = sampleBuffer[idx++];
+                    wavBuffer[1][sample] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+2] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+3] = sampleBuffer[idx++];
+                    sample += 2;
+                }
+            }
+            sample += 2;
+        }
+        outWav.setAudioBuffer(wavBuffer);
+        outWav.printSummary();
+        outWav.save(TS_TEST_WAV_FILE);
+    }
 }
 
 static void print_help(void)
@@ -344,16 +403,16 @@ int main(int argc, char** argv)
 
     file_t fd;
     int i;
-    uint8_t channelBitmap = 1;
-    uint16_t bandwidth = 0;
-    uint32_t gain_dBx10 = 0;
+    uint8_t channelBitmap = 0x0F;
+    uint16_t bandwidth = 350;
+    uint32_t volt_scale_mV = 10000;
     uint8_t ac_couple = 0;
     uint8_t term = 0;
 
     struct optparse_long argList[] = {
         {"chan",    'c', OPTPARSE_REQUIRED},
         {"bw",      'b', OPTPARSE_REQUIRED},
-        {"gain",    'g', OPTPARSE_REQUIRED},
+        {"voltsmv", 'v', OPTPARSE_REQUIRED},
         {"ac",      'a', OPTPARSE_NONE},
         {"term",    't', OPTPARSE_NONE},
         {0}
@@ -370,16 +429,16 @@ int main(int argc, char** argv)
     {
         switch (option) {
         case 'b':
-            bandwidth = atoi(options.optarg);
-            argCount++;
+            bandwidth = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
         case 'c':
-            channelBitmap = atoi(options.optarg);
-            argCount++;
+            channelBitmap = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
-        case 'g':
-            gain_dBx10 = atoi(options.optarg);
-            argCount++;
+        case 'v':
+            volt_scale_mV = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
         case 'a':
             ac_couple = 1;
@@ -443,7 +502,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, channelBitmap, bandwidth, gain_dBx10, ac_couple, term);
+        test_capture(fd, channelBitmap, bandwidth, volt_scale_mV, ac_couple, term);
     }
     //Print Help
     else
