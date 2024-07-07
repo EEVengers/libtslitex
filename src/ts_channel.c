@@ -319,7 +319,9 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     {
         //Calculate dB gain value
         //TODO: Set both AFE and ADC gain?
-        int32_t afe_gain_mdB = (int32_t)(20000 * log10((double)param->volt_scale_mV / 700.0));
+        int32_t afe_gain_mdB = (int32_t)(20000 * log10(700.0 / (double)param->volt_scale_mV));
+        LOG_DEBUG("Channel %d AFE request %i mdB gain", chanIdx, afe_gain_mdB);
+
         retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
         {

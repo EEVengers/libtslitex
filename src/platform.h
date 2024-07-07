@@ -19,7 +19,7 @@
 #define TS_ADC_CH_INVERT        (1)
 
 #define TS_ATTENUATION_THRESHOLD_MV             (700)
-#define TS_ATTENUATION_VALUE_mdB                (33979) /**< 50x Attenuation = 20 * log(50) * 1000 */
+#define TS_ATTENUATION_VALUE_mdB                (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
 
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)

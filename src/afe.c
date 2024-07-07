@@ -72,7 +72,7 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     }
 
     // Update Attenuation if needed
-    if(gain_mdB > TS_ATTENUATION_VALUE_mdB)
+    if(gain_mdB < LMH6518_MIN_GAIN_mDB)
     {
         need_atten = true;
         ts_afe_attenuation_control(afe, 1);
@@ -90,6 +90,10 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     if(need_atten)
     {
         gain_actual += TS_ATTENUATION_VALUE_mdB;
+        gain_mdB += TS_ATTENUATION_VALUE_mdB;
+    }
+    else
+    {
         ts_afe_attenuation_control(afe, 0);
     }
     LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
