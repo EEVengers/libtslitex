@@ -276,11 +276,16 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
     {
         case HMCAD15_SINGLE_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
+            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[0].input);
+            in34 = HMCAD15_SEL_CH_3(adc->channelCfg[0].input);
+            in34 |= HMCAD15_SEL_CH_4(adc->channelCfg[0].input);
             inv = HMCAD15_CH_INVERT_S1(adc->channelCfg[0].invert);
             break;
         case HMCAD15_DUAL_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
-            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
+            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[0].input);
+            in34 = HMCAD15_SEL_CH_3(adc->channelCfg[1].input);
+            in34 |= HMCAD15_SEL_CH_4(adc->channelCfg[1].input);
             inv = HMCAD15_CH_INVERT_D1(adc->channelCfg[0].invert) | 
                     HMCAD15_CH_INVERT_D2(adc->channelCfg[1].invert);
             break;
