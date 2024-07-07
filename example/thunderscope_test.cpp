@@ -224,16 +224,19 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
     chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
     chConfig.active = 1;
+    uint8_t channel = 0;
     while(channelBitmap > 0)
     {
         if(channelBitmap & 0x1)
         {
-            ts_channel_params_set(channels, numChan++, &chConfig);
+            ts_channel_params_set(channels, channel, &chConfig);
+            numChan++;
         }
+        channel++;
         channelBitmap >>= 1;
     }
 
-    //Use Test Pattern
+    // Uncomment to use Test Pattern
     // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
 
     printf("- Checking HMCAD1520 Sample Rate...");
@@ -242,31 +245,6 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     uint32_t rate = litepcie_readl(fd, CSR_ADC_HAD1511_SAMPLE_COUNT_ADDR) * 2;
     printf(" %d Samples/S\r\n", rate);
 
-    // printf("- Checking HAD1511<->FPGA Synchronization...");
-    // // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
-    // litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
-    // // bitslip_count_last = bus.regs.adc_had1511_bitslip_count.read()
-    // uint32_t bitslip_count_last = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
-    // // for d in range(32):
-    // for(uint32_t idx=0; idx < 64; idx++)
-    // {
-    // //     bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_INC)
-    //        litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_INC_OFFSET);
-    // //     time.sleep(0.01)
-    //     NS_DELAY(10000000);
-    // //     bitslip_count = bus.regs.adc_had1511_bitslip_count.read()
-    //     uint32_t bitslip_count = litepcie_readl(fd, CSR_ADC_HAD1511_BITSLIP_COUNT_ADDR);
-    // //     bitslip_diff  = (bitslip_count - bitslip_count_last) # FIXME: Handle rollover.
-    // //     bitslip_count_last = bitslip_count
-    // //     print("1" if bitslip_diff == 0 else "0", end="")
-    //     printf("%d", bitslip_count == bitslip_count_last ? 1 : 0);
-    //     bitslip_count_last = bitslip_count;
-    // //     sys.stdout.flush()
-    // }
-    // // print("")
-    // printf("\r\n");
-    // // bus.regs.adc_had1511_control.write(HAD1511_CORE_CONTROL_DELAY_RST)
-    // litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_DELAY_RST_OFFSET);
 
     //Only start taking samples if the rate is non-zero
     if(rate > 0)
