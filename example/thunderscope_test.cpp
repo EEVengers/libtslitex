@@ -218,11 +218,11 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
 
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
-    chConfig.volt_scale_mV = 10000;
+    chConfig.volt_scale_mV = volt_scale_mV;
     chConfig.volt_offset_mV = 0;
-    chConfig.bandwidth = 350;
-    chConfig.coupling = TS_COUPLE_DC;
-    chConfig.term = TS_TERM_1M;
+    chConfig.bandwidth = bandwidth;
+    chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
+    chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
     chConfig.active = 1;
     while(channelBitmap > 0)
     {
@@ -390,6 +390,11 @@ static void print_help(void)
     printf("TS Test Util Usage:\r\n");
     printf("\t io - run I/O Test\r\n");
     printf("\t capture - run Sample Capture Test\r\n");
+    printf("\t\t -c <channels>    Channel bitmap\r\n");
+    printf("\t\t -b <bw>          Channel Bandwidth [MHz]\r\n");
+    printf("\t\t -v <mvolts>      Channel Full Scale Volts [millivolt]\r\n");
+    printf("\t\t -a               AC Couple\r\n");
+    printf("\t\t -t               50 Ohm termination\r\n");
 }
 
 /* Main */
