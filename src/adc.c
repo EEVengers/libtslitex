@@ -56,6 +56,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
                 }
             }
             retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+            litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
         }
     }
 
@@ -85,6 +86,7 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
             }
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -141,6 +143,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
             adc->adcDev.mode = HMCAD15_QUAD_CHANNEL;
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+        
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal;
@@ -158,6 +162,7 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     if(retVal == TS_STATUS_OK)
     {
         hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_POWERDN);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal; 
