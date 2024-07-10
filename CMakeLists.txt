@@ -34,6 +34,7 @@ set(TS_SOURCES
     src/hmcad15xx.c
     src/lmh6518.c
     src/mcp4728.c
+    src/mcp443x.c
     src/mcp_clkgen.c
     src/platform.c
     src/samples.c
@@ -51,6 +52,7 @@ set(TS_HEADERS
     src/platform.h
     src/lmh6518.h
     src/mcp4728.h
+    src/mcp443x.h
     src/hmcad15xx.h
     src/samples.h
     src/ts_channel.h

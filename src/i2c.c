@@ -149,28 +149,34 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
 {
     int32_t i, j;
 
-    if ((addr_size < 1) || (addr_size > 4)) {
+    if (addr_size > 4) {
         return false;
     }
 
-    i2c_start(device);
+    //Write address
+    if(addr_size > 0)
+    {
+        i2c_start(device);
 
-    if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
-        i2c_stop(device);
-        LOG_ERROR("I2C NACK writing slave RD addr 0x%02X", device.devAddr);
-        return false;
-    }
-    for (j = addr_size - 1; j >= 0; j--) {
-        if (!i2c_transmit_byte(device, (uint8_t)(0xff & (addr >> (8 * j))))) {
+        if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
             i2c_stop(device);
-            LOG_ERROR("I2C NACK writing RD register 0x%X", addr);
+            LOG_ERROR("I2C NACK writing slave RD addr 0x%02X", device.devAddr);
             return false;
+        }
+        for (j = addr_size - 1; j >= 0; j--) {
+            if (!i2c_transmit_byte(device, (uint8_t)(0xff & (addr >> (8 * j))))) {
+                i2c_stop(device);
+                LOG_ERROR("I2C NACK writing RD register 0x%X", addr);
+                return false;
+            }
+        }
+
+        if (send_stop) {
+            i2c_stop(device);
         }
     }
 
-    if (send_stop) {
-        i2c_stop(device);
-    }
+    // Read Data
     i2c_start(device);
 
     if (!i2c_transmit_byte(device, I2C_ADDR_RD(device.devAddr))) {

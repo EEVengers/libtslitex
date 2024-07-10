@@ -97,7 +97,7 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
         gain_actual = input_gain + (g_attenuationTable[atten_index])
                             + LMH6518_OUTPUT_AMP;
     
-    } while(gain_actual < LMH6518_MAX_GAIN_mDB);
+    } while(gain_actual < LMH6518_MAX_GAIN_mdB);
     
     //Check if previous setting was closer
     if((gain_mdB - prev_gain) < (gain_actual - gain_mdB))
@@ -110,6 +110,21 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
     conf->preamp = (input_gain == LMH6518_INPUT_AMP_LG) ? 
                         PREAMP_LG : PREAMP_HG;
     conf->atten = atten_index;
+
+    return gain_actual;
+}
+
+
+int32_t lmh6518_gain_from_config(lmh6518Config_t conf)
+{
+    int32_t input_gain = LMH6518_INPUT_AMP_LG;
+    int32_t gain_actual;
+
+    input_gain = (conf.preamp == PREAMP_LG) ? 
+                    LMH6518_INPUT_AMP_LG : LMH6518_INPUT_AMP_HG;
+    // Calculate next Gain    
+    gain_actual = input_gain + (g_attenuationTable[conf.atten])
+                        + LMH6518_OUTPUT_AMP;
 
     return gain_actual;
 }

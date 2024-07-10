@@ -199,7 +199,7 @@ static void test_io(file_t fd)
 }
 
 static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t volt_scale_mV, uint8_t ac_couple, uint8_t term)
+    uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
 {
     uint8_t numChan = 0;
     tsChannelHdl_t channels;
@@ -219,7 +219,7 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
     chConfig.volt_scale_mV = volt_scale_mV;
-    chConfig.volt_offset_mV = 0;
+    chConfig.volt_offset_mV = offset_mV;
     chConfig.bandwidth = bandwidth;
     chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
     chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
@@ -371,6 +371,7 @@ static void print_help(void)
     printf("\t\t -c <channels>    Channel bitmap\r\n");
     printf("\t\t -b <bw>          Channel Bandwidth [MHz]\r\n");
     printf("\t\t -v <mvolts>      Channel Full Scale Volts [millivolt]\r\n");
+    printf("\t\t -o <mvolts>      Channel Offset [millivolt]\r\n");
     printf("\t\t -a               AC Couple\r\n");
     printf("\t\t -t               50 Ohm termination\r\n");
 }
@@ -389,15 +390,17 @@ int main(int argc, char** argv)
     uint8_t channelBitmap = 0x0F;
     uint16_t bandwidth = 350;
     uint32_t volt_scale_mV = 10000;
+    int32_t offset_mV = 0;
     uint8_t ac_couple = 0;
     uint8_t term = 0;
 
     struct optparse_long argList[] = {
-        {"chan",    'c', OPTPARSE_REQUIRED},
-        {"bw",      'b', OPTPARSE_REQUIRED},
-        {"voltsmv", 'v', OPTPARSE_REQUIRED},
-        {"ac",      'a', OPTPARSE_NONE},
-        {"term",    't', OPTPARSE_NONE},
+        {"chan",     'c', OPTPARSE_REQUIRED},
+        {"bw",       'b', OPTPARSE_REQUIRED},
+        {"voltsmv",  'v', OPTPARSE_REQUIRED},
+        {"offsetmv", 'o', OPTPARSE_REQUIRED},
+        {"ac",       'a', OPTPARSE_NONE},
+        {"term",     't', OPTPARSE_NONE},
         {0}
     };
 
@@ -421,6 +424,10 @@ int main(int argc, char** argv)
             break;
         case 'v':
             volt_scale_mV = strtol(options.optarg, NULL, 0);
+            argCount+=2;
+            break;
+        case 'o':
+            offset_mV = strtol(options.optarg, NULL, 0);
             argCount+=2;
             break;
         case 'a':
@@ -485,7 +492,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, channelBitmap, bandwidth, volt_scale_mV, ac_couple, term);
+        test_capture(fd, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
     }
     //Print Help
     else

@@ -18,6 +18,7 @@ extern "C" {
 #include "i2c.h"
 #include "gpio.h"
 #include "lmh6518.h"
+#include "ts_common.h"
 
 
 typedef struct ts_afe_s
@@ -32,6 +33,7 @@ typedef struct ts_afe_s
     gpio_t termPin;
     gpio_t attenuatorPin;
     gpio_t couplingPin;
+    ts_afe_cal_t cal;
 }ts_afe_t;
 
 /**

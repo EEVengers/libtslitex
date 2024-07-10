@@ -20,8 +20,8 @@ extern "C" {
 #define LMH6518_MAX_BW_FILT_MHZ     (900)
 #define LMH6518_MIN_BW_FILT_MHZ     (20)
 
-#define LMH6518_MAX_GAIN_mDB        (38840)
-#define LMH6518_MIN_GAIN_mDB        (-1160)
+#define LMH6518_MAX_GAIN_mdB        (38840)
+#define LMH6518_MIN_GAIN_mdB        (-1160)
 
 #define LMH6518_CONFIG_INIT         {.atten = 10}
 
@@ -51,6 +51,14 @@ typedef struct lmh6518Config_s {
  * @return int32_t Actual gain calculated. Zero indicates error
  */
 int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB);
+
+/**
+ * @brief Calculate the amplifier gain from the configuration
+ * 
+ * @param conf LMH6519 configuration structure
+ * @return int32_t Gain calculated. Zero indicates error.
+ */
+int32_t lmh6518_gain_from_config(lmh6518Config_t conf);
 
 /**
  * @brief Set the bandwidth filter in the amplifier

@@ -19,7 +19,7 @@
 #define MCP4728_REG_LEN         (2)
 #define MCP4728_CMD(cmd, ch)    (((cmd) << 3) | (((ch) & 0x3) << 1))
 
-#define MCP4728_WR_CMD          (0x0B)
+#define MCP4728_WR_CMD          (0x08)
 
 #define MCP4728_DATA_VAL_LOWER(val) ((val) & 0xFF)
 #define MCP4728_DATA_VAL_UPPER(val) (((val) >> 8) & 0x0F)
@@ -48,13 +48,25 @@ int32_t mcp4728_channel_set(i2c_t dev, uint8_t channel, Mcp4728ChannelConfig_t c
 
     LOG_DEBUG("Set Channel %d cmd %02x data[] %02x %02x", channel, cmd, data[0], data[1]);
 
-    if(i2c_write(dev, cmd, data, MCP4728_REG_LEN, MCP4728_ADDR_LEN))
-    {
-        return TS_STATUS_OK;
-    }
-    else
+    if(!i2c_write(dev, cmd, data, MCP4728_REG_LEN, MCP4728_ADDR_LEN))
     {
         LOG_ERROR("Failed to write AFE DAC channel %d", channel);
         return TS_STATUS_ERROR;
     }
+
+    //Verify Write
+    uint8_t readback[MCP4728_NUM_CH*6] = {0};
+    if(!i2c_read(dev, 0, readback, (MCP4728_NUM_CH*6), true, 0))
+    {
+        LOG_ERROR("Failed to read back MCP4728 Data");
+    }
+    else
+    {
+        for(uint8_t ch=0; ch < MCP4728_NUM_CH; ch++)
+        {
+            LOG_DEBUG("MCP4728 DAC Channel %d Read: %02X %02X %02X", ch, readback[ch*6], readback[ch*6+1], readback[ch*6+2]);
+        }
+    }
+
+    return TS_STATUS_OK;
 }
