@@ -42,7 +42,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
     char testPath[TS_IDENT_STR_LEN];
     
     // Find device path by index
-    snprintf(testPath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME("") "%d", devIndex);
+    snprintf(testPath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), devIndex);
     file_t testDev = litepcie_open((const char*)testPath, FILE_FLAGS);
 
     //If index valid
@@ -66,35 +66,42 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
 tsHandle_t thunderscopeOpen(uint32_t devIdx)
 {
     ts_inst_t* pInst = calloc(sizeof(ts_inst_t), 1);
+    char devName[TS_IDENT_STR_LEN] = {0};
 
     if(pInst)
     {
-        pInst->ctrl = litepcie_open(LITEPCIE_CTRL_NAME(devIdx), FILE_FLAGS);
+        snprintf(devName, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), devIdx);
+        pInst->ctrl = litepcie_open(devName, FILE_FLAGS);
     }
     else
     {
+        LOG_ERROR("Litepcie Failed to open device %s", devName);
         return NULL;
     }
 
     if(pInst->ctrl == INVALID_HANDLE_VALUE)
     {
+        LOG_ERROR("litepcie_open returned Invalid File Handle for device %s", devName);
         free(pInst);
         return NULL;
     }
 
     if(TS_STATUS_OK != ts_channel_init(&pInst->pChannel, pInst->ctrl))
     {
+        LOG_ERROR("Failed to initialize channels");
         free(pInst);
         return NULL;
     }
 
     if(TS_STATUS_OK != samples_init(&pInst->samples, devIdx, 0))
     {
+        LOG_ERROR("Failed to initialize samples");
         ts_channel_destroy(pInst->pChannel);
         free(pInst);
         return NULL;
     }
 
+    LOG_DEBUG("Opened TS idx %d with handle %p", devIdx, pInst);
     return (tsHandle_t)pInst;
 }
 
