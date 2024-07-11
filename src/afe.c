@@ -185,7 +185,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     // Reverse offset calc
     V_dac = (offsetVal * 5000) / MCP4728_FULL_SCALE_VAL;
     V_trim = (500 * V_dac + afe->cal.bias_mv * R_trim) / ( 500 + R_trim);
-    *offset_actual = (afe->cal.buffer_mv - V_trim) / pow(10.0, (double)gain_afe/20000.0);
+    *offset_actual = (int32_t)(((double)afe->cal.buffer_mv - (double)V_trim ) / pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset actual V_trim %d mv, Offset %d mV", V_trim, *offset_actual);
     return TS_STATUS_OK;
 }
