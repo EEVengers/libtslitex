@@ -97,7 +97,7 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
         gain_actual = input_gain + (g_attenuationTable[atten_index])
                             + LMH6518_OUTPUT_AMP;
     
-    } while(gain_actual < LMH6518_MAX_GAIN_mDB);
+    } while(gain_actual < LMH6518_MAX_GAIN_mdB);
     
     //Check if previous setting was closer
     if((gain_mdB - prev_gain) < (gain_actual - gain_mdB))
@@ -114,10 +114,25 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
     return gain_actual;
 }
 
+
+int32_t lmh6518_gain_from_config(lmh6518Config_t conf)
+{
+    int32_t input_gain = LMH6518_INPUT_AMP_LG;
+    int32_t gain_actual;
+
+    input_gain = (conf.preamp == PREAMP_LG) ? 
+                    LMH6518_INPUT_AMP_LG : LMH6518_INPUT_AMP_HG;
+    // Calculate next Gain    
+    gain_actual = input_gain + (g_attenuationTable[conf.atten])
+                        + LMH6518_OUTPUT_AMP;
+
+    return gain_actual;
+}
+
 uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
 {
     int32_t bw_actual = 0;
-    uint8_t filter_index = 1;
+    uint8_t filter_index = 0;
 
     if(NULL == conf)
     {
@@ -125,7 +140,7 @@ uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
         return 0;
     }
 
-    while(++filter_index < LMH6518_ATTEN_STEPS)
+    while(++filter_index < LMH6518_FILTER_STEPS)
     {
         if(g_filterTable[filter_index] >= bw_MHz)
         {
@@ -134,7 +149,7 @@ uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
         }
     }
 
-    if(filter_index == LMH6518_ATTEN_STEPS)
+    if(filter_index == LMH6518_FILTER_STEPS)
     {
         // Index zero for full bandwidth
         filter_index = 0;

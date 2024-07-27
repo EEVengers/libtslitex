@@ -331,7 +331,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
-            retVal = (int32_t)pow(10.0, (double)retVal/20000.0);
+            retVal = (int32_t)(700.0/pow(10.0, (double)retVal/20000.0));
             pInst->chan[chanIdx].params.volt_scale_mV = retVal;
         }
     }
@@ -344,7 +344,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         retVal = ts_afe_set_offset(&pInst->chan[chanIdx].afe, param->volt_offset_mV, &offset_actual);
         if(TS_STATUS_OK != retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage offset: %x", chanIdx, param->volt_offset_mV);
+            LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_mV);
             return TS_INVALID_PARAM;
         }
         else

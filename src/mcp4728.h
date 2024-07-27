@@ -10,6 +10,8 @@
 #include <stdint.h>
 #include "i2c.h"
 
+#define MCP4728_FULL_SCALE_VAL      (4096)
+
 typedef enum Mcp4728Vref_e
 {
     MCP4728_VREF_VDD = 0,
