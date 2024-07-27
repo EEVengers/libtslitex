@@ -128,7 +128,7 @@ int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelP
 
     if(pInst)
     {
-        return ts_channel_params_get(&pInst->pChannel, channel, conf);
+        return ts_channel_params_get(pInst->pChannel, channel, conf);
     }
 
     return TS_STATUS_ERROR;
@@ -140,7 +140,7 @@ int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelP
 
     if(pInst)
     {
-        return ts_channel_params_set(&pInst->pChannel, channel, conf);
+        return ts_channel_params_set(pInst->pChannel, channel, conf);
     }
 
     return TS_STATUS_ERROR;
@@ -164,7 +164,7 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
 
     if(pInst)
     {
-        return ts_channel_sample_rate_set(&pInst->pChannel, rate, resolution);
+        return ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
     }
 
     return TS_STATUS_ERROR;

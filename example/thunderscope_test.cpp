@@ -46,6 +46,8 @@
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
 
+#include "thunderscope.h"
+
 #ifdef _WIN32
 #define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
 #else
@@ -202,34 +204,38 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
 {
     uint8_t numChan = 0;
-    tsChannelHdl_t channels;
-    ts_channel_init(&channels, fd);
-    if(channels == NULL)
-    {
-        printf("Failed to create channels handle");
-        return;
-    }
+    tsHandle_t tsHdl = thunderscopeOpen(0);
 
-    sampleStream_t samp;
-    samples_init(&samp, 0, 0);
+    // tsChannelHdl_t channels;
+    // ts_channel_init(&channels, fd);
+    // if(channels == NULL)
+    // {
+    //     printf("Failed to create channels handle");
+    //     return;
+    // }
+
+    // sampleStream_t samp;
+    // samples_init(&samp, 0, 0);
 
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 0x8000, 1);
     uint64_t sampleLen = 0;
 
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
-    chConfig.volt_scale_mV = volt_scale_mV;
-    chConfig.volt_offset_mV = offset_mV;
-    chConfig.bandwidth = bandwidth;
-    chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
-    chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
-    chConfig.active = 1;
     uint8_t channel = 0;
     while(channelBitmap > 0)
     {
         if(channelBitmap & 0x1)
         {
-            ts_channel_params_set(channels, channel, &chConfig);
+            thunderscopeChannelConfigGet(tsHdl, channel, &chConfig);
+            chConfig.volt_scale_mV = volt_scale_mV;
+            chConfig.volt_offset_mV = offset_mV;
+            chConfig.bandwidth = bandwidth;
+            chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
+            chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
+            chConfig.active = 1;
+            // ts_channel_params_set(channels, channel, &chConfig);
+            thunderscopeChannelConfigSet(tsHdl, channel, &chConfig);
             numChan++;
         }
         channel++;
@@ -249,19 +255,21 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
     //Only start taking samples if the rate is non-zero
     if(rate > 0)
     {
+        uint64_t data_sum = 0;
         //Start Sample capture
-        samples_enable_set(&samp, 1);
-        ts_channel_run(channels, 1);
-
+        // samples_enable_set(&samp, 1);
+        // ts_channel_run(channels, 1);
+        thunderscopeDataEnable(tsHdl, 1);
+        
         auto startTime = std::chrono::steady_clock::now();
         if(sampleBuffer != NULL)
         {
-            uint32_t offset = 0;
             for(uint32_t loop=0; loop < 100; loop++)
             {
-                uint32_t readReq = TS_SAMPLE_BUFFER_SIZE*256;
+                uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x8000);
                 //Collect Samples
-                int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[offset], readReq);
+                // int32_t readRes = samples_get_buffers(&samp, sampleBuffer, readReq);
+                int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
                 if(readRes < 0)
                 {
                     printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
@@ -270,38 +278,35 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
                 {
                     printf("WARN: Read returned different number of bytes for loop %" PRIu32 ", %" PRIu32 " / %" PRIu32 "\r\n", loop, readRes, readReq);
                 }
-                offset += readReq;
-                sampleLen += readRes;
+                data_sum += readReq;
+                sampleLen = readRes;
             }
         }
         auto endTime = std::chrono::steady_clock::now();
 
         //Stop Samples
-        samples_enable_set(&samp, 0);
-        ts_channel_run(channels, 0);
+        // samples_enable_set(&samp, 0);
+        // ts_channel_run(channels, 0);
+        thunderscopeDataEnable(tsHdl, 0);
         
         auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
-        uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
-        printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", sampleLen, bw);
+        uint64_t bw = (data_sum * 8 * 1000)/deltaNs.count();
+        printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", data_sum, bw);
     }
 
     //Disable channels
-    ts_channel_params_get(channels, 0, &chConfig);
-    chConfig.active = 0;
-    ts_channel_params_set(channels, 0, &chConfig);
-    ts_channel_params_get(channels, 1, &chConfig);
-    chConfig.active = 0;
-    ts_channel_params_set(channels, 1, &chConfig);
-    ts_channel_params_get(channels, 2, &chConfig);
-    chConfig.active = 0;
-    ts_channel_params_set(channels, 2, &chConfig);
-    ts_channel_params_get(channels, 3, &chConfig);
-    chConfig.active = 0;
-    ts_channel_params_set(channels, 3, &chConfig);
+    for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
+    {
+        // ts_channel_params_get(channels, i, &chConfig);
+        thunderscopeChannelConfigGet(tsHdl, i, &chConfig);
+        chConfig.active = 0;
+        // ts_channel_params_set(channels, i, &chConfig);
+        thunderscopeChannelConfigSet(tsHdl, i, &chConfig);
+    }
 
-
-    ts_channel_destroy(channels);
-    samples_teardown(&samp);
+    // ts_channel_destroy(channels);
+    // samples_teardown(&samp);
+    thunderscopeClose(tsHdl);
 
     if(sampleLen > 0)
     {

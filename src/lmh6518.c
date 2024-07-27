@@ -132,7 +132,7 @@ int32_t lmh6518_gain_from_config(lmh6518Config_t conf)
 uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
 {
     int32_t bw_actual = 0;
-    uint8_t filter_index = 1;
+    uint8_t filter_index = 0;
 
     if(NULL == conf)
     {
@@ -140,7 +140,7 @@ uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
         return 0;
     }
 
-    while(++filter_index < LMH6518_ATTEN_STEPS)
+    while(++filter_index < LMH6518_FILTER_STEPS)
     {
         if(g_filterTable[filter_index] >= bw_MHz)
         {
@@ -149,7 +149,7 @@ uint32_t lmh6518_set_bandwidth_filter(lmh6518Config_t* conf, uint32_t bw_MHz)
         }
     }
 
-    if(filter_index == LMH6518_ATTEN_STEPS)
+    if(filter_index == LMH6518_FILTER_STEPS)
     {
         // Index zero for full bandwidth
         filter_index = 0;
