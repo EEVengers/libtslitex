@@ -17,6 +17,9 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
+add_definitions(-DEN_LOGGING)
+add_definitions(-DEN_LOGGING_DEBUG)
+
 add_subdirectory(litepcie)
 
 
@@ -30,6 +33,8 @@ set(TS_SOURCES
     src/adc.c
     src/hmcad15xx.c
     src/lmh6518.c
+    src/mcp4728.c
+    src/mcp443x.c
     src/mcp_clkgen.c
     src/platform.c
     src/samples.c
@@ -46,6 +51,8 @@ set(TS_HEADERS
     src/mcp_clkgen.h
     src/platform.h
     src/lmh6518.h
+    src/mcp4728.h
+    src/mcp443x.h
     src/hmcad15xx.h
     src/samples.h
     src/ts_channel.h

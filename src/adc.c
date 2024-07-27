@@ -10,21 +10,25 @@
 #include <stddef.h>
 
 #include "adc.h"
+#include "platform.h"
+#include "util.h"
+#include "liblitepcie.h"
 
 
-static uint8_t ts_adc_active_channels(ts_adc_t* adc);
-
-int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi)
+int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 {
     int32_t retVal = TS_STATUS_ERROR;
 
     if(adc != NULL)
     {
+        adc->ctrl = fd;
         retVal = hmcad15xx_init(&adc->adcDev, spi);
     }
 
     if(retVal == TS_STATUS_OK)
     {
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DOWNSAMPLING_ADDR, 1);
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
 
@@ -52,6 +56,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
                 }
             }
             retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+            litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
         }
     }
 
@@ -81,6 +86,7 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
             }
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -103,6 +109,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         if(adc->tsChannels[i].active)
         {
             // Copy Active Channel Configs to ADC in order
+            LOG_DEBUG("Enabling IN %d as CH %d", activeCount, i);
             adc->adcDev.channelCfg[activeCount] = adc->tsChannels[i];
             activeCount++;
         }
@@ -111,6 +118,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     //Disable Unused channels in config
     for(uint8_t i=activeCount; i < HMCAD15_NUM_CHANNELS; i++)
     {
+        LOG_DEBUG("Disable CH %d", i);
+
         adc->adcDev.channelCfg[i].active = 0;
     }
 
@@ -134,6 +143,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
             adc->adcDev.mode = HMCAD15_QUAD_CHANNEL;
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+        
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal;
@@ -151,22 +162,19 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     if(retVal == TS_STATUS_OK)
     {
         hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_POWERDN);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal; 
 }
 
-static uint8_t ts_adc_active_channels(ts_adc_t* adc)
+int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
 {
-    uint8_t count = 0;
-
-    for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
+    if(!adc)
     {
-        if(adc->tsChannels[i].active)
-        {
-            count++;
-        }
+        return TS_STATUS_ERROR;
     }
-
-    return count;
+    //Enable Trigger
+    litepcie_writel(adc->ctrl, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
+    return TS_STATUS_OK;
 }

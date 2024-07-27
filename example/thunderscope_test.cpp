@@ -32,20 +32,21 @@
 #define OPTPARSE_IMPLEMENTATION
 #include "optparse.h"
 
+#include "AudioFile.h"
+
 #include "liblitepcie.h"
 
 // Test low-level library functions
 #include "../src/spi.h"
 #include "../src/i2c.h"
 #include "../src/gpio.h"
+#include "../src/util.h"
+#include "../src/hmcad15xx.h"
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
 
-#if !defined(_WIN32)
-#define INVALID_HANDLE_VALUE (-1)
-#endif
-
+#include "thunderscope.h"
 
 #ifdef _WIN32
 #define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
@@ -57,6 +58,7 @@
 /* Parameters */
 /*------------*/
 #define TS_TEST_SAMPLE_FILE     "test_data.bin"
+#define TS_TEST_WAV_FILE        "test_data.wav"
 
 /* Variables */
 /*-----------*/
@@ -199,55 +201,171 @@ static void test_io(file_t fd)
 }
 
 static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t gain_dBx10, uint8_t ac_couple, uint8_t term)
+    uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
 {
-    tsChannelHdl_t channels;
-    ts_channel_init(&channels, fd);
-    if(channels == NULL)
-    {
-        printf("Failed to create channels handle");
-        return;
-    }
+    uint8_t numChan = 0;
+    tsHandle_t tsHdl = thunderscopeOpen(0);
 
-    sampleStream_t samp;
-    samples_init(&samp, 0, 0);
+    // tsChannelHdl_t channels;
+    // ts_channel_init(&channels, fd);
+    // if(channels == NULL)
+    // {
+    //     printf("Failed to create channels handle");
+    //     return;
+    // }
 
-    uint8_t* sampleBuffer = (uint8_t*)malloc(TS_SAMPLE_BUFFER_SIZE * 100000);
+    // sampleStream_t samp;
+    // samples_init(&samp, 0, 0);
+
+    uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE * 0x8000, 1);
     uint64_t sampleLen = 0;
 
-    //Enable Channels
-    //TODO TS Channel Setup
-
-    //Start Sample capture
-    samples_enable_set(&samp, 1);
-
-    auto startTime = std::chrono::steady_clock::now();
-    if(sampleBuffer != NULL)
+    //Setup and Enable Channels
+    tsChannelParam_t chConfig = {0};
+    uint8_t channel = 0;
+    while(channelBitmap > 0)
     {
-        //Collect Samples
-        int32_t readRes = samples_get_buffers(&samp, &sampleBuffer[sampleLen], (TS_SAMPLE_BUFFER_SIZE*100000));
-        if(readRes < 0)
+        if(channelBitmap & 0x1)
         {
-            printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+            thunderscopeChannelConfigGet(tsHdl, channel, &chConfig);
+            chConfig.volt_scale_mV = volt_scale_mV;
+            chConfig.volt_offset_mV = offset_mV;
+            chConfig.bandwidth = bandwidth;
+            chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
+            chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
+            chConfig.active = 1;
+            // ts_channel_params_set(channels, channel, &chConfig);
+            thunderscopeChannelConfigSet(tsHdl, channel, &chConfig);
+            numChan++;
         }
-        sampleLen += readRes;
+        channel++;
+        channelBitmap >>= 1;
     }
-    auto endTime = std::chrono::steady_clock::now();
 
-    //Stop Samples
-    samples_enable_set(&samp, 0);
-    //TODO TS Channel Disable
+    // Uncomment to use Test Pattern
+    // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
 
-    auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
-    uint64_t bw = (sampleLen * 8 * 1000)/deltaNs.count();
-    printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps", sampleLen, bw);
+    printf("- Checking HMCAD1520 Sample Rate...");
+    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);
+    NS_DELAY(500000000);
+    uint32_t rate = litepcie_readl(fd, CSR_ADC_HAD1511_SAMPLE_COUNT_ADDR) * 2;
+    printf(" %d Samples/S\r\n", rate);
 
-    auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary);
-    outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
-    outFile.close();
 
-    ts_channel_destroy(channels);
-    samples_teardown(&samp);
+    //Only start taking samples if the rate is non-zero
+    if(rate > 0)
+    {
+        uint64_t data_sum = 0;
+        //Start Sample capture
+        // samples_enable_set(&samp, 1);
+        // ts_channel_run(channels, 1);
+        thunderscopeDataEnable(tsHdl, 1);
+        
+        auto startTime = std::chrono::steady_clock::now();
+        if(sampleBuffer != NULL)
+        {
+            for(uint32_t loop=0; loop < 100; loop++)
+            {
+                uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x8000);
+                //Collect Samples
+                // int32_t readRes = samples_get_buffers(&samp, sampleBuffer, readReq);
+                int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
+                if(readRes < 0)
+                {
+                    printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+                }
+                if(readRes != readReq)
+                {
+                    printf("WARN: Read returned different number of bytes for loop %" PRIu32 ", %" PRIu32 " / %" PRIu32 "\r\n", loop, readRes, readReq);
+                }
+                data_sum += readReq;
+                sampleLen = readRes;
+            }
+        }
+        auto endTime = std::chrono::steady_clock::now();
+
+        //Stop Samples
+        // samples_enable_set(&samp, 0);
+        // ts_channel_run(channels, 0);
+        thunderscopeDataEnable(tsHdl, 0);
+        
+        auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
+        uint64_t bw = (data_sum * 8 * 1000)/deltaNs.count();
+        printf("Collected %" PRIu64 " samples in %" PRIu64 " Mbps\r\n", data_sum, bw);
+    }
+
+    //Disable channels
+    for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
+    {
+        // ts_channel_params_get(channels, i, &chConfig);
+        thunderscopeChannelConfigGet(tsHdl, i, &chConfig);
+        chConfig.active = 0;
+        // ts_channel_params_set(channels, i, &chConfig);
+        thunderscopeChannelConfigSet(tsHdl, i, &chConfig);
+    }
+
+    // ts_channel_destroy(channels);
+    // samples_teardown(&samp);
+    thunderscopeClose(tsHdl);
+
+    if(sampleLen > 0)
+    {
+        auto outFile = std::fstream(TS_TEST_SAMPLE_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
+        outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(sampleBuffer)), sampleLen);
+        outFile.flush();
+        outFile.close();
+        
+        AudioFile<uint8_t> outWav;
+        outWav.setBitDepth(8);
+        outWav.setSampleRate(1000000000/numChan);
+        outWav.setNumChannels(numChan);
+
+        AudioFile<uint8_t>::AudioBuffer wavBuffer;
+        wavBuffer.resize(numChan);
+        wavBuffer[0].resize(sampleLen/numChan);
+        if(numChan > 1)
+        {
+            wavBuffer[1].resize(sampleLen/numChan);
+        }
+        if(numChan > 2)
+        {
+            wavBuffer[2].resize(sampleLen/numChan);
+            wavBuffer[3].resize(sampleLen/numChan);
+        }
+        uint64_t sample = 0;
+        uint64_t idx = 0;
+        while (idx < sampleLen)
+        {
+            wavBuffer[0][sample] = sampleBuffer[idx++];
+            wavBuffer[0][sample+1] = sampleBuffer[idx++];
+            if(numChan > 1)
+            {
+                if(numChan > 2)
+                {
+                    wavBuffer[1][sample] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[2][sample] = sampleBuffer[idx++];
+                    wavBuffer[2][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                    wavBuffer[3][sample+1] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    wavBuffer[0][sample+2] = sampleBuffer[idx++];
+                    wavBuffer[0][sample+3] = sampleBuffer[idx++];
+                    wavBuffer[1][sample] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+2] = sampleBuffer[idx++];
+                    wavBuffer[1][sample+3] = sampleBuffer[idx++];
+                    sample += 2;
+                }
+            }
+            sample += 2;
+        }
+        outWav.setAudioBuffer(wavBuffer);
+        outWav.printSummary();
+        outWav.save(TS_TEST_WAV_FILE);
+    }
 }
 
 static void print_help(void)
@@ -255,6 +373,12 @@ static void print_help(void)
     printf("TS Test Util Usage:\r\n");
     printf("\t io - run I/O Test\r\n");
     printf("\t capture - run Sample Capture Test\r\n");
+    printf("\t\t -c <channels>    Channel bitmap\r\n");
+    printf("\t\t -b <bw>          Channel Bandwidth [MHz]\r\n");
+    printf("\t\t -v <mvolts>      Channel Full Scale Volts [millivolt]\r\n");
+    printf("\t\t -o <mvolts>      Channel Offset [millivolt]\r\n");
+    printf("\t\t -a               AC Couple\r\n");
+    printf("\t\t -t               50 Ohm termination\r\n");
 }
 
 /* Main */
@@ -268,18 +392,20 @@ int main(int argc, char** argv)
 
     file_t fd;
     int i;
-    uint8_t channelBitmap = 1;
-    uint16_t bandwidth = 0;
-    uint32_t gain_dBx10 = 0;
+    uint8_t channelBitmap = 0x0F;
+    uint16_t bandwidth = 350;
+    uint32_t volt_scale_mV = 10000;
+    int32_t offset_mV = 0;
     uint8_t ac_couple = 0;
     uint8_t term = 0;
 
     struct optparse_long argList[] = {
-        {"chan",    'c', OPTPARSE_REQUIRED},
-        {"bw",      'b', OPTPARSE_REQUIRED},
-        {"gain",    'g', OPTPARSE_REQUIRED},
-        {"ac",      'a', OPTPARSE_NONE},
-        {"term",    't', OPTPARSE_NONE},
+        {"chan",     'c', OPTPARSE_REQUIRED},
+        {"bw",       'b', OPTPARSE_REQUIRED},
+        {"voltsmv",  'v', OPTPARSE_REQUIRED},
+        {"offsetmv", 'o', OPTPARSE_REQUIRED},
+        {"ac",       'a', OPTPARSE_NONE},
+        {"term",     't', OPTPARSE_NONE},
         {0}
     };
 
@@ -294,16 +420,20 @@ int main(int argc, char** argv)
     {
         switch (option) {
         case 'b':
-            bandwidth = atoi(options.optarg);
-            argCount++;
+            bandwidth = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
         case 'c':
-            channelBitmap = atoi(options.optarg);
-            argCount++;
+            channelBitmap = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
-        case 'g':
-            gain_dBx10 = atoi(options.optarg);
-            argCount++;
+        case 'v':
+            volt_scale_mV = strtol(options.optarg, NULL, 0);
+            argCount+=2;
+            break;
+        case 'o':
+            offset_mV = strtol(options.optarg, NULL, 0);
+            argCount+=2;
             break;
         case 'a':
             ac_couple = 1;
@@ -320,6 +450,12 @@ int main(int argc, char** argv)
         }
     }
     arg = argv[argCount];
+
+    if(argCount == argc)
+    {
+        print_help();
+        exit(EXIT_FAILURE);
+    }
 
     fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
     if(fd == INVALID_HANDLE_VALUE) {
@@ -361,7 +497,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, channelBitmap, bandwidth, gain_dBx10, ac_couple, term);
+        test_capture(fd, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
     }
     //Print Help
     else

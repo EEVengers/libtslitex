@@ -14,6 +14,7 @@
 #include "ts_common.h"
 #include "hmcad15xx.h"
 #include "spi.h"
+#include "util.h"
 
 static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data);
 static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc);
@@ -53,7 +54,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     hmcad15xxApplyLvdsMode(adc);
 
     //Gain dB mode
-    hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 1);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
 
     //Channel Conf
     hmcad15xxApplySampleMode(adc);
@@ -178,7 +179,36 @@ int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode
     {
         return TS_STATUS_ERROR;
     }
-    //TODO
+    //Clear both test modes
+    hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, 0);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, 0);
+
+    switch(mode)
+    {
+        case HMCAD15_TEST_DISABLE:
+        //Test mode already cleared. Nothing else to do.
+        break;
+        case HMCAD15_TEST_RAMP:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_RAMP);
+        break;
+        case HMCAD15_TEST_SINGLE:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT1, testData1);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_SINGLE);
+        break;
+        case HMCAD15_TEST_DUAL:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT1, testData1);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_PAT2, testData2);
+        hmcad15xxRegWrite(adc, HMCAD15_REG_TEST_MODE, HMCAD15_TEST_MODE_DUAL);
+        break;
+        case HMCAD15_TEST_DESKEW:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, HMCAD15_TEST_PAT_DESKEW);
+        break;
+        case HMCAD15_TEST_SYNC:
+        hmcad15xxRegWrite(adc, HMCAD15_REG_PAT_MODE, HMCAD15_TEST_PAT_SYNC);
+        break;
+        default:
+        LOG_ERROR("Invalid Test Mode");
+    }
 
     return TS_STATUS_OK;
 }
@@ -190,6 +220,7 @@ static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data)
     bytes[1] = data & 0xFF;
     spi_busy_wait(adc->dev);
     spi_write(adc->dev, reg, bytes, 2);
+    LOG_DEBUG("hmcad SPI R: 0x%02X V: 0x%04X", reg, data);
 }
 
 static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
@@ -228,6 +259,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_14BIT_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_4;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
@@ -244,11 +276,16 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
     {
         case HMCAD15_SINGLE_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
+            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[0].input);
+            in34 = HMCAD15_SEL_CH_3(adc->channelCfg[0].input);
+            in34 |= HMCAD15_SEL_CH_4(adc->channelCfg[0].input);
             inv = HMCAD15_CH_INVERT_S1(adc->channelCfg[0].invert);
             break;
         case HMCAD15_DUAL_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
-            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
+            in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[0].input);
+            in34 = HMCAD15_SEL_CH_3(adc->channelCfg[1].input);
+            in34 |= HMCAD15_SEL_CH_4(adc->channelCfg[1].input);
             inv = HMCAD15_CH_INVERT_D1(adc->channelCfg[0].invert) | 
                     HMCAD15_CH_INVERT_D2(adc->channelCfg[1].invert);
             break;

@@ -60,7 +60,7 @@ extern "C" {
 #define HMCAD15_FULL_SCALE_MAX      (97)
 #define HMCAD15_FULL_SCALE_MIN      (-100)
 
-#define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x03)
+#define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x0F)
 
 #define HMCAD15_CLK_DIV_SET(x)      (((x) & 0x03) << 8)
 #define HMCAD15_CLK_DIV_1           (0)
@@ -97,6 +97,8 @@ extern "C" {
 #define HMCAD15_CH_INVERT_D2(x)     (((x) & 0x01) << 5)
 
 #define HMCAD15_CH_INVERT_S1(x)     (((x) & 0x01) << 6)
+#define HMCAD15_CH_INVERT_ALL(x)    ((x) * 0x7f)
+
 
 #define HMCAD15_LVDS_DS_LCLK(x)     ((x) & 0x07)
 #define HMCAD15_LVDS_DS_FRAME(x)    (((x) & 0x07) << 4)
@@ -121,6 +123,9 @@ extern "C" {
 #define HMCAD15_TEST_MODE_DUAL      (1 << 5)
 #define HMCAD15_TEST_MODE_RAMP      (1 << 6)
 
+#define HMCAD15_TEST_PAT_DESKEW     (1 << 0)
+#define HMCAD15_TEST_PAT_SYNC       (1 << 1)
+
 #define HMCAD15_LVDS_PHASE_270DEG   (0)
 #define HMCAD15_LVDS_PHASE_180DEG   (1)
 #define HMCAD15_LVDS_PHASE_90DEG    (2)
@@ -137,13 +142,14 @@ extern "C" {
 
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
-#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_90DEG)
+#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
 
 typedef enum hmcad15xxMode_e
 {
     HMCAD15_SINGLE_CHANNEL = 1,
     HMCAD15_DUAL_CHANNEL = 2,
-    HMCAD15_QUAD_CHANNEL = 4
+    HMCAD15_QUAD_CHANNEL = 4,
+    HMCAD15_14BIT_QUAD_CHANNEL = 8
 } hmcad15xxMode_t;
 
 typedef enum hmcad15xxDataWidth_e
@@ -162,9 +168,12 @@ typedef enum hmcad15xxPower_e
 
 typedef enum hmcad15xxTestMode_e
 {
+    HMCAD15_TEST_DISABLE,
     HMCAD15_TEST_SINGLE,
     HMCAD15_TEST_DUAL,
-    HMCAD15_TEST_RAMP
+    HMCAD15_TEST_RAMP,
+    HMCAD15_TEST_DESKEW,
+    HMCAD15_TEST_SYNC
 } hmcad15xxTestMode_t;
 
 typedef struct hmcad15xxChCfg_s

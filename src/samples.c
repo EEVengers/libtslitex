@@ -25,6 +25,7 @@
 
 #include "samples.h"
 #include "ts_common.h"
+#include "util.h"
 
 #include "liblitepcie.h"
 
@@ -36,7 +37,6 @@
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #else
-#define INVALID_HANDLE_VALUE (-1)
 #define TS_DMA_NAME         "/dev/litepcie%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_NAME_ARGS(chan, dev)     (dev)
@@ -79,9 +79,6 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
     }
 
     inst->active = en;
-    
-    //Enable Trigger
-    litepcie_writel(inst->dma, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
 
     //Start/Stop DMA
     litepcie_dma_writer(inst->dma, en,
@@ -93,7 +90,7 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
 
 int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_t bufferLen)
 {
-    int32_t retVal = TS_STATUS_OK;
+    int32_t retVal = 0;
     if(inst->active == 0)
     {
         retVal = TS_STATUS_ERROR;
@@ -109,26 +106,17 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         
         if (!ReadFile(inst->dma, sampleBuffer, bufferLen, &len, NULL))
         {
-            fprintf(stderr, "Read failed: %d\n", GetLastError());
-            fprintf(stderr, "Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);
-            samples_teardown(inst);
-            abort();
+            LOG_ERROR("Read failed: %d\n", GetLastError());
+            LOG_ERROR("Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);
+            retVal = TS_STATUS_ERROR;
         }
-        retVal = (int32_t)len;
-#else
-        do
+        else
         {
-            int32_t len = (int32_t)read(inst->dma, &sampleBuffer[retVal], (bufferLen - retVal));
-            if( len > 0)
-            {
-                retVal += (int32_t)len;
-            }
-            else
-            {
-                retVal = len;
-                break;
-            }
-        } while(retVal < bufferLen);
+            retVal = (int32_t)len;
+        }
+#else
+        retVal = (int32_t)read(inst->dma, sampleBuffer, bufferLen);
+        
 #endif
     }
 
@@ -149,6 +137,7 @@ int32_t samples_teardown(sampleStream_t* inst)
                             &inst->dma_buffer_count,
                             &inst->driver_buffer_count);
 
+        litepcie_release_dma(inst->dma, 0, 1);
         litepcie_close(inst->dma);
     }
 
