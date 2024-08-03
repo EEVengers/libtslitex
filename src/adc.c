@@ -15,6 +15,14 @@
 #include "liblitepcie.h"
 
 
+typedef enum adc_shuffle_e
+{
+    ADC_SHUFFLE_1CH = 0,
+    ADC_SHUFFLE_2CH = 1,
+    ADC_SHUFFLE_4CH = 2,
+} adc_shuffle_t;
+
+
 int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 {
     int32_t retVal = TS_STATUS_ERROR;
@@ -101,6 +109,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
 {
     int32_t retVal;
     uint8_t activeCount = 0;
+    adc_shuffle_t shuffleMode = ADC_SHUFFLE_1CH;
 
     adc->tsChannels[channel].active = enable;
 
@@ -130,21 +139,26 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     }
     else 
     {
+
         if(activeCount == 1)
         {
             adc->adcDev.mode = HMCAD15_SINGLE_CHANNEL;
+            shuffleMode = ADC_SHUFFLE_1CH;
         }
         else if(activeCount == 2)
         {
             adc->adcDev.mode = HMCAD15_DUAL_CHANNEL;
+            shuffleMode = ADC_SHUFFLE_2CH;
         }
         else
         {
             adc->adcDev.mode = HMCAD15_QUAD_CHANNEL;
+            shuffleMode = ADC_SHUFFLE_4CH;
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
         
         litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DATA_CHANNELS_ADDR, shuffleMode << CSR_ADC_HAD1511_DATA_CHANNELS_SHUFFLE_OFFSET);
     }
 
     return retVal;
