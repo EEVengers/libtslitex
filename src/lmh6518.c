@@ -34,9 +34,9 @@
 
 #define LMH6518_INPUT_AMP_LG    (10000)
 #define LMH6518_INPUT_AMP_HG    (30000)
-#define LMH6518_OUTPUT_AMP      (8840)
+#define LMH6518_OUTPUT_AMP      (8860)
 
-#define LMH6518_ATTEN_STEPS     (10)
+#define LMH6518_ATTEN_STEPS     (11)
 #define LMH6518_FILTER_STEPS    (7)
 
 // Table of incremental Bandwidth Filters available.  All
@@ -54,8 +54,9 @@ static int32_t g_attenuationTable[LMH6518_ATTEN_STEPS] = {
     0,  -2000,
     -4000, -6000,
     -8000, -10000,
-    -12000, -13000,
-    -18000, -20000
+    -12000, -14000,
+    -16000, -18000,
+    -20000
 };
 
 int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
@@ -68,6 +69,8 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
     int32_t prev_gain = gain_actual;
     uint8_t prev_index = atten_index;
     int32_t prev_input = input_gain;
+
+    LOG_DEBUG("LM6518 Requested Gain %d", gain_mdB);
 
     if(NULL == conf)
     {
@@ -82,6 +85,10 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
         {
             break;
         }
+        
+        prev_gain = gain_actual;
+        prev_index = atten_index;
+        prev_input = input_gain;
 
         if(atten_index == 0)
         {
@@ -110,6 +117,9 @@ int32_t lmh6518_calc_gain_config(lmh6518Config_t* conf, int32_t gain_mdB)
     conf->preamp = (input_gain == LMH6518_INPUT_AMP_LG) ? 
                         PREAMP_LG : PREAMP_HG;
     conf->atten = atten_index;
+
+    LOG_DEBUG("LM6518 Calculated Gain %d (Idx %d w/ %s Input gain)", gain_actual, atten_index,
+                input_gain == LMH6518_INPUT_AMP_LG ? "Low" : "High");
 
     return gain_actual;
 }

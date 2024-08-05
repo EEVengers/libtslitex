@@ -34,6 +34,8 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 {
     int32_t retVal;
     lmh6518Config_t defaultAmpConf = LMH6518_CONFIG_INIT;
+    //Aux Output is not used
+    defaultAmpConf.pm = PM_AUX_HIZ;
     
     if(channel >= TS_NUM_CHANNELS)
     {
@@ -82,9 +84,14 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
         return TS_STATUS_ERROR;
     }
 
-    // Update Attenuation if needed
-    if(gain_mdB < LMH6518_MIN_GAIN_mdB)
+    // If 50-Ohm mode in use, limit gain to 
+    if(gpio_get(afe->termPin))
     {
+        gain_mdB -= TS_TERMINATION_50OHM_GAIN_mdB;
+    }
+    else if(gain_mdB < LMH6518_MIN_GAIN_mdB)
+    {
+        // Update Attenuation if needed
         need_atten = true;
         ts_afe_attenuation_control(afe, 1);
         gain_mdB -= TS_ATTENUATION_VALUE_mdB;
@@ -117,6 +124,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     uint16_t offsetVal = TS_TRIM_DAC_DEFAULT;
     uint32_t V_dac = 0;
     uint32_t R_trim = 0;
+    int32_t gain_afe = 0;
 
     if(NULL == afe || NULL == offset_actual)
     {
@@ -125,19 +133,18 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     }
 
     // Determine offset calculation
-    int32_t gain_afe = lmh6518_gain_from_config(afe->ampConf);
-    if(0 == gain_afe)
+    if(gpio_get(afe->termPin))
     {
-        return TS_STATUS_ERROR;
+        gain_afe += TS_TERMINATION_50OHM_GAIN_mdB;
     }
-    if(gpio_get(afe->attenuatorPin))
+    else if(gpio_get(afe->attenuatorPin))
     {
         gain_afe += TS_ATTENUATION_VALUE_mdB;
     }
 
     // Desired Trim Voltage
-    LOG_DEBUG("AFE Offset Request %d mv with %d mdB Gain", offset_mV, gain_afe);
-    uint32_t V_trim = afe->cal.buffer_mv - (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
+    LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
+    uint32_t V_trim = afe->cal.buffer_mv + (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset target V_trim %d mv", V_trim);
     
     // Progressively reduce R_trim until V_dac is within range of 0-VDD

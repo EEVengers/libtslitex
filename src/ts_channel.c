@@ -172,6 +172,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     for(uint32_t chanIdx = 0; chanIdx < TS_NUM_CHANNELS; chanIdx++)
     {
         pChan->chan[chanIdx].channelNo = chanIdx;
+        ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT, TS_ADC_CH_FINE_GAIN_DEFAULT);
         retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input,
                                             g_channelConf[chanIdx].adc_invert);
         if(retVal != TS_STATUS_OK)
@@ -252,6 +253,7 @@ int32_t ts_channel_run(tsChannelHdl_t tsChannels, uint8_t en)
 int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
 {
     int32_t retVal = TS_STATUS_OK;
+    bool needUpdateGain = false, needUpdateOffset = false;
 
     if(tsChannels == NULL || param == NULL)
     {
@@ -306,6 +308,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         {
             LOG_DEBUG("Channel %d AFE termination set to %s", chanIdx, param->term == TS_TERM_1M ? "1M" : "50");
             pInst->chan[chanIdx].params.term = param->term;
+            needUpdateGain = true;
         }
         else
         {
@@ -315,11 +318,12 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     }
 
     //Set Voltage Scale
-    if(param->volt_scale_mV != pInst->chan[chanIdx].params.volt_scale_mV)
+    if(needUpdateGain || (param->volt_scale_mV != pInst->chan[chanIdx].params.volt_scale_mV))
     {
         //Calculate dB gain value
         //TODO: Set both AFE and ADC gain?
-        int32_t afe_gain_mdB = (int32_t)(20000 * log10(700.0 / (double)param->volt_scale_mV));
+        int32_t afe_gain_mdB = (int32_t)(20000 * log10(TS_AFE_OUTPUT_NOMINAL_mVPP / (double)param->volt_scale_mV));
+
         LOG_DEBUG("Channel %d AFE request %i mdB gain", chanIdx, afe_gain_mdB);
 
         retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
@@ -331,13 +335,15 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
-            retVal = (int32_t)(700.0/pow(10.0, (double)retVal/20000.0));
+            retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_mVPP / pow(10.0, (double)retVal / 20000.0));
+            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_mV, retVal);
             pInst->chan[chanIdx].params.volt_scale_mV = retVal;
+            needUpdateOffset = true;
         }
     }
 
     //Set Voltage Offset
-    if(param->volt_offset_mV != pInst->chan[chanIdx].params.volt_offset_mV)
+    if(needUpdateOffset || (param->volt_offset_mV != pInst->chan[chanIdx].params.volt_offset_mV))
     {
         //Adjust Trim DAC
         int32_t offset_actual = 0;

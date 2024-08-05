@@ -13,13 +13,16 @@
 #include "csr.h"
 
 
-#define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x0010)
+#define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x20) /**< Full Scale Adjust set 2V */
+#define TS_ADC_CH_COARSE_GAIN_DEFAULT           (9)
+#define TS_ADC_CH_FINE_GAIN_DEFAULT             (0)
 
 #define TS_ADC_CH_NO_INVERT     (0)
 #define TS_ADC_CH_INVERT        (1)
 
-#define TS_ATTENUATION_THRESHOLD_MV             (700)
+#define TS_AFE_OUTPUT_NOMINAL_mVPP              (700.0)
 #define TS_ATTENUATION_VALUE_mdB                (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
+#define TS_TERMINATION_50OHM_GAIN_mdB           (-13979) /**< 5x Attenuation from 50Ohm mode.  20 * log(1/5) * 1000 */
 
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
