@@ -286,8 +286,8 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     //Set AC/DC Coupling
     if(param->coupling != pInst->chan[chanIdx].params.coupling)
     {
-        if(TS_STATUS_OK == ts_afe_coupling_control(&pInst->chan[chanIdx].afe, 
-                                    (param->coupling == TS_COUPLE_DC ? 1 : 0)))
+        if(TS_STATUS_OK == ts_afe_coupling_control(&pInst->chan[chanIdx].afe,
+                                            (tsChannelCoupling_t)param->coupling))
         {
             
             LOG_DEBUG("Channel %d AFE set to %s coupling", chanIdx, param->coupling == TS_COUPLE_DC ? "DC" : "AC");
@@ -303,8 +303,8 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     //Set Termination
     if(param->term != pInst->chan[chanIdx].params.term)
     {
-        if(TS_STATUS_OK == ts_afe_termination_control(&pInst->chan[chanIdx].afe, 
-                                    (param->term == TS_TERM_50 ? 1 : 0)))
+        if(TS_STATUS_OK == ts_afe_termination_control(&pInst->chan[chanIdx].afe,
+                                            (tsChannelTerm_t)param->term))
         {
             LOG_DEBUG("Channel %d AFE termination set to %s", chanIdx, param->term == TS_TERM_1M ? "1M" : "50");
             pInst->chan[chanIdx].params.term = param->term;

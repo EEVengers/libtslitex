@@ -31,8 +31,11 @@ typedef struct ts_afe_s
     i2c_t trimPot;
     uint8_t trimPotCh;
     gpio_t termPin;
+    tsChannelTerm_t termination;
     gpio_t attenuatorPin;
+    bool isAttenuated;
     gpio_t couplingPin;
+    tsChannelCoupling_t coupling;
     ts_afe_cal_t cal;
 }ts_afe_t;
 
@@ -87,28 +90,28 @@ int32_t ts_afe_set_bw_filter(ts_afe_t* afe, uint32_t bw_MHz);
  * @brief Enable/Disable the AFE Termination
 
  * @param afe   Pointer to an AFE instance
- * @param enable 1 to enable, 0 to disable
+ * @param term  TS_TERM_50 to enable, TS_TERM_1M to disable
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_termination_control(ts_afe_t* afe, uint8_t enable);
+int32_t ts_afe_termination_control(ts_afe_t* afe, tsChannelTerm_t term);
 
 /**
  * @brief Enable/Disable the AFE 50x Attenuation
  * 
  * @param afe   Pointer to an AFE instance
- * @param enable 1 to enable, 0 to disable
+ * @param isAttenuated 1 to enable, 0 to disable
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_attenuation_control(ts_afe_t* afe, uint8_t enable);
+int32_t ts_afe_attenuation_control(ts_afe_t* afe, uint8_t isAttenuated);
 
 /**
- * @brief Enable/Disable the AFE Coupling
+ * @brief Select the AFE AC/DC Coupling
  * 
  * @param afe   Pointer to an AFE instance
- * @param enable 1 to enable, 0 to disable
+ * @param enable AFE Coupling mode
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_coupling_control(ts_afe_t* afe, uint8_t enable);
+int32_t ts_afe_coupling_control(ts_afe_t* afe, tsChannelCoupling_t coupled);
 
 #ifdef __cplusplus
 }
