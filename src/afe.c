@@ -89,8 +89,8 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
         return TS_STATUS_ERROR;
     }
 
-    // If 50-Ohm mode in use, limit gain to 
-    if(gpio_get(afe->termPin))
+    // If 50-Ohm mode in use, limit gain to TBD
+    if(afe->termination == TS_TERM_50)
     {
         gain_mdB -= TS_TERMINATION_50OHM_GAIN_mdB;
     }
@@ -118,6 +118,11 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     else
     {
         ts_afe_attenuation_control(afe, false);
+        if(afe->termination == TS_TERM_50)
+        {
+            gain_actual += TS_TERMINATION_50OHM_GAIN_mdB;
+            gain_mdB += TS_TERMINATION_50OHM_GAIN_mdB;
+        }
     }
     LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
 
@@ -149,7 +154,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
 
     // Desired Trim Voltage
     LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
-    uint32_t V_trim = afe->cal.buffer_mv + (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
+    uint32_t V_trim = afe->cal.buffer_mv - (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset target V_trim %d mv", V_trim);
     
     // Progressively reduce R_trim until V_dac is within range of 0-VDD
