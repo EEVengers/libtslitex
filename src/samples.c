@@ -106,8 +106,8 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         
         if (!ReadFile(inst->dma, sampleBuffer, bufferLen, &len, NULL))
         {
-            LOG_ERROR("Read failed: %d\n", GetLastError());
-            LOG_ERROR("Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);
+            LOG_ERROR("Sample Read failed: %d\n", GetLastError());
+            LOG_ERROR("Sample Read args: 0x%p - 0x%lx - 0x%x\n", sampleBuffer, bufferLen, len);
             retVal = TS_STATUS_ERROR;
         }
         else
@@ -115,7 +115,18 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             retVal = (int32_t)len;
         }
 #else
-        retVal = (int32_t)read(inst->dma, sampleBuffer, bufferLen);
+        while (retVal < bufferLen)
+        {
+            int32_t readLen = (int32_t)read(inst->dma, &sampleBuffer[retVal], (bufferLen - (uint32_t)retVal));
+            if(readLen < 0)
+            {
+                LOG_ERROR("Sample Read failed: %d\n", readLen);
+                LOG_ERROR("Sample Read args: 0x%p - 0x%x - 0x%x\n", sampleBuffer, bufferLen, retVal);
+                retVal = TS_STATUS_ERROR;
+                break;
+            }
+            retVal += readLen;
+        }
         
 #endif
     }
