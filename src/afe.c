@@ -34,6 +34,8 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 {
     int32_t retVal;
     lmh6518Config_t defaultAmpConf = LMH6518_CONFIG_INIT;
+    //Aux Output is not used
+    defaultAmpConf.pm = PM_AUX_HIZ;
     
     if(channel >= TS_NUM_CHANNELS)
     {
@@ -50,6 +52,11 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->termPin = termination;
     afe->attenuatorPin = attenuator;
     afe->couplingPin = coupling;
+
+    // Default states for AFE signals
+    afe->termination = TS_TERM_1M;
+    afe->coupling = TS_COUPLE_AC;
+    afe->isAttenuated = true;
     
     // Default calibration
     afe->cal.buffer_mv = NOMINAL_BUFFER_MV;
@@ -75,18 +82,23 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
 {
     int32_t gain_actual = 0;
-    bool need_atten = false;
+    afe->isAttenuated = false;
     if(NULL == afe)
     {
         //ERROR
         return TS_STATUS_ERROR;
     }
 
-    // Update Attenuation if needed
-    if(gain_mdB < LMH6518_MIN_GAIN_mdB)
+    // If 50-Ohm mode in use, limit gain to TBD
+    if(afe->termination == TS_TERM_50)
     {
-        need_atten = true;
-        ts_afe_attenuation_control(afe, 1);
+        gain_mdB -= TS_TERMINATION_50OHM_GAIN_mdB;
+    }
+    else if(gain_mdB < LMH6518_MIN_GAIN_mdB)
+    {
+        // Update Attenuation if needed
+        afe->isAttenuated = true;
+        ts_afe_attenuation_control(afe, true);
         gain_mdB -= TS_ATTENUATION_VALUE_mdB;
     }
 
@@ -98,14 +110,19 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
         return TS_STATUS_ERROR;
     }
 
-    if(need_atten)
+    if(afe->isAttenuated)
     {
         gain_actual += TS_ATTENUATION_VALUE_mdB;
         gain_mdB += TS_ATTENUATION_VALUE_mdB;
     }
     else
     {
-        ts_afe_attenuation_control(afe, 0);
+        ts_afe_attenuation_control(afe, false);
+        if(afe->termination == TS_TERM_50)
+        {
+            gain_actual += TS_TERMINATION_50OHM_GAIN_mdB;
+            gain_mdB += TS_TERMINATION_50OHM_GAIN_mdB;
+        }
     }
     LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
 
@@ -117,6 +134,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     uint16_t offsetVal = TS_TRIM_DAC_DEFAULT;
     uint32_t V_dac = 0;
     uint32_t R_trim = 0;
+    int32_t gain_afe = 0;
 
     if(NULL == afe || NULL == offset_actual)
     {
@@ -125,18 +143,17 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     }
 
     // Determine offset calculation
-    int32_t gain_afe = lmh6518_gain_from_config(afe->ampConf);
-    if(0 == gain_afe)
+    if(afe->termination == TS_TERM_50)
     {
-        return TS_STATUS_ERROR;
+        gain_afe += TS_TERMINATION_50OHM_GAIN_mdB;
     }
-    if(gpio_get(afe->attenuatorPin))
+    else if(afe->isAttenuated)
     {
         gain_afe += TS_ATTENUATION_VALUE_mdB;
     }
 
     // Desired Trim Voltage
-    LOG_DEBUG("AFE Offset Request %d mv with %d mdB Gain", offset_mV, gain_afe);
+    LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
     uint32_t V_trim = afe->cal.buffer_mv - (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset target V_trim %d mv", V_trim);
     
@@ -214,63 +231,93 @@ int32_t ts_afe_set_bw_filter(ts_afe_t* afe, uint32_t bw_MHz)
 }
 
 
-int32_t ts_afe_termination_control(ts_afe_t* afe, uint8_t enable)
+int32_t ts_afe_termination_control(ts_afe_t* afe, tsChannelTerm_t term)
 {
     if(NULL == afe)
     {
         //ERROR
         return TS_STATUS_ERROR;
     }
-    if(enable)
+
+    switch(term)
+    {
+    case TS_TERM_50:
     {
         LOG_DEBUG("Set Termination %x", afe->termPin.bit_mask);
         gpio_set(afe->termPin);
+        break;
     }
-    else
+    case TS_TERM_1M:
     {
         LOG_DEBUG("Clear Termination %x", afe->termPin.bit_mask);
         gpio_clear(afe->termPin);
+        break;
     }
+    default:
+    {
+        LOG_ERROR("Invalid AFE Termination Setting %x", term);
+        return TS_INVALID_PARAM;
+    }
+    }
+
+    afe->termination = term;
     return TS_STATUS_OK;
 }
 
-int32_t ts_afe_attenuation_control(ts_afe_t* afe, uint8_t enable)
+int32_t ts_afe_attenuation_control(ts_afe_t* afe, uint8_t isAttenuated)
 {
     if(NULL == afe)
     {
         //ERROR
         return TS_STATUS_ERROR;
     }
-    if(enable)
+    if(!isAttenuated)
     {
+        //Enabling this relay disables the AFE attenuation
         LOG_DEBUG("Set Attenuation %x", afe->attenuatorPin.bit_mask);
         gpio_set(afe->attenuatorPin);
     }
     else
     {
+        //The AFE is attenuated when the relay is off
         LOG_DEBUG("Clear Attenuation %x", afe->attenuatorPin.bit_mask);
         gpio_clear(afe->attenuatorPin);
     }
+
+    afe->isAttenuated = isAttenuated;
     return TS_STATUS_OK;
 }
 
-int32_t ts_afe_coupling_control(ts_afe_t* afe, uint8_t enable)
+int32_t ts_afe_coupling_control(ts_afe_t* afe, tsChannelCoupling_t coupled)
 {
     if(NULL == afe)
     {
         //ERROR
         return TS_STATUS_ERROR;
     }
-    if(enable)
+
+    switch(coupled)
+    {
+    case TS_COUPLE_DC:
     {
         LOG_DEBUG("Set Coupling %x", afe->couplingPin.bit_mask);
         gpio_set(afe->couplingPin);
+        break;
     }
-    else
+    case TS_COUPLE_AC:
     {
         LOG_DEBUG("Clear Coupling %x", afe->couplingPin.bit_mask);
         gpio_clear(afe->couplingPin);
+        break;
     }
+    default:
+    {
+        LOG_ERROR("Invalid AFE Coupling Setting %x", coupled);
+        return TS_INVALID_PARAM;
+    }
+    }
+
+    afe->coupling = coupled;
     return TS_STATUS_OK;
 }
 

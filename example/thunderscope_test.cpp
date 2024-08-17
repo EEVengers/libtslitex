@@ -337,30 +337,16 @@ static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth,
         while (idx < sampleLen)
         {
             wavBuffer[0][sample] = sampleBuffer[idx++];
-            wavBuffer[0][sample+1] = sampleBuffer[idx++];
             if(numChan > 1)
             {
+                wavBuffer[1][sample] = sampleBuffer[idx++];
                 if(numChan > 2)
                 {
-                    wavBuffer[1][sample] = sampleBuffer[idx++];
-                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
                     wavBuffer[2][sample] = sampleBuffer[idx++];
-                    wavBuffer[2][sample+1] = sampleBuffer[idx++];
                     wavBuffer[3][sample] = sampleBuffer[idx++];
-                    wavBuffer[3][sample+1] = sampleBuffer[idx++];
-                }
-                else
-                {
-                    wavBuffer[0][sample+2] = sampleBuffer[idx++];
-                    wavBuffer[0][sample+3] = sampleBuffer[idx++];
-                    wavBuffer[1][sample] = sampleBuffer[idx++];
-                    wavBuffer[1][sample+1] = sampleBuffer[idx++];
-                    wavBuffer[1][sample+2] = sampleBuffer[idx++];
-                    wavBuffer[1][sample+3] = sampleBuffer[idx++];
-                    sample += 2;
                 }
             }
-            sample += 2;
+            sample++;
         }
         outWav.setAudioBuffer(wavBuffer);
         outWav.printSummary();
