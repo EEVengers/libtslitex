@@ -48,14 +48,14 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
     //If index valid
     if(testDev != INVALID_HANDLE_VALUE)
     {
-        info->deviceID = devIndex;
+        info->device_id = devIndex;
         //Copy device identifier
         for (uint32_t i = 0; i < TS_IDENT_STR_LEN; i++)
         {
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
         //TODO Implement Serial Number
-        strncpy(info->devicePath, testPath, TS_IDENT_STR_LEN);
+        strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
     }

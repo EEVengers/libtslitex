@@ -46,10 +46,10 @@ typedef enum tsChannelTerm_e
 
 typedef struct tsDeviceInfo_s
 {
-    uint32_t deviceID;
-    char devicePath[TS_IDENT_STR_LEN];
+    uint32_t device_id;
+    char device_path[TS_IDENT_STR_LEN];
     char identity[TS_IDENT_STR_LEN];
-    char serialNumber[TS_IDENT_STR_LEN];
+    char serial_number[TS_IDENT_STR_LEN];
 } tsDeviceInfo_t;
 
 typedef struct tsChannelParam_s

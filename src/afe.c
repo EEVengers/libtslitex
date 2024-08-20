@@ -22,11 +22,10 @@
 #include <stddef.h>
 #include <math.h>
 
-#define NOMINAL_BUFFER_MV       (2500)
-#define NOMINAL_BIAS_MV         (2500)
-#define TRIM_POT_DEFAULT        (3900)
+#define VBUFFER_NOMINAL_MV       (2500)
+#define VBIAS_NOMINAL_MV         (2500)
 #define AFE_TRIM_VDD_NOMINAL    (5000)
-
+#define BIAS_RESISTOR_NOMINAL   (500)
 
 //Amp SPI Dev, Trim DAC, Trim DPot, term, attenuation, DC Switch
 int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t trimDac, uint8_t dacCh,
@@ -59,8 +58,8 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->isAttenuated = true;
     
     // Default calibration
-    afe->cal.buffer_mv = NOMINAL_BUFFER_MV;
-    afe->cal.bias_mv = NOMINAL_BIAS_MV;
+    afe->cal.buffer_mv = VBUFFER_NOMINAL_MV;
+    afe->cal.bias_mv = VBIAS_NOMINAL_MV;
     
     Mcp4728ChannelConfig_t trimConf = {0};
     trimConf.vref = MCP4728_VREF_VDD;
@@ -132,8 +131,8 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
 int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actual)
 {
     uint16_t offsetVal = TS_TRIM_DAC_DEFAULT;
-    uint32_t V_dac = 0;
-    uint32_t R_trim = 0;
+    int32_t V_dac = 0;
+    int32_t R_trim = 0;
     int32_t gain_afe = 0;
 
     if(NULL == afe || NULL == offset_actual)
@@ -154,7 +153,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
 
     // Desired Trim Voltage
     LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
-    uint32_t V_trim = afe->cal.buffer_mv - (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
+    int32_t V_trim = afe->cal.buffer_mv - (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset target V_trim %d mv", V_trim);
     
     // Progressively reduce R_trim until V_dac is within range of 0-VDD
@@ -166,19 +165,27 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
          *  Solved for V_dac becomes:
          *  V_dac = (V_trim * (500 + R_trim) - (V_bias * R_trim)) / 500
          */
-        V_dac = (V_trim * (500 + R_trim) - (afe->cal.bias_mv * R_trim)) / 500;
-
+        V_dac = V_trim - ((R_trim * ((int32_t)afe->cal.bias_mv - V_trim)) / BIAS_RESISTOR_NOMINAL);
         if(V_dac > 0 && V_dac < AFE_TRIM_VDD_NOMINAL)
         {
             LOG_DEBUG("Setting Vdac to %d mV, Rtrim to %d Ohm", V_dac, R_trim);
-            offsetVal = (V_dac * MCP4728_FULL_SCALE_VAL) / 5000;
+            offsetVal = (V_dac * MCP4728_FULL_SCALE_VAL) / AFE_TRIM_VDD_NOMINAL;
             break;
         }
 
         if(trimPotVal == 0)
         {
             LOG_ERROR("AFE Unable to produce Trim voltage %d for requested offset %d", V_trim, offset_mV);
-            return TS_STATUS_ERROR;
+            if(V_trim > afe->cal.bias_mv)
+            {
+                V_dac = AFE_TRIM_VDD_NOMINAL;
+                offsetVal = MCP4728_FULL_SCALE_VAL;
+            }
+            else
+            {
+                V_dac = 0;
+            }
+            break;
         }
     } while(trimPotVal-- > 0);
 
@@ -200,8 +207,8 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     }
 
     // Reverse offset calc
-    V_dac = (offsetVal * 5000) / MCP4728_FULL_SCALE_VAL;
-    V_trim = (500 * V_dac + afe->cal.bias_mv * R_trim) / ( 500 + R_trim);
+    V_dac = (offsetVal * AFE_TRIM_VDD_NOMINAL) / MCP4728_FULL_SCALE_VAL;
+    V_trim = V_dac + ((((int32_t)afe->cal.bias_mv - V_dac) * R_trim) / ( BIAS_RESISTOR_NOMINAL + R_trim));
     *offset_actual = (int32_t)(((double)afe->cal.buffer_mv - (double)V_trim ) / pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset actual V_trim %d mv, Offset %d mV", V_trim, *offset_actual);
     return TS_STATUS_OK;

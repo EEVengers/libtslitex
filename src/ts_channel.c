@@ -146,7 +146,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         goto channel_init_error;
     }
 
-    //TODO: Placeholder. Replace with DAC and DPot driver instances?
     i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
     i2c_t trimPot = {ts, TS_TRIM_DPOT_I2C_ADDR};
 
