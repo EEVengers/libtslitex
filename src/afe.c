@@ -59,6 +59,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->cal.attenuatorGain1M_mdB = TS_ATTENUATION_1M_GAIN_mdB;
     afe->cal.attenuatorGain50_mdB = TS_TERMINATION_50OHM_GAIN_mdB;
     afe->cal.bufferGain_mdB = TS_BUFFER_GAIN_NOMINAL_mdB;
+    afe->cal.trimRheostat_range = MCP4432_FULL_SCALE_OHM;
     afe->cal.preampLowGainError_mdB = 0;
     afe->cal.preampHighGainError_mdB = 0;
     afe->cal.preampOutputGainError_mdB = 0;
@@ -95,6 +96,9 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
 
     //Remove Buffer gain calibration value
     gain_request -= afe->cal.bufferGain_mdB;
+    
+    //Remove Preamp Output gain calibration value
+    gain_request -= afe->cal.preampOutputGainError_mdB;
 
     // If 50-Ohm mode in use, limit gain to TBD
     if(afe->termination == TS_TERM_50)
@@ -129,7 +133,18 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
             gain_actual += afe->cal.attenuatorGain50_mdB;
         }
     }
+
+    if(afe->ampConf.preamp == PREAMP_LG)
+    {
+        gain_actual += afe->cal.preampLowGainError_mdB;
+    }
+    else
+    {
+        gain_actual += afe->cal.preampHighGainError_mdB;
+    }
+
     gain_actual += afe->cal.bufferGain_mdB;
+    gain_actual += afe->cal.preampOutputGainError_mdB;
 
     LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
 
@@ -143,6 +158,7 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     int32_t R_trim = 0;
     int32_t gain_afe = 0;
     int32_t V_zero = 0;
+    int32_t gain_preamp = 0;
 
     if(NULL == afe || NULL == offset_actual)
     {
@@ -153,14 +169,26 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     // Determine offset calculation
     if(afe->termination == TS_TERM_50)
     {
-        gain_afe += TS_TERMINATION_50OHM_GAIN_mdB;
+        gain_afe += afe->cal.attenuatorGain50_mdB;
     }
     else if(afe->isAttenuated)
     {
-        gain_afe += TS_ATTENUATION_1M_GAIN_mdB;
+        gain_afe += afe->cal.attenuatorGain1M_mdB;
     }
 
-    V_zero = afe->cal.buffer_mV + (afe->ampConf.preamp == PREAMP_LG ? afe->cal.preampLowOffset_mV : afe->cal.preampHighOffset_mV);
+    V_zero = afe->cal.buffer_mV;
+
+    gain_preamp = lmh6518_gain_from_config(afe->ampConf);
+    if(afe->ampConf.preamp == PREAMP_LG)
+    {
+        gain_preamp += afe->cal.preampLowGainError_mdB;
+        V_zero += (int32_t)((double)afe->cal.preampLowOffset_mV / pow(10, ((double)gain_preamp/20000.0)));
+    }
+    else
+    {
+        gain_preamp += afe->cal.preampHighGainError_mdB;
+        V_zero += (int32_t)((double)afe->cal.preampHighOffset_mV / pow(10, ((double)gain_preamp/20000.0)));
+    } 
 
     // Desired Trim Voltage
     LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
@@ -171,7 +199,9 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
     uint8_t trimPotVal = MCP4432_MAX;
     do
     {
-        R_trim = MCP4432_503_OHM(trimPotVal);
+        // R_trim = MCP4432_503_OHM(trimPotVal);
+        R_trim = ((((trimPotVal) * afe->cal.trimRheostat_range) / MCP4432_MAX) + MCP4432_RWIPER);
+
         /** 
          * (V_trim - V_dac) / R_trim = (V_bias - V_trim) / 500
          *  Solved for V_dac becomes:
@@ -318,14 +348,14 @@ int32_t ts_afe_coupling_control(ts_afe_t* afe, tsChannelCoupling_t coupled)
     {
     case TS_COUPLE_DC:
     {
-        LOG_DEBUG("Set Coupling %x", afe->couplingPin.bit_mask);
-        gpio_set(afe->couplingPin);
+        LOG_DEBUG("Clear Coupling %x", afe->couplingPin.bit_mask);
+        gpio_clear(afe->couplingPin);
         break;
     }
     case TS_COUPLE_AC:
     {
-        LOG_DEBUG("Clear Coupling %x", afe->couplingPin.bit_mask);
-        gpio_clear(afe->couplingPin);
+        LOG_DEBUG("Set Coupling %x", afe->couplingPin.bit_mask);
+        gpio_set(afe->couplingPin);
         break;
     }
     default:

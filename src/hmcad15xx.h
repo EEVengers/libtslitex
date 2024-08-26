@@ -108,6 +108,8 @@ extern "C" {
 
 #define HMCAD15_LVDS_PHASE(x)       (((x) & 0x03) << 5)
 
+#define HMCAD15_DATA_FMT_BTC(x)     (((x) & 0x1) << 2)
+
 #define HMCAD15_SINGLE_CH_SLP       (1 << 6)
 #define HMCAD15_DUAL_CH_1_SLP       (1 << 5)
 #define HMCAD15_DUAL_CH_0_SLP       (1 << 4)
@@ -176,6 +178,12 @@ typedef enum hmcad15xxTestMode_e
     HMCAD15_TEST_SYNC
 } hmcad15xxTestMode_t;
 
+typedef enum hmcad15xxBtcFmt_e
+{
+    HMCAD15_BTC_FMT_OFFSET,
+    HMCAD15_BTC_FMT_TWOS_COMPL
+} hmcad15xxBtcFmt_t;
+
 typedef struct hmcad15xxChCfg_s
 {
     uint8_t active;
@@ -190,6 +198,7 @@ typedef struct hmcad15xxADC_s
     spi_dev_t dev;
     hmcad15xxChCfg_t channelCfg[HMCAD15_NUM_CHANNELS];
     hmcad15xxMode_t mode;
+    hmcad15xxBtcFmt_t format;
     hmcad15xxDataWidth_t width;
     int32_t fullScale_x10;
     uint8_t clockDiv;
