@@ -88,12 +88,6 @@ typedef struct tsScopeState_s
 } tsScopeState_t;
 
 
-typedef struct ts_afe_cal_s
-{
-    uint32_t buffer_mv;
-    uint32_t bias_mv;
-}ts_afe_cal_t;
-
 #ifdef __cplusplus
 }
 #endif

@@ -84,16 +84,6 @@ int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf);
 int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution);
 
 /**
- * @brief Set the calibration data for a channel on the Thunderscope device
- * 
- * @param ts Handle to the Thunderscope device
- * @param channel Channel number
- * @param cal TBD Calibration data
- * @return int32_t TS_STATUS_OK if the calibration was accepted
-*/
-int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, uint32_t cal);
-
-/**
  * @brief Enable or Disable 
  * 
  * @param ts Handle to the Thunderscope device

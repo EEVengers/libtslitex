@@ -16,6 +16,7 @@
 #include <time.h>
 
 #include "ts_channel.h"
+#include "ts_calibration.h"
 
 #include "thunderscope.h"
 #include "platform.h"
@@ -32,6 +33,7 @@ typedef struct ts_channel_s {
         uint8_t channelNo;
         tsChannelParam_t params;
         ts_afe_t afe;
+        tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
     spi_bus_t spibus;
@@ -41,6 +43,7 @@ typedef struct ts_channel_s {
     }pll;
     gpio_t afe_power;
     gpio_t acq_power;
+    file_t ctrl_handle;
     tsScopeState_t status;
 } ts_channel_t;
 
@@ -96,6 +99,9 @@ struct ts_channel_hw_conf_s {
         HMCAD15_ADC_IN1,       TS_ADC_CH_INVERT
     }
 };
+
+static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
+static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 
 int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 {
@@ -203,6 +209,21 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         }
     }
 
+    //Initialize Status
+    pChan->ctrl_handle = ts;
+    pChan->status.adc_lost_buffer_count = 0;
+    pChan->status.adc_sample_rate = 1000000000;
+    pChan->status.adc_sample_bits = 8;
+    pChan->status.adc_sample_resolution = 256;
+    //state flags
+
+    if( TS_STATUS_OK != ts_channel_health_update(pChan))
+    {
+        LOG_ERROR("Failed to read System Health Statistics");
+        goto channel_init_error;
+    }
+
+
     if(retVal == TS_STATUS_OK)
     {
         *pTsChannels = pChan;
@@ -251,8 +272,6 @@ int32_t ts_channel_run(tsChannelHdl_t tsChannels, uint8_t en)
 
 int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
 {
-    int32_t retVal = TS_STATUS_OK;
-    bool needUpdateGain = false, needUpdateOffset = false;
 
     if(tsChannels == NULL || param == NULL)
     {
@@ -266,14 +285,23 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
 
     ts_channel_t* pInst = (ts_channel_t*)tsChannels;
 
+    return ts_channel_update_params(pInst, chanIdx, param, false);
+
+}
+
+static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force)
+{
+
+    int32_t retVal = TS_STATUS_OK;
+    bool needUpdateGain = false, needUpdateOffset = false;
     //Set AFE Bandwidth
-    if(param->bandwidth != pInst->chan[chanIdx].params.bandwidth)
+    if(param->bandwidth != pTsHdl->chan[chanIdx].params.bandwidth || force)
     {
-        retVal = ts_afe_set_bw_filter(&pInst->chan[chanIdx].afe, param->bandwidth);
+        retVal = ts_afe_set_bw_filter(&pTsHdl->chan[chanIdx].afe, param->bandwidth);
         if(retVal > 0)
         {
             LOG_DEBUG("Channel %d AFE BW set to %i MHz", chanIdx, retVal);
-            pInst->chan[chanIdx].params.bandwidth = retVal;
+            pTsHdl->chan[chanIdx].params.bandwidth = retVal;
         }
         else
         {
@@ -283,14 +311,14 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     }
 
     //Set AC/DC Coupling
-    if(param->coupling != pInst->chan[chanIdx].params.coupling)
+    if(param->coupling != pTsHdl->chan[chanIdx].params.coupling || force)
     {
-        if(TS_STATUS_OK == ts_afe_coupling_control(&pInst->chan[chanIdx].afe,
+        if(TS_STATUS_OK == ts_afe_coupling_control(&pTsHdl->chan[chanIdx].afe,
                                             (tsChannelCoupling_t)param->coupling))
         {
             
             LOG_DEBUG("Channel %d AFE set to %s coupling", chanIdx, param->coupling == TS_COUPLE_DC ? "DC" : "AC");
-            pInst->chan[chanIdx].params.coupling = param->coupling;
+            pTsHdl->chan[chanIdx].params.coupling = param->coupling;
         }
         else
         {
@@ -300,13 +328,13 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     }
 
     //Set Termination
-    if(param->term != pInst->chan[chanIdx].params.term)
+    if(param->term != pTsHdl->chan[chanIdx].params.term || force)
     {
-        if(TS_STATUS_OK == ts_afe_termination_control(&pInst->chan[chanIdx].afe,
+        if(TS_STATUS_OK == ts_afe_termination_control(&pTsHdl->chan[chanIdx].afe,
                                             (tsChannelTerm_t)param->term))
         {
             LOG_DEBUG("Channel %d AFE termination set to %s", chanIdx, param->term == TS_TERM_1M ? "1M" : "50");
-            pInst->chan[chanIdx].params.term = param->term;
+            pTsHdl->chan[chanIdx].params.term = param->term;
             needUpdateGain = true;
         }
         else
@@ -317,7 +345,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
     }
 
     //Set Voltage Scale
-    if(needUpdateGain || (param->volt_scale_mV != pInst->chan[chanIdx].params.volt_scale_mV))
+    if(needUpdateGain || (param->volt_scale_mV != pTsHdl->chan[chanIdx].params.volt_scale_mV) || force)
     {
         //Calculate dB gain value
         //TODO: Set both AFE and ADC gain?
@@ -325,7 +353,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
 
         LOG_DEBUG("Channel %d AFE request %i mdB gain", chanIdx, afe_gain_mdB);
 
-        retVal = ts_afe_set_gain(&pInst->chan[chanIdx].afe, afe_gain_mdB);
+        retVal = ts_afe_set_gain(&pTsHdl->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
         {
             LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_mV);
@@ -336,17 +364,17 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
             LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
             retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_mVPP / pow(10.0, (double)retVal / 20000.0));
             LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_mV, retVal);
-            pInst->chan[chanIdx].params.volt_scale_mV = retVal;
+            pTsHdl->chan[chanIdx].params.volt_scale_mV = retVal;
             needUpdateOffset = true;
         }
     }
 
     //Set Voltage Offset
-    if(needUpdateOffset || (param->volt_offset_mV != pInst->chan[chanIdx].params.volt_offset_mV))
+    if(needUpdateOffset || (param->volt_offset_mV != pTsHdl->chan[chanIdx].params.volt_offset_mV) || force)
     {
         //Adjust Trim DAC
         int32_t offset_actual = 0;
-        retVal = ts_afe_set_offset(&pInst->chan[chanIdx].afe, param->volt_offset_mV, &offset_actual);
+        retVal = ts_afe_set_offset(&pTsHdl->chan[chanIdx].afe, param->volt_offset_mV, &offset_actual);
         if(TS_STATUS_OK != retVal)
         {
             LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_mV);
@@ -355,14 +383,14 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mV offset", chanIdx, offset_actual);
-            pInst->chan[chanIdx].params.volt_offset_mV = offset_actual;
+            pTsHdl->chan[chanIdx].params.volt_offset_mV = offset_actual;
         }
     }
 
     //Set Active
-    if(param->active != pInst->chan[chanIdx].params.active)
+    if(param->active != pTsHdl->chan[chanIdx].params.active)
     {
-        retVal = ts_adc_channel_enable(&pInst->adc, chanIdx, param->active);
+        retVal = ts_adc_channel_enable(&pTsHdl->adc, chanIdx, param->active);
 
         if(TS_STATUS_OK != retVal)
         {
@@ -373,7 +401,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
         else
         {
             LOG_DEBUG("Channel %d %s", chanIdx, (param->active == 0 ? "disabled" : "enabled"));
-            pInst->chan[chanIdx].params.active = param->active;
+            pTsHdl->chan[chanIdx].params.active = param->active;
         }
     }
 
@@ -404,7 +432,9 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
         tsScopeState_t state = {0};
         return state;
     }
-    //TODO: Update XADC values
+
+    //Update XADC values
+    ts_channel_health_update((ts_channel_t*)tsChannels);
 
     return ((ts_channel_t*)tsChannels)->status;
 }
@@ -425,11 +455,62 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     }
     //TODO - Apply resolution,rate configuration
 
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    ts->status.adc_sample_rate = rate;
+    ts->status.adc_sample_resolution = resolution;
+
     return  TS_STATUS_OK;
+}
+
+
+int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    if(chanIdx >= TS_NUM_CHANNELS)
+    {
+        return TS_INVALID_PARAM;
+    }
+
+    //TODO Calibration value bounds checking
+    ts->chan[chanIdx].afe.cal = *cal;
+
+    LOG_DEBUG("Received Calibration for channel %d", chanIdx);
+    LOG_DEBUG("\tBuffer Output:                 %d mV", cal->buffer_mV);
+    LOG_DEBUG("\t+VBIAS:                        %d mV", cal->bias_mV);
+    LOG_DEBUG("\t1M Attenuator Gain:            %d mdB", cal->attenuatorGain1M_mdB);
+    LOG_DEBUG("\t50 Ohm Terminator Gain:        %d mdB", cal->attenuatorGain50_mdB);
+    LOG_DEBUG("\tBuffer Output Gain:            %d mV", cal->bufferGain_mdB);
+    LOG_DEBUG("\tTrim Rheostat:                 %d Ohm", cal->trimRheostat_range);
+    LOG_DEBUG("\tPreamp Low Input Gain Error:   %d mdB", cal->preampLowGainError_mdB);
+    LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampHighGainError_mdB);
+    LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampOutputGainError_mdB);
+    LOG_DEBUG("\tPreamp Low Output Offset:      %d mV", cal->preampLowOffset_mV);
+    LOG_DEBUG("\tPreamp High Output Offset:     %d mV", cal->preampHighOffset_mV);
+
+    //Force afe to recalculate gain/offsets
+    ts_channel_update_params(ts, chanIdx, &ts->chan[chanIdx].params, true);
+
+    return TS_STATUS_OK;
 }
 
 int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t mode, uint16_t pattern1, uint16_t pattern2)
 {
     
     return hmcad15xx_set_test_pattern(&((ts_channel_t*)tsChannels)->adc.adcDev, mode, pattern1, pattern2);
+}
+
+static int32_t ts_channel_health_update(ts_channel_t* pTsHdl)
+{
+    pTsHdl->status.sys_health.temp_c = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
+    pTsHdl->status.sys_health.vcc_int = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
+    pTsHdl->status.sys_health.vcc_aux = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
+    pTsHdl->status.sys_health.vcc_bram = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
+
+    return TS_STATUS_OK;
 }
