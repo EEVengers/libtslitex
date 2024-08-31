@@ -65,6 +65,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->cal.preampOutputGainError_mdB = 0;
     afe->cal.preampLowOffset_mV = 0;
     afe->cal.preampHighOffset_mV = 0;
+    afe->cal.preampInputBias_uA = TS_PREAMP_INPUT_BIAS_CURRENT_uA;
     
     Mcp4728ChannelConfig_t trimConf = {0};
     trimConf.vref = MCP4728_VREF_VDD;
@@ -75,7 +76,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     //Set Initial Configuration
     retVal = lmh6518_apply_config(afe->amp, afe->ampConf);
     mcp4728_channel_set(afe->trimDac, afe->trimDacCh, trimConf);
-    //TODO: Trim Dpot Defaults
+    mcp443x_set_wiper(afe->trimPot, afe->trimPotCh, TS_TRIM_DPOT_DEFAULT);
     gpio_clear(termination);
     gpio_clear(attenuator);
     gpio_clear(coupling);
@@ -203,11 +204,15 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
         R_trim = ((((trimPotVal) * afe->cal.trimRheostat_range) / MCP4432_MAX) + MCP4432_RWIPER);
 
         /** 
-         * (V_trim - V_dac) / R_trim = (V_bias - V_trim) / 500
+         * Preamp sinks an input bias current (I_trim), so need to add this factor when comparing current
+         * between top and bottom legs of the Trim voltage.
+         * 
+         * I_dac + I_bias + I_trim = 0
+         * (V_trim - V_dac)/R_trim + (V_trim - V_bias)/R_bias + I_trim = 0
          *  Solved for V_dac becomes:
-         *  V_dac = V_trim - ((V_bias - V_trim) * R_trim) / 500
+         *  V_dac = V_trim + R_trim * ((V_trim - V_bias)/R_bias + I_trim)
          */
-        V_dac = V_trim - ((R_trim * ((int32_t)afe->cal.bias_mV - V_trim)) / TS_BIAS_RESISTOR_NOMINAL);
+        V_dac = V_trim + (R_trim * ((1000 * (V_trim - afe->cal.bias_mV)/TS_BIAS_RESISTOR_NOMINAL) + afe->cal.preampInputBias_uA)) / 1000;
         if(V_dac > 0 && V_dac < TS_AFE_TRIM_VDD_NOMINAL)
         {
             LOG_DEBUG("Setting Vdac to %d mV, Rtrim to %d Ohm", V_dac, R_trim);
@@ -249,7 +254,9 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
 
     // Reverse offset calc
     V_dac = (offsetVal * TS_AFE_TRIM_VDD_NOMINAL) / MCP4728_FULL_SCALE_VAL;
-    V_trim = V_dac + ((((int32_t)afe->cal.bias_mV - V_dac) * R_trim) / ( TS_BIAS_RESISTOR_NOMINAL + R_trim));
+    V_trim = (int32_t) ((((double)TS_BIAS_RESISTOR_NOMINAL * (double)V_dac) + ((double)afe->cal.bias_mV * R_trim)
+                            - ((double)TS_BIAS_RESISTOR_NOMINAL * (double)R_trim * (double)afe->cal.preampInputBias_uA/1000.0))
+                            /(TS_BIAS_RESISTOR_NOMINAL + R_trim));
     *offset_actual = (int32_t)(((double)V_trim - ((double)V_zero)) / pow(10.0, (double)gain_afe/20000.0));
     LOG_DEBUG("AFE Offset actual V_trim %d mv, Offset %d mV", V_trim, *offset_actual);
     return TS_STATUS_OK;

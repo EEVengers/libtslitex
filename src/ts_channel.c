@@ -492,6 +492,7 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampOutputGainError_mdB);
     LOG_DEBUG("\tPreamp Low Output Offset:      %d mV", cal->preampLowOffset_mV);
     LOG_DEBUG("\tPreamp High Output Offset:     %d mV", cal->preampHighOffset_mV);
+    LOG_DEBUG("\tPreamp Input Bias Current:     %d uA", cal->preampInputBias_uA);
 
     //Force afe to recalculate gain/offsets
     ts_channel_update_params(ts, chanIdx, &ts->chan[chanIdx].params, true);

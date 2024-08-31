@@ -31,6 +31,7 @@ typedef struct tsChannelCalibration_s
     int32_t preampOutputGainError_mdB;
     int32_t preampLowOffset_mV;
     int32_t preampHighOffset_mV;
+    int32_t preampInputBias_uA;
 } tsChannelCalibration_t;
 
 
