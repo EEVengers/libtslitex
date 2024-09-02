@@ -34,6 +34,23 @@ typedef struct tsChannelCalibration_s
     int32_t preampInputBias_uA;
 } tsChannelCalibration_t;
 
+typedef struct tsChannelCtrl_e
+{
+    // FE Attenuator
+    uint8_t atten;
+    // FE Termination
+    uint8_t term;
+    // DC Coupling
+    uint8_t dc_couple;
+    // Trim DAC
+    uint16_t dac;
+    // Trim DPOT
+    uint8_t dpot;
+    //Preamp Control
+    uint8_t pga_high_gain;
+    uint8_t pga_atten;
+    uint8_t pga_bw;
+} tsChannelCtrl_t;
 
 typedef struct tsScopeCalibration_s
 {
@@ -52,7 +69,7 @@ typedef struct tsScopeCalibration_s
 */
 int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t cal);
 
-
+int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
 #ifdef __cplusplus
 }
 #endif

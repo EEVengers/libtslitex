@@ -23,7 +23,7 @@
 
 #define MCP4728_DATA_VAL_LOWER(val) ((val) & 0xFF)
 #define MCP4728_DATA_VAL_UPPER(val) (((val) >> 8) & 0x0F)
-#define MCP4728_DATA_GX(gx)         (((gx) << 4) & 0x01)
+#define MCP4728_DATA_GX(gx)         (((gx) << 4) & 0x10)
 #define MCP4728_DATA_PD(pd)         (((pd) << 5) & 0x60)
 #define MCP4728_DATA_VREF(vr)       (((vr) << 7) & 0x80)
 

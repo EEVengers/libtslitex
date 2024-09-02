@@ -26,6 +26,8 @@
 #include "afe.h"
 #include "adc.h"
 #include "util.h"
+#include "mcp443x.h"
+#include "mcp4728.h"
 
 
 typedef struct ts_channel_s {
@@ -485,7 +487,7 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\t+VBIAS:                        %d mV", cal->bias_mV);
     LOG_DEBUG("\t1M Attenuator Gain:            %d mdB", cal->attenuatorGain1M_mdB);
     LOG_DEBUG("\t50 Ohm Terminator Gain:        %d mdB", cal->attenuatorGain50_mdB);
-    LOG_DEBUG("\tBuffer Output Gain:            %d mV", cal->bufferGain_mdB);
+    LOG_DEBUG("\tBuffer Output Gain:            %d mdB", cal->bufferGain_mdB);
     LOG_DEBUG("\tTrim Rheostat:                 %d Ohm", cal->trimRheostat_range);
     LOG_DEBUG("\tPreamp Low Input Gain Error:   %d mdB", cal->preampLowGainError_mdB);
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampHighGainError_mdB);
@@ -496,6 +498,113 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
 
     //Force afe to recalculate gain/offsets
     ts_channel_update_params(ts, chanIdx, &ts->chan[chanIdx].params, true);
+
+    return TS_STATUS_OK;
+}
+
+int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl)
+{
+    int32_t retVal = TS_STATUS_OK;
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    if(chanIdx >= TS_NUM_CHANNELS)
+    {
+        return TS_INVALID_PARAM;
+    }
+
+
+    //Set AFE Bandwidth
+    retVal = ts_afe_set_bw_filter(&ts->chan[chanIdx].afe, ctrl.pga_bw);
+    if(retVal > 0)
+    {
+        LOG_DEBUG("Channel %d AFE BW set to %i MHz", chanIdx, retVal);
+    }
+    else
+    {
+        LOG_ERROR("Unable to set Channel %d bandwidth %d", chanIdx, retVal);
+        return TS_INVALID_PARAM;
+    }
+
+
+    //Set AC/DC Coupling
+    if(TS_STATUS_OK == ts_afe_coupling_control(&ts->chan[chanIdx].afe,
+                                        ctrl.dc_couple == 1 ? TS_COUPLE_DC : TS_COUPLE_AC ))
+    {
+        
+        LOG_DEBUG("Channel %d AFE set to %s coupling", chanIdx, ctrl.dc_couple == 1 ? "DC" : "AC");
+    }
+    else
+    {
+        LOG_ERROR("Unable to set Channel %d AC/DC Coupling: %x", chanIdx, ctrl.dc_couple);
+        return TS_INVALID_PARAM;
+    }
+    
+    //Set Attenuator
+    if(TS_STATUS_OK == ts_afe_attenuation_control(&ts->chan[chanIdx].afe, ctrl.atten))
+    {
+        LOG_DEBUG("Channel %d AFE attenuation set to %i", chanIdx, ctrl.atten);
+    }
+    else
+    {
+        LOG_ERROR("Unable to set Channel %d Attenuation: %x", chanIdx, ctrl.atten);
+        return TS_INVALID_PARAM;
+    }
+
+    //Set Termination
+    if(TS_STATUS_OK == ts_afe_termination_control(&ts->chan[chanIdx].afe,
+                                        ctrl.term == 1 ? TS_TERM_50 : TS_TERM_1M))
+    {
+        LOG_DEBUG("Channel %d AFE termination set to %s", chanIdx, ctrl.term == 0 ? "1M" : "50");
+    }
+    else
+    {
+        LOG_ERROR("Unable to set Channel %d Termination: %x", chanIdx, ctrl.term);
+        return TS_INVALID_PARAM;
+    }
+
+    //Set Preamp
+    lmh6518Config_t preamp = LMH6518_CONFIG_INIT;
+    preamp.atten = ctrl.pga_atten;
+    preamp.filter = ctrl.pga_bw;
+    preamp.preamp = ctrl.pga_high_gain = 0 ? PREAMP_LG : PREAMP_HG;
+    preamp.pm = PM_AUX_HIZ;
+
+    retVal = lmh6518_apply_config(ts->chan[chanIdx].afe.amp, preamp);
+    if(TS_STATUS_ERROR == retVal)
+    {
+        LOG_ERROR("Unable to set Channel %d Preamp", chanIdx);
+        return TS_INVALID_PARAM;
+    }
+    else
+    {
+        LOG_DEBUG("Channel %d Preamp set to %i bw, %i atten, and %s", chanIdx,
+                    preamp.filter, preamp.atten, preamp.preamp == PREAMP_LG ? "Low Gain" : "High Gain");
+    }
+
+    //Set Trim
+    int32_t offset_actual = 0;
+    Mcp4728ChannelConfig_t conf;
+    conf.gain = MCP4728_GAIN_1X;
+    conf.vref = MCP4728_VREF_VDD;
+    conf.power = MCP4728_PD_NORMAL;
+    conf.value = ctrl.dac;
+    
+    retVal = mcp4728_channel_set(ts->chan[chanIdx].afe.trimDac, ts->chan[chanIdx].afe.trimDacCh, conf);
+    retVal |= mcp443x_set_wiper(ts->chan[chanIdx].afe.trimPot, ts->chan[chanIdx].afe.trimPotCh, ctrl.dpot);
+    if(TS_STATUS_OK != retVal)
+    {
+        LOG_ERROR("Unable to set Channel %d Trim Voltage", chanIdx);
+        return TS_INVALID_PARAM;
+    }
+    else
+    {
+        LOG_DEBUG("Channel %d DAC set to %i, DPOT set to %i", chanIdx, ctrl.dac, ctrl.dpot);
+    }
 
     return TS_STATUS_OK;
 }
