@@ -147,14 +147,16 @@ int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelP
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf)
+int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* state)
 {
-    if(!conf || !ts)
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(!state || !pInst)
     {
         return TS_STATUS_ERROR;
     }
 
-    *conf = ts_channel_scope_status((tsChannelHdl_t)ts);
+    *state = ts_channel_scope_status(pInst->pChannel);
+    samples_update_status(&pInst->samples);
 
     return TS_STATUS_OK;
 }

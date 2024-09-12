@@ -64,6 +64,14 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en);
 int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_t bufferLen);
 
 /**
+ * @brief Update the sample buffer counters from the driver
+ * 
+ * @param inst Sample Stream Instance pointer
+ * @return int32_t TS_STATUS_OK if successful
+ */
+int32_t samples_update_status(sampleStream_t* inst);
+
+/**
  * @brief Shutdown and Close the sample engine
  * 
  * @param inst Sample Stream Instance pointer

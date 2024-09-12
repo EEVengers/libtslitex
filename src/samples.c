@@ -134,6 +134,20 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
     return retVal;
 }
 
+int32_t samples_update_status(sampleStream_t* inst)
+{
+    if(NULL == inst)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    litepcie_dma_writer(inst->dma, inst->active,
+                        &inst->dma_buffer_count,
+                        &inst->driver_buffer_count);
+
+    return TS_STATUS_OK;
+}
+
 int32_t samples_teardown(sampleStream_t* inst)
 {
     int32_t retVal = TS_STATUS_OK;

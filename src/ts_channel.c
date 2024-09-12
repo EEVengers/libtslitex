@@ -128,11 +128,13 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->afe_power.reg = TS_AFE_POWER_REG;
     pChan->afe_power.bit_mask = TS_AFE_POWER_MASK;
     gpio_set(pChan->afe_power);
+    pChan->status.afe_state = 1;
 
     pChan->acq_power.fd = ts;
     pChan->acq_power.reg = TS_ACQ_POWER_REG;
     pChan->acq_power.bit_mask = TS_ACQ_POWER_MASK;
     gpio_set(pChan->acq_power);
+    pChan->status.power_state = 1;
 
 
     //Initialize PLL Clock Gen
@@ -144,6 +146,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     //sleep 10 ms
     NS_DELAY(10000000);
     gpio_set(pChan->pll.nRst);
+    pChan->status.pll_state = 1;
     NS_DELAY(10000000);
 
     pChan->pll.clkGen.fd = ts;
@@ -268,6 +271,7 @@ int32_t ts_channel_run(tsChannelHdl_t tsChannels, uint8_t en)
     }
     ts_channel_t* pChan = (ts_channel_t*)tsChannels;
 
+    pChan->status.adc_state = en ? 1 : 0;
     return ts_adc_run(&pChan->adc, en);
 
 }
@@ -460,6 +464,7 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     ts_channel_t* ts =  (ts_channel_t*)tsChannels;
     ts->status.adc_sample_rate = rate;
     ts->status.adc_sample_resolution = resolution;
+    ts->status.adc_sample_bits = 8;
 
     return  TS_STATUS_OK;
 }
