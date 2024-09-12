@@ -83,7 +83,8 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
     //Start/Stop DMA
     litepcie_dma_writer(inst->dma, en,
                         &inst->dma_buffer_count,
-                        &inst->driver_buffer_count);
+                        &inst->driver_buffer_count,
+                        &inst->dropped_buffer_count);
 
     return TS_STATUS_OK;
 }
@@ -143,7 +144,8 @@ int32_t samples_update_status(sampleStream_t* inst)
 
     litepcie_dma_writer(inst->dma, inst->active,
                         &inst->dma_buffer_count,
-                        &inst->driver_buffer_count);
+                        &inst->driver_buffer_count,
+                        &inst->dropped_buffer_count);
 
     return TS_STATUS_OK;
 }
@@ -160,7 +162,8 @@ int32_t samples_teardown(sampleStream_t* inst)
         inst->active = 0;
         litepcie_dma_writer(inst->dma, 0, 
                             &inst->dma_buffer_count,
-                            &inst->driver_buffer_count);
+                            &inst->driver_buffer_count,
+                            &inst->dropped_buffer_count);
 
         litepcie_release_dma(inst->dma, 0, 1);
         litepcie_close(inst->dma);

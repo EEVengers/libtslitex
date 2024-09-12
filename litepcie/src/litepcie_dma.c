@@ -35,20 +35,22 @@ void litepcie_dma_set_loopback(file_t fd, uint8_t loopback_enable) {
     checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA, m));
 }
 
-void litepcie_dma_writer(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count) {
+void litepcie_dma_writer(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_writer m;
     m.enable = enable;
     checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA_WRITER, m));
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
+    *lost_count = m.lost_count;
 }
 
-void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count) {
+void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_reader m;
     m.enable = enable;
     checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA_READER, m));
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
+    *lost_count = m.lost_count;
 }
 
 /* lock */
@@ -164,9 +166,9 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
 void litepcie_dma_cleanup(struct litepcie_dma_ctrl *dma)
 {
     if (dma->use_reader)
-        litepcie_dma_reader(dma->fds.fd, 0, &dma->reader_hw_count, &dma->reader_sw_count);
+        litepcie_dma_reader(dma->fds.fd, 0, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
     if (dma->use_writer)
-        litepcie_dma_writer(dma->fds.fd, 0, &dma->writer_hw_count, &dma->writer_sw_count);
+        litepcie_dma_writer(dma->fds.fd, 0, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
 
     litepcie_release_dma(dma->fds.fd, dma->use_reader, dma->use_writer);
 
@@ -192,9 +194,9 @@ void litepcie_dma_process(struct litepcie_dma_ctrl *dma)
 
     /* set / get dma */
     if (dma->use_writer)
-        litepcie_dma_writer(dma->fds.fd, 1, &dma->writer_hw_count, &dma->writer_sw_count);
+        litepcie_dma_writer(dma->fds.fd, 1, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
     if (dma->use_reader)
-        litepcie_dma_reader(dma->fds.fd, 1, &dma->reader_hw_count, &dma->reader_sw_count);
+        litepcie_dma_reader(dma->fds.fd, 1, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
 
 #if defined(_WIN32)
     uint32_t retLen = 0;

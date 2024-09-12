@@ -55,12 +55,14 @@ struct litepcie_ioctl_dma_writer {
 	uint8_t enable;
 	int64_t hw_count;
 	int64_t sw_count;
+	int64_t lost_count;
 };
 
 struct litepcie_ioctl_dma_reader {
 	uint8_t enable;
 	int64_t hw_count;
 	int64_t sw_count;
+	int64_t lost_count;
 };
 
 struct litepcie_ioctl_lock {
@@ -103,7 +105,6 @@ struct litepcie_ioctl_mmap_dma_update {
 //
 // Define an Interface Guid so that apps can find the device and talk to it.
 //
-
 DEFINE_GUID (GUID_DEVINTERFACE_litepciedrv,
         0xdac3fa32, 0xb912, 0x4302, 0xa1, 0xe7, 0xc3, 0x72, 0x99, 0x5, 0x3d, 0xac);
     // {DAC3FA32-B912-4302-A1E7-C37299053DAC}

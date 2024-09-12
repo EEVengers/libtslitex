@@ -30,6 +30,7 @@ typedef struct sampleStream_s
     file_t dma;
     int64_t dma_buffer_count;
     int64_t driver_buffer_count;
+    int64_t dropped_buffer_count;
     uint8_t active;
 } sampleStream_t;
 

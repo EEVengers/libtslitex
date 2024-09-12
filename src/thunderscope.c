@@ -157,7 +157,7 @@ int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* state)
 
     *state = ts_channel_scope_status(pInst->pChannel);
     samples_update_status(&pInst->samples);
-
+    state->adc_lost_buffer_count = pInst->samples.dropped_buffer_count;
     return TS_STATUS_OK;
 }
 
