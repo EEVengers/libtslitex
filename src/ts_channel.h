@@ -16,6 +16,7 @@ extern "C" {
 
 #include <stdint.h>
 #include "ts_common.h"
+#include "ts_calibration.h"
 #include "liblitepcie.h"
 #include "hmcad15xx.h"
 
@@ -84,6 +85,26 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels);
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
 int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution);
+
+/**
+ * @brief Set the calibration parameters for a channel
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param chanIdx Channel Index
+ * @param cal Pointer to the calibration structure to apply
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal);
+
+/** 
+ * @brief Manually set the AFE controls for a channel
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param chanIdx Channel Index
+ * @param ctrl AFE parameters to apply
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl);
 
 /**
  * @brief Set the ADC into a Test Mode

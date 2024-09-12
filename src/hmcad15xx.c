@@ -34,6 +34,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     // Set initial configuration
     adc->mode = HMCAD15_SINGLE_CHANNEL;
     adc->width = HMCAD15_8_BIT;
+    adc->format = HMCAD15_BTC_FMT_TWOS_COMPL;
     adc->channelCfg[0].active = 1;
     adc->channelCfg[0].input = HMCAD15_ADC_IN1;
     adc->channelCfg[0].invert = 1;
@@ -240,6 +241,9 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
     // Set LVDS DDR Phase
     data = HMCAD15_LVDS_PHASE(adc->lvdsPhase);
     hmcad15xxRegWrite(adc, HMCAD15_REG_LCLK_PHASE, data);
+
+    data = HMCAD15_DATA_FMT_BTC(adc->format);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_DATA_FMT, data);
 }
 
 static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)

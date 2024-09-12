@@ -200,11 +200,11 @@ static void test_io(file_t fd)
     }
 }
 
-static void test_capture(file_t fd, uint8_t channelBitmap, uint16_t bandwidth, 
+static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
     uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
 {
     uint8_t numChan = 0;
-    tsHandle_t tsHdl = thunderscopeOpen(0);
+    tsHandle_t tsHdl = thunderscopeOpen(idx);
 
     // tsChannelHdl_t channels;
     // ts_channel_init(&channels, fd);
@@ -359,6 +359,7 @@ static void print_help(void)
     printf("TS Test Util Usage:\r\n");
     printf("\t io - run I/O Test\r\n");
     printf("\t capture - run Sample Capture Test\r\n");
+    printf("\t\t -d <device>      Device Index\r\n");
     printf("\t\t -c <channels>    Channel bitmap\r\n");
     printf("\t\t -b <bw>          Channel Bandwidth [MHz]\r\n");
     printf("\t\t -v <mvolts>      Channel Full Scale Volts [millivolt]\r\n");
@@ -374,9 +375,11 @@ int main(int argc, char** argv)
 {
     const char* cmd = argv[0];
     unsigned char fpga_identifier[256];
+    char devicePath[TS_IDENT_STR_LEN];
 
 
     file_t fd;
+    uint32_t idx = 0;
     int i;
     uint8_t channelBitmap = 0x0F;
     uint16_t bandwidth = 350;
@@ -386,6 +389,7 @@ int main(int argc, char** argv)
     uint8_t term = 0;
 
     struct optparse_long argList[] = {
+        {"dev",      'd', OPTPARSE_REQUIRED},
         {"chan",     'c', OPTPARSE_REQUIRED},
         {"bw",       'b', OPTPARSE_REQUIRED},
         {"voltsmv",  'v', OPTPARSE_REQUIRED},
@@ -411,6 +415,10 @@ int main(int argc, char** argv)
             break;
         case 'c':
             channelBitmap = strtol(options.optarg, NULL, 0);
+            argCount+=2;
+            break;
+        case 'd':
+            idx = strtol(options.optarg, NULL, 0);
             argCount+=2;
             break;
         case 'v':
@@ -443,7 +451,10 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    fd = litepcie_open(LITEPCIE_CTRL_NAME(0), FILE_FLAGS);
+
+    snprintf(devicePath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), idx);
+    printf("Opening Device %s\n", devicePath);
+    fd = litepcie_open((const char*)devicePath, FILE_FLAGS);
     if(fd == INVALID_HANDLE_VALUE) {
         fprintf(stderr, "Could not init driver\n");
         exit(1);
@@ -483,7 +494,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
+        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
     }
     //Print Help
     else

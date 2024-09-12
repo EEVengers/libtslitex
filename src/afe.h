@@ -19,6 +19,7 @@ extern "C" {
 #include "gpio.h"
 #include "lmh6518.h"
 #include "ts_common.h"
+#include "ts_calibration.h"
 
 
 typedef struct ts_afe_s
@@ -36,7 +37,7 @@ typedef struct ts_afe_s
     bool isAttenuated;
     gpio_t couplingPin;
     tsChannelCoupling_t coupling;
-    ts_afe_cal_t cal;
+    tsChannelCalibration_t cal;
 }ts_afe_t;
 
 /**

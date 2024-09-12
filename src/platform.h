@@ -21,8 +21,15 @@
 #define TS_ADC_CH_INVERT        (1)
 
 #define TS_AFE_OUTPUT_NOMINAL_mVPP              (700.0)
-#define TS_ATTENUATION_VALUE_mdB                (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
+#define TS_ATTENUATION_1M_GAIN_mdB              (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
 #define TS_TERMINATION_50OHM_GAIN_mdB           (-13979) /**< 5x Attenuation from 50Ohm mode.  20 * log(1/5) * 1000 */
+
+#define TS_VBUFFER_NOMINAL_MV                   (2500)
+#define TS_VBIAS_NOMINAL_MV                     (2500)
+#define TS_AFE_TRIM_VDD_NOMINAL                 (5000)
+#define TS_BUFFER_GAIN_NOMINAL_mdB              (-250)
+#define TS_BIAS_RESISTOR_NOMINAL                (500)
+#define TS_PREAMP_INPUT_BIAS_CURRENT_uA         (40)
 
 #define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
 #define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
@@ -43,7 +50,7 @@
 #define TS_AFE_3_TRIM_DAC       (3)
 
 #define TS_TRIM_DPOT_I2C_ADDR   (0x2C)
-#define TS_TRIM_DPOT_DEFAULT    (0x00)
+#define TS_TRIM_DPOT_DEFAULT    (0x40)
 
 #define TS_AFE_0_TRIM_DPOT      (2)
 #define TS_AFE_1_TRIM_DPOT      (0)

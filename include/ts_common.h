@@ -46,10 +46,10 @@ typedef enum tsChannelTerm_e
 
 typedef struct tsDeviceInfo_s
 {
-    uint32_t deviceID;
-    char devicePath[TS_IDENT_STR_LEN];
+    uint32_t device_id;
+    char device_path[TS_IDENT_STR_LEN];
     char identity[TS_IDENT_STR_LEN];
-    char serialNumber[TS_IDENT_STR_LEN];
+    char serial_number[TS_IDENT_STR_LEN];
 } tsDeviceInfo_t;
 
 typedef struct tsChannelParam_s
@@ -87,12 +87,6 @@ typedef struct tsScopeState_s
     } sys_health;
 } tsScopeState_t;
 
-
-typedef struct ts_afe_cal_s
-{
-    uint32_t buffer_mv;
-    uint32_t bias_mv;
-}ts_afe_cal_t;
 
 #ifdef __cplusplus
 }

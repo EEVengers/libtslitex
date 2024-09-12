@@ -13,6 +13,7 @@
 
 #include "thunderscope.h"
 #include "ts_common.h"
+#include "ts_calibration.h"
 #include "ts_channel.h"
 #include "samples.h"
 #include "util.h"
@@ -48,14 +49,14 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
     //If index valid
     if(testDev != INVALID_HANDLE_VALUE)
     {
-        info->deviceID = devIndex;
+        info->device_id = devIndex;
         //Copy device identifier
         for (uint32_t i = 0; i < TS_IDENT_STR_LEN; i++)
         {
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
         //TODO Implement Serial Number
-        strncpy(info->devicePath, testPath, TS_IDENT_STR_LEN);
+        strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
     }
@@ -170,10 +171,28 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, uint32_t cal)
+int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t cal)
 {
-    //TODO
-    return TS_STATUS_ERROR;
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(!pInst)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    return ts_channel_calibration_set(pInst->pChannel, channel, &cal);
+}
+
+int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(!pInst)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    return ts_channel_calibration_manual(pInst->pChannel, channel, ctrl);
 }
 
 int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
