@@ -622,10 +622,10 @@ int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t m
 
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl)
 {
-    pTsHdl->status.sys_health.temp_c = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15);
-    pTsHdl->status.sys_health.vcc_int = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCINT_ADDR) / 4096 * 3);
-    pTsHdl->status.sys_health.vcc_aux = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCAUX_ADDR) / 4096 * 3);
-    pTsHdl->status.sys_health.vcc_bram = (uint32_t)((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
+    pTsHdl->status.sys_health.temp_c = (uint32_t)((double)(litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_TEMPERATURE_ADDR) * 503.975 / 4096 - 273.15)*1000);
+    pTsHdl->status.sys_health.vcc_int = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCINT_ADDR) / 4096 * 3)*1000);
+    pTsHdl->status.sys_health.vcc_aux = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCAUX_ADDR) / 4096 * 3)*1000);
+    pTsHdl->status.sys_health.vcc_bram = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3)*1000);
 
     return TS_STATUS_OK;
 }
