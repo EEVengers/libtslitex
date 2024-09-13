@@ -173,7 +173,7 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t cal)
+int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
@@ -182,7 +182,7 @@ int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCal
         return TS_STATUS_ERROR;
     }
 
-    return ts_channel_calibration_set(pInst->pChannel, channel, &cal);
+    return ts_channel_calibration_set(pInst->pChannel, channel, cal);
 }
 
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)

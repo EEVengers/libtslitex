@@ -67,7 +67,7 @@ typedef struct tsScopeCalibration_s
  * @param cal TBD Calibration data
  * @return int32_t TS_STATUS_OK if the calibration was accepted
 */
-int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t cal);
+int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal);
 
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
 #ifdef __cplusplus

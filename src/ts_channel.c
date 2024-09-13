@@ -102,6 +102,13 @@ struct ts_channel_hw_conf_s {
     }
 };
 
+const static tsChannelParam_t g_tsParamsDefault = {.active = false,
+                                                   .bandwidth = 0,
+                                                   .coupling = TS_COUPLE_DC,
+                                                   .term = TS_TERM_1M,
+                                                   .volt_offset_mV = 0,
+                                                   .volt_scale_mV = 700};
+
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 
@@ -212,6 +219,8 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         {
             goto channel_init_error;
         }
+
+        pChan->chan[chanIdx].params = g_tsParamsDefault;
     }
 
     //Initialize Status
