@@ -28,6 +28,8 @@
 #include "util.h"
 #include "mcp443x.h"
 #include "mcp4728.h"
+#include "mcp_zl3026x.h"
+#include "mcp_clkgen.h"
 
 
 typedef struct ts_channel_s {
@@ -42,6 +44,7 @@ typedef struct ts_channel_s {
     struct {
         i2c_t clkGen;
         gpio_t nRst;
+        zl3026x_clk_config_t clkConf;
     }pll;
     gpio_t afe_power;
     gpio_t acq_power;
@@ -158,7 +161,30 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
-    retVal = mcp_clkgen_config(pChan->pll.clkGen, TS_PLL_CONF, TS_PLL_CONF_SIZE);
+    
+    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].enable = 1;
+    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].input_freq = TS_PLL_INPUT_RATE;
+    pChan->pll.clkConf.input_select = TS_PLL_INPUT_SEL;
+    pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
+    pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = TS_PLL_REFOUT_RATE_DEFAULT;
+    pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_mode = TS_PLL_REFOUT_CLK_MODE;
+    pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_pll_select = TS_PLL_REFOUT_PLL_MODE;
+    pChan->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].enable = 1;
+    pChan->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = TS_PLL_SAMPLE_RATE_DEFAULT;
+    pChan->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_mode = TS_PLL_SAMPLE_CLK_MODE;
+    pChan->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_pll_select = TS_PLL_SAMPLE_PLL_MODE;
+
+    mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
+    int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, pChan->pll.clkConf);
+    if(clk_len > 0)
+    {
+        retVal = mcp_clkgen_config(pChan->pll.clkGen, clk_regs, clk_len);
+    }
+    else
+    {
+        LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
+        retVal = TS_STATUS_ERROR;
+    }
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
@@ -458,22 +484,36 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
 {
     if(tsChannels == NULL)
     {
-        //Return empty state
-        tsScopeState_t state = {0};
         return TS_STATUS_ERROR;
     }
     //Input validation
     //TODO - Support valid rate/resolution combinations
-    if((rate != 1000000000) || (resolution != 256))
+    if((rate < 270000000) || (resolution != 256))
     {
         return TS_INVALID_PARAM;
     }
-    //TODO - Apply resolution,rate configuration
 
+    // Apply resolution,rate configuration
     ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    zl3026x_clk_config_t newConf = ts->pll.clkConf;
+    newConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = rate;
+    
+    mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
+    int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
+    if(clk_len > 0)
+    {
+        mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len);
+        ts->pll.clkConf = newConf;
+    }
+    else
+    {
+        LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
+        return TS_STATUS_ERROR;
+    }
+
     ts->status.adc_sample_rate = rate;
     ts->status.adc_sample_resolution = resolution;
-    ts->status.adc_sample_bits = 8;
+    ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
 
     return  TS_STATUS_OK;
 }

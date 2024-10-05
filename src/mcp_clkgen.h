@@ -15,6 +15,8 @@ extern "C" {
 
 #include "i2c.h"
 
+#define MCP_CLKGEN_ARR_MAX_LEN  (100)
+
 typedef enum mcp_clkgen_action_e {
     MCP_CLKGEN_DELAY,
     MCP_CLKGEN_WRITE_REG
