@@ -424,7 +424,8 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mV offset", chanIdx, offset_actual);
-            pTsHdl->chan[chanIdx].params.volt_offset_mV = offset_actual;
+            // pTsHdl->chan[chanIdx].params.volt_offset_mV = offset_actual;
+            pTsHdl->chan[chanIdx].params.volt_offset_mV = param->volt_offset_mV;
         }
     }
 
