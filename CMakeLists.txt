@@ -36,6 +36,7 @@ set(TS_SOURCES
     src/mcp4728.c
     src/mcp443x.c
     src/mcp_clkgen.c
+    src/mcp_zl3026x.c
     src/platform.c
     src/samples.c
     src/ts_channel.c
@@ -49,6 +50,7 @@ set(TS_HEADERS
     src/adc.h
     src/afe.h
     src/mcp_clkgen.h
+    src/mcp_zl3026x.h
     src/platform.h
     src/lmh6518.h
     src/mcp4728.h
