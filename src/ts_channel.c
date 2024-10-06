@@ -489,7 +489,7 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     }
     //Input validation
     //TODO - Support valid rate/resolution combinations
-    if((rate < 270000000) || (resolution != 256))
+    if((rate < TS_MIN_SAMPLE_RATE) || (resolution != 256))
     {
         return TS_INVALID_PARAM;
     }
@@ -503,13 +503,16 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
     if(clk_len > 0)
     {
-        mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len);
+        if(TS_STATUS_OK != mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len))
+        {
+            return TS_STATUS_ERROR;
+        }
         ts->pll.clkConf = newConf;
     }
     else
     {
         LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
-        return TS_STATUS_ERROR;
+        return clk_len;
     }
 
     ts->status.adc_sample_rate = rate;

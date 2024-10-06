@@ -13,6 +13,7 @@
 #include "mcp_clkgen.h"
 
 #include "util.h"
+#include "ts_common.h"
 
 
 #define MCP_ADD_REG_WRITE(conf, reg, val)   { (conf)->action = MCP_CLKGEN_WRITE_REG; \
@@ -89,7 +90,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         {
             //ERROR
             LOG_ERROR("Invalid Clock Config: No Input Clocks Enabled");
-            return -1;
+            return TS_STATUS_ERROR;
         }
         MCP_ADD_REG_WRITE(&confData[calLen], 0x0004, in_ch_bitmap);
         calLen++;
@@ -110,7 +111,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
                 {
                     //Error
                     LOG_ERROR("Clock Configuration error: Out %d and %d are in the same group but have different PLL Configs", chA, chB);
-                    return -1;
+                    return TS_STATUS_ERROR;
                 }
             }
             uint8_t pll_mux = 0; // ZL3026X_PLL_INT_DIV
@@ -179,7 +180,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     if(pll_int_div < 4 || pll_int_div > 15)
     {
         LOG_ERROR("Invalid APLL Configuration: Int Div %u", pll_int_div);
-        return -1;
+        return TS_INVALID_PARAM;
     }
 
     //Get exact VCO frequency
@@ -188,7 +189,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     if(pll_vco < 3700000000 || pll_vco > 4200000000)
     {
         LOG_ERROR("Invalid APLL Configuration: VCO Freq %llu", pll_vco);
-        return -1;
+        return TS_INVALID_PARAM;
     }
 
     double multiplier = pll_vco / mcp_zl3026x_selected_input_freq(&conf);

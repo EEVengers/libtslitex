@@ -25,6 +25,8 @@ extern "C" {
 
 #define TS_IDENT_STR_LEN            (256)
 
+#define TS_MIN_SAMPLE_RATE          (270000000)
+
 /**
  * @brief Opaque Handle to a Thunderscope device instance
  *  
