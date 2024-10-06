@@ -30,6 +30,7 @@ typedef struct sampleStream_s
     file_t dma;
     int64_t dma_buffer_count;
     int64_t driver_buffer_count;
+    int64_t dropped_buffer_count;
     uint8_t active;
 } sampleStream_t;
 
@@ -62,6 +63,14 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en);
  * @return int32_t Number of bytes read, or a negative error value
  */
 int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_t bufferLen);
+
+/**
+ * @brief Update the sample buffer counters from the driver
+ * 
+ * @param inst Sample Stream Instance pointer
+ * @return int32_t TS_STATUS_OK if successful
+ */
+int32_t samples_update_status(sampleStream_t* inst);
 
 /**
  * @brief Shutdown and Close the sample engine

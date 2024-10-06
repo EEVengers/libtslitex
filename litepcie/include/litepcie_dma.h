@@ -31,8 +31,8 @@ struct litepcie_dma_ctrl {
     pollfd_t fds;
     uint32_t channel;
     char *buf_rd, *buf_wr;
-    int64_t reader_hw_count, reader_sw_count;
-    int64_t writer_hw_count, writer_sw_count;
+    int64_t reader_hw_count, reader_sw_count, reader_dropped_count;
+    int64_t writer_hw_count, writer_sw_count, writer_dropped_count;
     unsigned buffers_available_read, buffers_available_write;
     unsigned usr_read_buf_offset, usr_write_buf_offset;
     struct litepcie_ioctl_mmap_dma_info mmap_dma_info;
@@ -40,8 +40,8 @@ struct litepcie_dma_ctrl {
 };
 
 void litepcie_dma_set_loopback(file_t fd, uint8_t loopback_enable);
-void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count);
-void litepcie_dma_writer(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count);
+void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
+void litepcie_dma_writer(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
 
 uint8_t litepcie_request_dma(file_t fd, uint8_t reader, uint8_t writer);
 void litepcie_release_dma(file_t fd, uint8_t reader, uint8_t writer);

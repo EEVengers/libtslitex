@@ -266,7 +266,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         {
             for(uint32_t loop=0; loop < 100; loop++)
             {
-                uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x8000);
+                uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x1000);
                 //Collect Samples
                 // int32_t readRes = samples_get_buffers(&samp, sampleBuffer, readReq);
                 int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
