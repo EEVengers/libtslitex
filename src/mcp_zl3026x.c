@@ -174,6 +174,12 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         }
     }
 
+    //Scale pll_out to be in a good range
+    while(pll_out < ZL3026X_MIN_PLL_OUT)
+    {
+        pll_out *= 2;
+    }
+
     uint64_t pll_vco = 4200000000;
     uint32_t pll_int_div = pll_vco/pll_out;
     //validate pll_int_div 4-15
