@@ -319,20 +319,37 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         
         AudioFile<uint8_t> outWav;
         outWav.setBitDepth(8);
-        outWav.setSampleRate(1000000000/numChan);
         outWav.setNumChannels(numChan);
+        if(numChan > 2)
+        {
+            outWav.setSampleRate(1000000000/4);
+        }
+        else
+        {
+            outWav.setSampleRate(1000000000/numChan);
+        }
 
         AudioFile<uint8_t>::AudioBuffer wavBuffer;
         wavBuffer.resize(numChan);
-        wavBuffer[0].resize(sampleLen/numChan);
-        if(numChan > 1)
+        if(numChan == 1)
         {
+            wavBuffer[0].resize(sampleLen);
+        }
+        else if(numChan == 2)
+        {
+            wavBuffer[0].resize(sampleLen/numChan);
             wavBuffer[1].resize(sampleLen/numChan);
         }
-        if(numChan > 2)
+        else
         {
-            wavBuffer[2].resize(sampleLen/numChan);
-            wavBuffer[3].resize(sampleLen/numChan);
+            wavBuffer[0].resize(sampleLen/4);
+            wavBuffer[1].resize(sampleLen/4);
+            wavBuffer[2].resize(sampleLen/4);
+
+            if(numChan == 4)
+            {
+                wavBuffer[3].resize(sampleLen/4);
+            }
         }
         uint64_t sample = 0;
         uint64_t idx = 0;
@@ -345,7 +362,14 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 if(numChan > 2)
                 {
                     wavBuffer[2][sample] = sampleBuffer[idx++];
-                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                    if(numChan == 4)
+                    {
+                        wavBuffer[3][sample] = sampleBuffer[idx++];
+                    }
+                    else
+                    {
+                        idx++;
+                    }
                 }
             }
             sample++;
