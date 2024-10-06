@@ -109,6 +109,7 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
 {
     int32_t retVal;
     uint8_t activeCount = 0;
+    uint8_t inactiveCount = 0;
     adc_shuffle_t shuffleMode = ADC_SHUFFLE_1CH;
 
     adc->tsChannels[channel].active = enable;
@@ -122,14 +123,14 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
             adc->adcDev.channelCfg[activeCount] = adc->tsChannels[i];
             activeCount++;
         }
-    }
-
-    //Disable Unused channels in config
-    for(uint8_t i=activeCount; i < HMCAD15_NUM_CHANNELS; i++)
-    {
-        LOG_DEBUG("Disable CH %d", i);
-
-        adc->adcDev.channelCfg[i].active = 0;
+        else
+        {
+            //Disable Unused channels in config
+            LOG_DEBUG("Disable CH %d", i);
+            adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount] = adc->tsChannels[i];
+            adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount].active = 0;
+            inactiveCount++;
+        }
     }
 
     if(activeCount == 0)
