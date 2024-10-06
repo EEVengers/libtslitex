@@ -193,3 +193,19 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
     litepcie_writel(adc->ctrl, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
     return TS_STATUS_OK;
 }
+
+int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t resolution)
+{
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+    hmcad15xxDataWidth_t data_mode = HMCAD15_8_BIT;
+    if(resolution == 4096)
+    {
+        data_mode = HMCAD15_12_BIT;
+    }
+    //else support 14-bit precise mode?
+
+    return hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate , data_mode);
+}

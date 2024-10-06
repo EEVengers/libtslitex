@@ -520,6 +520,8 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     ts->status.adc_sample_resolution = resolution;
     ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
 
+    ts_adc_set_sample_mode(&ts->adc, rate, resolution);
+
     return  TS_STATUS_OK;
 }
 
