@@ -42,6 +42,8 @@
 #include "../src/gpio.h"
 #include "../src/util.h"
 #include "../src/hmcad15xx.h"
+#include "../src/mcp_zl3026x.h"
+#include "../src/mcp_clkgen.h"
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
@@ -317,20 +319,37 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         
         AudioFile<uint8_t> outWav;
         outWav.setBitDepth(8);
-        outWav.setSampleRate(1000000000/numChan);
         outWav.setNumChannels(numChan);
+        if(numChan > 2)
+        {
+            outWav.setSampleRate(1000000000/4);
+        }
+        else
+        {
+            outWav.setSampleRate(1000000000/numChan);
+        }
 
         AudioFile<uint8_t>::AudioBuffer wavBuffer;
         wavBuffer.resize(numChan);
-        wavBuffer[0].resize(sampleLen/numChan);
-        if(numChan > 1)
+        if(numChan == 1)
         {
+            wavBuffer[0].resize(sampleLen);
+        }
+        else if(numChan == 2)
+        {
+            wavBuffer[0].resize(sampleLen/numChan);
             wavBuffer[1].resize(sampleLen/numChan);
         }
-        if(numChan > 2)
+        else
         {
-            wavBuffer[2].resize(sampleLen/numChan);
-            wavBuffer[3].resize(sampleLen/numChan);
+            wavBuffer[0].resize(sampleLen/4);
+            wavBuffer[1].resize(sampleLen/4);
+            wavBuffer[2].resize(sampleLen/4);
+
+            if(numChan == 4)
+            {
+                wavBuffer[3].resize(sampleLen/4);
+            }
         }
         uint64_t sample = 0;
         uint64_t idx = 0;
@@ -343,7 +362,14 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 if(numChan > 2)
                 {
                     wavBuffer[2][sample] = sampleBuffer[idx++];
-                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                    if(numChan == 4)
+                    {
+                        wavBuffer[3][sample] = sampleBuffer[idx++];
+                    }
+                    else
+                    {
+                        idx++;
+                    }
                 }
             }
             sample++;
@@ -451,6 +477,48 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
+    if(0 == strcmp(arg, "clk"))
+    {
+        mcp_clkgen_conf_t test_conf[1024];
+        zl3026x_clk_config_t clk_config = {0};
+        clk_config.in_clks[1].enable = 1;
+        clk_config.in_clks[1].input_freq = 10000000;
+        clk_config.input_select = ZL3026X_INPUT_IC2;
+        clk_config.out_clks[0].enable = 1;
+        clk_config.out_clks[0].output_freq = 10000000;
+        clk_config.out_clks[0].output_mode = ZL3026X_OUT_CMOS_P;
+        clk_config.out_clks[0].output_pll_select = ZL3026X_PLL_BYPASS;
+        clk_config.out_clks[5].enable = 1;
+        clk_config.out_clks[5].output_freq = 1000000000;
+        clk_config.out_clks[5].output_mode = ZL3026X_OUT_DIFF;
+        clk_config.out_clks[5].output_pll_select = ZL3026X_PLL_INT_DIV;
+
+        int32_t clk_result = mcp_zl3026x_build_config(test_conf, 1024, clk_config);
+
+        if(clk_result < 1)
+        {
+            printf("Invalid Clock Configuration: %d\n", clk_result);
+            return -1;
+        }
+        else
+        {
+            printf("MCP Clock Configuration Array (Len %d)\n", clk_result);
+            uint16_t idx = 0;
+            while(idx < clk_result)
+            {
+                if(test_conf[idx].action == MCP_CLKGEN_WRITE_REG)
+                {
+                    printf("\t{WRITE_REG: 0x%04X  0x%02X}\n", test_conf[idx].addr, test_conf[idx].value);
+                }
+                else
+                {
+                    printf("\t{DELAY: %d us}\n", test_conf[idx].delay_us);
+                }
+                idx++;
+            }
+        }
+        return 0;
+    }
 
     snprintf(devicePath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), idx);
     printf("Opening Device %s\n", devicePath);

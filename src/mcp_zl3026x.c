@@ -1,0 +1,430 @@
+/* SPDX-License-Identifier: BSD-2-Clause
+ *
+ * This file is part of libtslitex.
+ * Driver for the zl30260 Clock Generator as used
+ * in the Thunderscope.  Datasheet reference at 
+ * https://ww1.microchip.com/downloads/aemDocuments/documents/TCG/ProductDocuments/DataSheets/ZL30260-1-2-3-1-APLL-6-or-10-Output-Any-to-Any-Clock-Multiplier-and-Frequency-Synthesizer-DS20006554.pdf
+ *
+ * Copyright (C) 2024 / Nate Meyer  / nate.devel@gmail.com
+ *
+ */
+
+#include "mcp_zl3026x.h"
+#include "mcp_clkgen.h"
+
+#include "util.h"
+#include "ts_common.h"
+
+
+#define MCP_ADD_REG_WRITE(conf, reg, val)   { (conf)->action = MCP_CLKGEN_WRITE_REG; \
+                                              (conf)->addr = (reg); \
+                                              (conf)->value = (val); }
+
+#define MCP_ADD_DELAY(conf, delay)          { (conf)->action = MCP_CLKGEN_DELAY; \
+                                              (conf)->delay_us = (delay); }
+
+static const uint8_t g_outClkGroups[ZL3026X_NUM_OUTPUT_CLK] = {0, 0, 1, 2, 2, 3, 3, 4, 5, 5};
+
+static uint64_t mcp_zl3026x_selected_input_freq(zl3026x_clk_config_t *conf);
+
+int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl3026x_clk_config_t conf)
+{
+    int32_t calLen = 0;
+
+    // Reference App Note ZLAN-590
+    // https://ww1.microchip.com/downloads/aemDocuments/documents/TCG/ApplicationNotes/ApplicationNotes/ConfigurationSequenceZLAN-590.pdf
+
+    //ZL3026x Init
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0423, 0x08);
+    calLen++;
+
+    // Enable Outputs by setting OCEN1 and OCEN2
+    uint16_t out_ch_bitmap = 0;
+    for(uint8_t ch = 0; ch < ZL3026X_NUM_OUTPUT_CLK; ch++)
+    {
+        if(conf.out_clks[ch].enable)
+        {
+            out_ch_bitmap |= (1UL << ch);
+        }
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0005, (out_ch_bitmap & 0xff));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0006, ((out_ch_bitmap >> 8) & 0xFF));
+    calLen++;
+
+    // Stop Outputs
+    for(uint8_t ch = 0; ch < ZL3026X_NUM_OUTPUT_CLK; ch++)
+    {
+        if(conf.out_clks[ch].enable)
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], (0x20A + (0x10*ch)), 0x0C);
+            calLen++;
+        }
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0009, (out_ch_bitmap & 0xff));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x000A, ((out_ch_bitmap >> 8) & 0xFF));
+    calLen++;
+
+    // Configure Input Clock Source:
+    // Enable/Disable XA/XB Inputs
+    if(conf.in_xo.enable)
+    {
+        // TODO
+    }
+    // Enable/Disable Input Clocks
+    else
+    {
+        uint8_t in_ch_bitmap = 0;
+        for(uint8_t ch = 0; ch < ZL3026X_NUM_INPUT_CLK; ch++)
+        {
+            if(conf.in_clks[ch].enable)
+            {
+                MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider);
+                calLen++;
+                in_ch_bitmap |= (1 << ch);
+                break;
+            }
+        }
+        if(in_ch_bitmap == 0)
+        {
+            //ERROR
+            LOG_ERROR("Invalid Clock Config: No Input Clocks Enabled");
+            return TS_STATUS_ERROR;
+        }
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0004, in_ch_bitmap);
+        calLen++;
+    }
+
+
+    // Select Source for Output Multiplexers
+    uint8_t clkMuxABC = 0, clkMuxDEF = 0;
+    for(uint8_t chA = 0; chA < ZL3026X_NUM_OUTPUT_CLK; chA++)
+    {
+        if(conf.out_clks[chA].enable)
+        {
+            for(uint8_t chB=0; chB < ZL3026X_NUM_OUTPUT_CLK; chB++)
+            {
+                if((chA != chB) && (conf.out_clks[chB].enable)
+                    && (g_outClkGroups[chA] == g_outClkGroups[chB])
+                    && (conf.out_clks[chA].output_pll_select != conf.out_clks[chB].output_pll_select))
+                {
+                    //Error
+                    LOG_ERROR("Clock Configuration error: Out %d and %d are in the same group but have different PLL Configs", chA, chB);
+                    return TS_STATUS_ERROR;
+                }
+            }
+            uint8_t pll_mux = 0; // ZL3026X_PLL_INT_DIV
+            if (conf.out_clks[chA].output_pll_select == ZL3026X_PLL_FRAC_DIV ||
+                conf.out_clks[chA].output_pll_select == ZL3026X_PLL_BYPASS)
+            {
+                pll_mux = 1;
+            }
+            else if( conf.out_clks[chA].output_pll_select == ZL3026X_PLL_BYPASS_2)
+            {
+                pll_mux = 3;
+            }
+
+            if(g_outClkGroups[chA] < 3)
+            {
+                clkMuxABC |= (pll_mux << (2*g_outClkGroups[chA]));
+            }
+            else
+            {
+                clkMuxDEF |= (pll_mux << (2*g_outClkGroups[chA]));
+            }
+        }
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0007, clkMuxABC);
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0008, clkMuxDEF);
+    calLen++;
+
+    // Configure GPIO Pins
+    //TODO
+
+    // Determine PLL Configuration
+    /** 
+     * Find a common ratio for the selected output frequencies
+     */
+    uint64_t pll_out = 1;
+    uint64_t clk_max = 1;
+    uint8_t pll_frac_bypass = 0;
+    for(uint8_t ch = 0; ch < ZL3026X_NUM_OUTPUT_CLK; ch++)
+    {
+        if(conf.out_clks[ch].enable)
+        {
+            if (conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV)
+            {
+                //Find the least-common multiple
+                uint64_t freq_mult = pll_out;
+                uint64_t freq_mod = conf.out_clks[ch].output_freq;
+                while(freq_mod != 0)
+                {
+                    uint64_t freq_temp = freq_mult;
+                    freq_mult = freq_mod;
+                    freq_mod = freq_temp % freq_mod;
+                }
+                pll_out = (pll_out * conf.out_clks[ch].output_freq) / freq_mult;
+            }
+            else if (conf.out_clks[ch].output_pll_select == ZL3026X_PLL_BYPASS)
+            {
+                pll_frac_bypass = 1;
+            }
+        }
+    }
+
+    //Scale pll_out to be in a good range
+    while(pll_out < ZL3026X_MIN_PLL_OUT)
+    {
+        pll_out *= 2;
+    }
+
+    uint64_t pll_vco = 4200000000;
+    uint32_t pll_int_div = pll_vco/pll_out;
+    //validate pll_int_div 4-15
+    if(pll_int_div < 4 || pll_int_div > 15)
+    {
+        LOG_ERROR("Invalid APLL Configuration: Int Div %u", pll_int_div);
+        return TS_INVALID_PARAM;
+    }
+
+    //Get exact VCO frequency
+    pll_vco = pll_out * pll_int_div;
+    //validate VCO between 3.7GHz and 4.2GHz
+    if(pll_vco < 3700000000 || pll_vco > 4200000000)
+    {
+        LOG_ERROR("Invalid APLL Configuration: VCO Freq %llu", pll_vco);
+        return TS_INVALID_PARAM;
+    }
+
+    double multiplier = pll_vco / mcp_zl3026x_selected_input_freq(&conf);
+    int64_t pll_numerator = 0;
+    int64_t pll_denominator = 1;
+    //TODO - Determine N & D parameters
+
+    // Configure APLL1
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0003, 0x01); //Enable PLL
+    calLen++;
+
+    //TODO Enable useage of the fractional divider
+    uint8_t pll_conf_1 = (0x2 * pll_frac_bypass);
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0100, 0x40 | pll_conf_1); //Enable PLL
+    calLen++;
+
+    if(pll_int_div < 8)
+    {
+        pll_int_div = (pll_int_div - 4)*2;
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0101, pll_int_div & 0x0F); //PLL Output Integer Divide
+    calLen++;
+
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0102, (conf.input_select & 0x7)); //PLL Input
+    calLen++;
+
+    //PLL AFBDIV
+    /* The PLL configures the multiplier using a fixed-precision value,
+     * consisting of 9 integer bits and 33 fractional bits.
+     * Split the float value into the whole number and decimal number.
+     */
+    uint16_t mult_int = (uint16_t)multiplier;
+    uint64_t mult_frac = (uint64_t)((multiplier - (double)mult_int) * pow(2,33));
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0106, (mult_frac & 0xFF));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0107, ((mult_frac >> 8) & 0xFF));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0108, ((mult_frac >> 16) & 0xFF));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0109, ((mult_frac >> 24) & 0xFF));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x010A, (((mult_int << 1) & 0xFE) | ((mult_frac >> 32) & 0x01)));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x010B, ((mult_int >> 7) & 0x03));
+    calLen++;
+
+    //TODO: PLL AFBDEN
+    //TODO: PLL AFBREM
+
+    // Configure APLL1 Analog
+    //Assume no spread-spectrum
+    if(mult_frac == 0)
+    {
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0120, 0xC7);
+        calLen++;
+        if(mcp_zl3026x_selected_input_freq(&conf) < 50000000)
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0121, 0x60);
+        }
+        else
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0121, 0x40);
+        }
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0122, 0x7F);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0123, 0x00);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0124, 0x04);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0125, 0xB3);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0126, 0xD8);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0127, 0x90);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x423, 0x08);
+        calLen++;
+    }
+    else if(mult_frac == 0x100000000)
+    {
+        if(mcp_zl3026x_selected_input_freq(&conf) < 50000000)
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0120, 0xC7);
+        }
+        else
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0120, 0xC3);
+        }
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0121, 0x40);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0122, 0x7F);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0123, 0x00);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0124, 0x04);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0125, 0xB3);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0126, 0xD8);
+        calLen++;
+        
+        if(mcp_zl3026x_selected_input_freq(&conf) < 50000000)
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0127, 0x50);
+        }
+        else
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0127, 0x90);
+        }
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0423, 0x08);
+        calLen++;
+    }
+    else
+    {
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0120, 0xC7);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0121, 0x40);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0122, 0x5F);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0123, 0x00);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0124, 0x04);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0125, 0xB3);
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0126, 0x98);
+        calLen++;
+        
+        if(mcp_zl3026x_selected_input_freq(&conf) < 80000000)
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0127, 0x50);
+        }
+        else
+        {
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0127, 0x90);
+        }
+        calLen++;
+        MCP_ADD_REG_WRITE(&confData[calLen], 0x0423, 0x1B);
+        calLen++;
+    }
+
+    // Configure APLL1 Fractional Output Divider
+    //TODO
+
+    // Configure APLL1 Fractional Output Divider Analog
+    //TODO
+
+    // Configure Output Divider Registers
+    for(uint8_t ch = 0; ch < ZL3026X_NUM_OUTPUT_CLK; ch++)
+    {
+        if(conf.out_clks[ch].enable)
+        {
+            uint8_t out_div = 0;
+            out_div = 0x80; //Phase align output
+
+            if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV)
+            {
+                if(conf.out_clks[ch].output_freq != pll_out)
+                {
+                   out_div |= (pll_out/conf.out_clks[ch].output_freq) & 0x7F;
+                }
+            }
+            //TODO Support Low-speed divider
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0200+(ch*0x10), out_div);
+            calLen++;
+            
+            MCP_ADD_REG_WRITE(&confData[calLen], 0x0201+(ch*0x10), conf.out_clks[ch].output_mode);
+            calLen++;
+        }
+    }
+
+    // APLL1 Relock Sequence
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0430, 0x0C);
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0430, 0x00);
+    calLen++;
+
+    // Delay 2ms
+    MCP_ADD_DELAY(&confData[calLen], 2000);
+    calLen++;
+
+    // Align APLL Outputs
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0100, pll_conf_1 & ~(0x40));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0100, 0x40 | pll_conf_1);
+    calLen++;
+    
+    // Disable Ring Oscillator
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0001, 0x28);
+    calLen++;
+
+    //Set Interrupt Bits
+    // N/A
+
+    // Start Outputs
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0001, 0x08);
+    calLen++;
+   
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0009, (~out_ch_bitmap & 0xff));
+    calLen++;
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x000A, ((~out_ch_bitmap >> 8) & 0xFF));
+    calLen++;
+
+    // Delay 2ms
+    MCP_ADD_DELAY(&confData[calLen], 2000);
+    calLen++;
+
+    return calLen;
+}
+
+static uint64_t mcp_zl3026x_selected_input_freq(zl3026x_clk_config_t *conf)
+{
+    uint64_t freq = 0;
+    switch(conf->input_select) {
+    case ZL3026X_INPUT_IC1:
+    case ZL3026X_INPUT_IC2:
+    case ZL3026X_INPUT_IC3:
+        freq = conf->in_clks[conf->input_select].input_freq / (1 << conf->in_clks[conf->input_select].input_divider);
+        break;
+    case ZL3026X_INPUT_XO:
+        freq = conf->in_xo.xo_freq;
+        break;
+    case ZL3026X_INPUT_XO_DBL:
+        freq = conf->in_xo.xo_freq*2;
+        break;
+    }
+    return freq;
+}

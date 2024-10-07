@@ -44,6 +44,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
     adc->lvdsPhase = HMCAD15_LVDS_PHASE_DEFAULT;
+    adc->low_clk = 0;
 
     //Reset
     hmcad15xx_reset(adc);
@@ -214,6 +215,28 @@ int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode
     return TS_STATUS_OK;
 }
 
+int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmcad15xxDataWidth_t width)
+{    
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    adc->width = width;
+    if(sample_rate < HMCAD15_HS_LOW_CLK_THRESHOLD)
+    {
+        adc->low_clk = 1;
+    }
+    else
+    {
+        adc->low_clk = 0;
+    }
+
+    hmcad15xxApplyLvdsMode(adc);
+
+    return TS_STATUS_OK;
+}
+
 static void hmcad15xxRegWrite(hmcad15xxADC_t* adc, uint8_t reg, uint16_t data)
 {
     uint8_t bytes[2];
@@ -235,7 +258,8 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_CURRENT, data);
 
     // Set LVDS Data Width (bits per sample)
-    data = HMCAD15_DATA_WIDTH(adc->width);
+    data = (HMCAD15_DATA_WIDTH(adc->width) |
+            HMCAD15_LOW_CLK(adc->low_clk));
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_MISC, data);
 
     // Set LVDS DDR Phase

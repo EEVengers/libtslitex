@@ -105,6 +105,7 @@ extern "C" {
 #define HMCAD15_LVDS_DS_DATA(x)     (((x) & 0x07) << 8)
 
 #define HMCAD15_DATA_WIDTH(x)       ((x) & 0x07)
+#define HMCAD15_LOW_CLK(x)          (((x) & 0x01) << 3)
 
 #define HMCAD15_LVDS_PHASE(x)       (((x) & 0x03) << 5)
 
@@ -145,6 +146,9 @@ extern "C" {
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
 #define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
+
+#define HMCAD15_HS_LOW_CLK_THRESHOLD    (120000000)
+#define HMCAD15_PREC_LOW_CLK_THRESHOLD  (30000000)
 
 typedef enum hmcad15xxMode_e
 {
@@ -204,6 +208,7 @@ typedef struct hmcad15xxADC_s
     uint8_t clockDiv;
     uint8_t lvdsPhase;
     uint8_t drive;
+    uint8_t low_clk;
 } hmcad15xxADC_t;
 
 /**
@@ -263,6 +268,16 @@ int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment);
  * @return int32_t TS_STATUS_OK if successful
  */
 int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode, uint16_t testData1, uint16_t testData2);
+
+/**
+ * @brief Update the HMCAD15xx data interface
+ * 
+ * @param adc Pointer to an ADC Instance
+ * @param sample_rate Sample Clock Rate (Hz)
+ * @param width ADC Sample Width
+ * @return int32_t TS_STATUS_OK if successful
+ */
+int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmcad15xxDataWidth_t width);
 
 #ifdef __cplusplus
 }

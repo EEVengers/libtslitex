@@ -10,6 +10,7 @@
 
 #include "ts_common.h"
 #include "mcp_clkgen.h"
+#include "mcp_zl3026x.h"
 #include "csr.h"
 
 
@@ -74,6 +75,22 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_PLL_I2C_ADDR         ZL30260_I2C_ADDR
 #define TS_PLL_CONF             ZL30260_CONF
 #define TS_PLL_CONF_SIZE        ZL30260_CONF_SIZE
+#define TS_PLL_INPUT_IDX        (1)
+#define TS_PLL_INPUT_RATE       (10000000)
+#define TS_PLL_INPUT_SEL        (ZL3026X_INPUT_IC2)
+
+#define TS_PLL_REFIN_IDX        (0)
+#define TS_PLL_REFIN_SEL        (ZL3026X_INPUT_IC1)
+
+#define TS_PLL_REFOUT_CLK_IDX       (0)
+#define TS_PLL_REFOUT_RATE_DEFAULT  (10000000)
+#define TS_PLL_REFOUT_CLK_MODE      (ZL3026X_OUT_CMOS_P)
+#define TS_PLL_REFOUT_PLL_MODE      (ZL3026X_PLL_BYPASS)
+
+#define TS_PLL_SAMPLE_CLK_IDX       (5)
+#define TS_PLL_SAMPLE_RATE_DEFAULT  (1000000000)
+#define TS_PLL_SAMPLE_CLK_MODE      (ZL3026X_OUT_DIFF)
+#define TS_PLL_SAMPLE_PLL_MODE      (ZL3026X_PLL_INT_DIV)
 #endif
 
 #define TS_PLL_NRST_ADDR        CSR_ADC_CONTROL_ADDR
