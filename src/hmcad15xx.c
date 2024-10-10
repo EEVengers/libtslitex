@@ -223,7 +223,10 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmc
     }
 
     adc->width = width;
-    if(sample_rate < HMCAD15_HS_LOW_CLK_THRESHOLD)
+    
+    if(((adc->mode == HMCAD15_SINGLE_CHANNEL) && (sample_rate < HMCAD15_SINGLE_LOW_CLK_THRESHOLD)) ||
+        ((adc->mode == HMCAD15_DUAL_CHANNEL) && (sample_rate < HMCAD15_DUAL_LOW_CLK_THRESHOLD)) ||
+        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)))
     {
         adc->low_clk = 1;
     }

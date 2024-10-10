@@ -133,6 +133,13 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         return retVal;
     }
 
+    //Initialize Status
+    pChan->ctrl_handle = ts;
+    pChan->status.adc_lost_buffer_count = 0;
+    pChan->status.adc_sample_rate = 1000000000;
+    pChan->status.adc_sample_bits = 8;
+    pChan->status.adc_sample_resolution = 256;
+
     //Enable Power Rails
     pChan->afe_power.fd = ts;
     pChan->afe_power.reg = TS_AFE_POWER_REG;
@@ -145,7 +152,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->acq_power.bit_mask = TS_ACQ_POWER_MASK;
     gpio_set(pChan->acq_power);
     pChan->status.power_state = 1;
-
 
     //Initialize PLL Clock Gen
     // Toggle reset pin
@@ -249,14 +255,6 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         pChan->chan[chanIdx].params = g_tsParamsDefault;
     }
 
-    //Initialize Status
-    pChan->ctrl_handle = ts;
-    pChan->status.adc_lost_buffer_count = 0;
-    pChan->status.adc_sample_rate = 1000000000;
-    pChan->status.adc_sample_bits = 8;
-    pChan->status.adc_sample_resolution = 256;
-    //state flags
-
     if( TS_STATUS_OK != ts_channel_health_update(pChan))
     {
         LOG_ERROR("Failed to read System Health Statistics");
@@ -334,7 +332,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
 {
 
     int32_t retVal = TS_STATUS_OK;
-    bool needUpdateGain = false, needUpdateOffset = false;
+    bool needUpdateGain = false, needUpdateOffset = false, needUpdateSampleRate = false;
     //Set AFE Bandwidth
     if(param->bandwidth != pTsHdl->chan[chanIdx].params.bandwidth || force)
     {
@@ -445,9 +443,12 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
             LOG_DEBUG("Channel %d %s", chanIdx, (param->active == 0 ? "disabled" : "enabled"));
             pTsHdl->chan[chanIdx].params.active = param->active;
         }
+
+        //Update Sample Rate
+        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->status.adc_sample_resolution);
     }
 
-    return TS_STATUS_OK;
+    return retVal;
 }
 
 int32_t ts_channel_params_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelParam_t* param)
@@ -487,7 +488,9 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     {
         return TS_STATUS_ERROR;
     }
-    //Input validation
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    uint64_t actual_rate = 0;
+
     //TODO - Support valid rate/resolution combinations
     if((rate < TS_MIN_SAMPLE_RATE) || (rate > TS_MAX_SAMPLE_RATE)
          || (resolution != 256))
@@ -495,32 +498,58 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
         return TS_INVALID_PARAM;
     }
 
-    // Apply resolution,rate configuration
-    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
-    zl3026x_clk_config_t newConf = ts->pll.clkConf;
-    newConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = rate;
-    
-    mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
-    int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
-    if(clk_len > 0)
+    //Input validation
+    if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
     {
-        if(TS_STATUS_OK != mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len))
+        actual_rate = rate;
+    }
+    else if(ts->adc.adcDev.mode == HMCAD15_DUAL_CHANNEL)
+    {
+        //Limit upper rate
+        if(rate > TS_MAX_DUAL_CH_RATE)
         {
-            return TS_STATUS_ERROR;
+            rate = TS_MAX_DUAL_CH_RATE;
         }
-        ts->pll.clkConf = newConf;
+        actual_rate = rate * 2;
     }
     else
     {
-        LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
-        return clk_len;
+        //Limit upper rate
+        if(rate > TS_MAX_QUAD_CH_RATE)
+        {
+            rate = TS_MAX_QUAD_CH_RATE;
+        }
+        actual_rate = rate * 4;
     }
 
-    ts->status.adc_sample_rate = rate;
-    ts->status.adc_sample_resolution = resolution;
-    ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
+    if(actual_rate != ts->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq)
+    {
+        // Apply resolution,rate configuration
+        zl3026x_clk_config_t newConf = ts->pll.clkConf;
+        newConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = actual_rate;
+        
+        mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
+        int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
+        if(clk_len > 0)
+        {
+            if(TS_STATUS_OK != mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len))
+            {
+                return TS_STATUS_ERROR;
+            }
+            ts->pll.clkConf = newConf;
+        }
+        else
+        {
+            LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
+            return clk_len;
+        }
 
-    ts_adc_set_sample_mode(&ts->adc, rate, resolution);
+        ts->status.adc_sample_rate = rate;
+        ts->status.adc_sample_resolution = resolution;
+        ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
+
+        ts_adc_set_sample_mode(&ts->adc, rate, resolution);
+    }
 
     return  TS_STATUS_OK;
 }
