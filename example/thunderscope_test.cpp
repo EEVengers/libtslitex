@@ -503,7 +503,7 @@ int main(int argc, char** argv)
         else
         {
             printf("MCP Clock Configuration Array (Len %d)\n", clk_result);
-            uint16_t idx = 0;
+            int32_t idx = 0;
             while(idx < clk_result)
             {
                 if(test_conf[idx].action == MCP_CLKGEN_WRITE_REG)
