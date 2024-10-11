@@ -180,6 +180,21 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         pll_out *= 2;
     }
 
+    // Scale pll_out to be good for the MSDIV if needed
+    for(uint8_t ch = 0; ch < ZL3026X_NUM_OUTPUT_CLK; ch++)
+    {
+        if(conf.out_clks[ch].enable &&
+            (conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV))
+        {
+            if((pll_out != conf.out_clks[ch].output_freq) &&
+                (pll_out < ZL3026X_OUT_MDIV_MIN_CLK))
+            {
+                pll_out *= 2;
+                break;
+            }
+        }
+    }
+
     uint64_t pll_vco = 4200000000;
     uint32_t pll_int_div = pll_vco/pll_out;
     //validate pll_int_div 4-15
@@ -352,22 +367,60 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     {
         if(conf.out_clks[ch].enable)
         {
-            uint8_t out_div = 0;
+            /**
+             * The frequency of the clock from the medium-speed divider is divided by LSDIV+1.
+             *
+             * The divisor is MSDIV+1. Note that if MSDIV is not set to 0 (bypass) then the maximum
+             * input clock frequency to the medium-speed divider is 750 MHz and the maximum output
+             * clock frequency from the medium-speed divider is 375 MHz. When MSDIV=0, the medium-speed
+             * divider, phase adjust, low-speed divider, start/stop and output duty cycle adjustment
+             * circuits are bypassed and the high-frequency clock signal is sent to the directly output driver. 
+             */
+            uint32_t out_divide = 1, out_div_low = 1;
+            uint8_t out_div, out_div_med = 1;
             out_div = 0x80; //Phase align output
 
             if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV)
             {
                 if(conf.out_clks[ch].output_freq != pll_out)
                 {
-                   out_div |= (pll_out/conf.out_clks[ch].output_freq) & 0x7F;
+                    out_divide = pll_out / conf.out_clks[ch].output_freq;
+                    // Note: output_freq = pll_out / (div_med * div_low)
+                    while(out_divide >= (1 << 7))
+                    {
+                        if(out_divide & 0x1)
+                        {
+                            LOG_ERROR("======== TODO: FIX OUTPUT DIVIDE =======");
+                            return TS_STATUS_ERROR;
+                        }
+                        out_divide >>= 1;
+                        out_div_low <<= 1;
+                    }
+
+                    out_div_med = out_divide;
+                    
+                    out_div |= (out_div_med-1) & 0x7F;
                 }
             }
-            //TODO Support Low-speed divider
+
             MCP_ADD_REG_WRITE(&confData[calLen], 0x0200+(ch*0x10), out_div);
             calLen++;
             
             MCP_ADD_REG_WRITE(&confData[calLen], 0x0201+(ch*0x10), conf.out_clks[ch].output_mode);
             calLen++;
+
+            // Output Low-Speed Divide (25-bit)
+            if(out_div_low > 1)
+            {
+                MCP_ADD_REG_WRITE(&confData[calLen], 0x0204+(ch*0x10), (0x10) | ((out_div_low-1) >> 24) & 0x01);
+                calLen++;
+                MCP_ADD_REG_WRITE(&confData[calLen], 0x0205+(ch*0x10), (out_div_low-1) & 0xFF);
+                calLen++;
+                MCP_ADD_REG_WRITE(&confData[calLen], 0x0206+(ch*0x10), ((out_div_low-1) >> 8) & 0xFF);
+                calLen++;
+                MCP_ADD_REG_WRITE(&confData[calLen], 0x0207+(ch*0x10), ((out_div_low-1) >> 16) & 0xFF);
+                calLen++;
+            }
         }
     }
 
