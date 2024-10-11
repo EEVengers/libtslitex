@@ -207,5 +207,15 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
     }
     //else support 14-bit precise mode?
 
-    return hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate , data_mode);
+    if(TS_STATUS_OK == hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate, data_mode))
+    {
+        hmcad15xx_set_channel_config(&adc->adcDev);
+        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        return TS_STATUS_OK;
+    }
+    else
+    {
+        LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, resolution);
+        return TS_STATUS_ERROR;
+    }
 }
