@@ -37,7 +37,7 @@
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #else
-#define TS_DMA_NAME         "/dev/litepcie%u"
+#define TS_DMA_NAME         "/dev/thunderscope%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_NAME_ARGS(chan, dev)     (dev)
 #define TS_DMA_OS_FLAGS     (O_RDWR | O_CLOEXEC)
