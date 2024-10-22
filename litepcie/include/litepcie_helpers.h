@@ -34,8 +34,8 @@ typedef int file_t;
 void _check_ioctl(int status, const char *file, int line);
 
 
-#define LITEPCIE_CTRL_NAME(ID)  "/dev/litepcie" #ID
-#define LITEPCIE_DMA_NAME(ID, CHAN)  "/dev/litepcie" #ID #CHAN
+#define LITEPCIE_CTRL_NAME(ID)  "/dev/thunderscope" #ID
+#define LITEPCIE_DMA_NAME(ID, CHAN)  "/dev/thunderscope" #ID #CHAN
 #endif
 
 uint32_t litepcie_readl(file_t fd, uint32_t addr);
