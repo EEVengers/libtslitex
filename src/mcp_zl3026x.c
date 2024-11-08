@@ -15,6 +15,8 @@
 #include "util.h"
 #include "ts_common.h"
 
+#include <math.h>
+
 
 #define MCP_ADD_REG_WRITE(conf, reg, val)   { (conf)->action = MCP_CLKGEN_WRITE_REG; \
                                               (conf)->addr = (reg); \

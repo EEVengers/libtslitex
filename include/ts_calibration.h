@@ -27,7 +27,7 @@ typedef struct tsChannelCalibration_s
     int32_t trimRheostat_range;
     int32_t preampLowGainError_mdB;
     int32_t preampHighGainError_mdB;
-    // int32_t preampAttenuatorGain_mdB[11]; // TBD Usage
+    int32_t preampAttenuatorGain_mdB[11];
     int32_t preampOutputGainError_mdB;
     int32_t preampLowOffset_mV;
     int32_t preampHighOffset_mV;
