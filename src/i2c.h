@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: BSD-2-Clause
  *
  * This file is part of libtslitex.
- * An I2C driver for the LiteX SoC Bitbang I2C Core in
+ * An I2C driver for the LiteI2C Core in
  * the Thunderscope LiteX design
  * 
  * Copyright (c) 2020-2021 Florent Kermarrec <florent@enjoy-digital.fr>
@@ -22,44 +22,73 @@ extern "C" {
 
 #include "liblitepcie.h"
 
-#ifndef I2C_FREQ_HZ
-#define I2C_FREQ_HZ  400000
-#endif
-
-#define I2C_ADDR_WR(addr) ((addr) << 1)
-#define I2C_ADDR_RD(addr) (((addr) << 1) | 1u)
-
-
 typedef struct i2c_s
 {
     file_t fd;
     uint8_t devAddr;
 } i2c_t;
 
+typedef enum i2c_rate_e
+{
+    I2C_100KHz = 0,
+    I2C_400KHz = 1,
+    I2C_1MHz = 2,
+} i2c_rate_t;
 
+/**
+ * @brief Initialize an I2C device struct
+ */
 int32_t i2c_init(i2c_t* device, file_t fd, uint8_t addr);
 
-/*
- * Read slave memory over I2C starting at given address
- *
- * First writes the memory starting address, then reads the data:
- *   START WR(slaveaddr) WR(addr) STOP START WR(slaveaddr) RD(data) RD(data) ... STOP
- * Some chips require that after transmiting the address, there will be no STOP in between:
- *   START WR(slaveaddr) WR(addr) START WR(slaveaddr) RD(data) RD(data) ... STOP
+/**
+ * @brief Set the I2C clock rate
+ * 
+ * @param device I2C device struct
+ * @param rate Clock rate to set
  */
-bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool send_stop, uint32_t addr_size);
+void i2c_rate_set(i2c_t device, i2c_rate_t rate);
 
-/*
- * Write slave memory over I2C starting at given address
+/**
+ * @brief Read from an I2C device
+ * 
+ * @param device I2C device struct
+ * @param addr Device Command/Register to write for preparing a read
+ * @param data Pointer to a byte-array to store data read
+ * @param len Length of the data array
+ * @param addr_size Number of bytes in the addr parameter
+ * 
+ * @return True if the read completed successfully.
+ */
+bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, uint32_t addr_size);
+
+/**
+ * @brief Write to an I2C device
+ * 
+ * @param device I2C device struct
+ * @param addr Device Command/Register to write
+ * @param data Pointer to a byte-array of data to be written
+ * @param len Length of the data array
+ * @param addr_size Number of bytes in the addr parameter
  *
- * First writes the memory starting address, then writes the data:
- *   START WR(slaveaddr) WR(addr) WR(data) WR(data) ... STOP
+ * @return True if the write was ACK'd by the device
  */
 bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, uint32_t addr_size);
 
-
+/**
+ * @brief Release the I2C lines
+ * 
+ * @param device I2C device struct
+ * 
+ */
 void i2c_reset(i2c_t device);
-
+ 
+/**
+ * @brief Poll I2C slave at given address, return true if it sends an ACK back
+ * 
+ * @param device I2C device struct
+ * 
+ * @return True if device is present
+ */
 bool i2c_poll(i2c_t device);
 
 

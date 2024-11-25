@@ -172,6 +172,7 @@ static void test_io(file_t fd)
 
     i2c_t i2cDev;
     i2cDev.fd = fd;
+    i2c_rate_set(i2cDev, I2C_400KHz);
 
     for (unsigned char addr = 0; addr < 0x80; addr++) {
         i2cDev.devAddr = addr;

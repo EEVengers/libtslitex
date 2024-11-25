@@ -56,7 +56,7 @@ int32_t mcp4728_channel_set(i2c_t dev, uint8_t channel, Mcp4728ChannelConfig_t c
 
     //Verify Write
     uint8_t readback[MCP4728_NUM_CH*6] = {0};
-    if(!i2c_read(dev, 0, readback, (MCP4728_NUM_CH*6), true, 0))
+    if(!i2c_read(dev, 0, readback, (MCP4728_NUM_CH*6), 0))
     {
         LOG_ERROR("Failed to read back MCP4728 Data");
     }
