@@ -83,7 +83,7 @@ void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_
             uint8_t data[1] = {0};
             
             if(!i2c_read(device, (uint32_t)ZL302XX_READ_REG(confData[i].addr),
-                            data, 1, true, ZL302XX_ADDR_LEN))
+                            data, 1, ZL302XX_ADDR_LEN))
             {
                 LOG_ERROR("MCP CLKGEN REG DUMP Failed to read reg %d", confData[i].addr);
                 return;

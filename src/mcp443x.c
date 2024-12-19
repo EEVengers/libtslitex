@@ -41,7 +41,7 @@ int32_t mcp443x_set_wiper(i2c_t dev, uint8_t channel, uint8_t val)
     }
 
     uint8_t readback[2] = {0};
-    if(!i2c_read(dev, MCP4432_READ_CMD(devAddr), readback, 2, true, MCP4432_CMD_LEN))
+    if(!i2c_read(dev, MCP4432_READ_CMD(devAddr), readback, 2, MCP4432_CMD_LEN))
     {
         LOG_ERROR("Failed to read back MCP4432 Data for Wiper %d, CMD %x", channel, MCP4432_READ_CMD(devAddr));
     }
