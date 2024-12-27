@@ -39,6 +39,7 @@ set(TS_SOURCES
     src/mcp_zl3026x.c
     src/platform.c
     src/samples.c
+    src/spiflash.c
     src/ts_channel.c
     src/thunderscope.c
     )
@@ -57,6 +58,7 @@ set(TS_HEADERS
     src/mcp443x.h
     src/hmcad15xx.h
     src/samples.h
+    src/spiflash.h
     src/ts_channel.h
     src/util.h
     )
