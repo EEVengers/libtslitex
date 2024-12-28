@@ -241,7 +241,7 @@ bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, u
     uint32_t tx_word = 0;
     uint32_t tx_pend = 0;
     uint32_t data_idx = 0;
-    uint8_t tx_size, tx_bytes=0;
+    uint32_t tx_size, tx_bytes=0;
 
 
     if (addr_size > 4) {
@@ -276,9 +276,9 @@ bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, u
             tx_pend++;
         }
 
-        if( !i2c_tx(device, tx_word, tx_size) )
+        if( !i2c_tx(device, tx_word, (uint8_t)tx_size) )
         {
-            LOG_ERROR("I2C NACK writing data to slave %02X\r\n", device.devAddr);
+            LOG_ERROR("I2C NACK writing data to slave %02X", device.devAddr);
             i2c_activate(device, false);
             return false;
         }
