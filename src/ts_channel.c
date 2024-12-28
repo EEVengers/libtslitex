@@ -600,6 +600,25 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     return TS_STATUS_OK;
 }
 
+int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    if(chanIdx >= TS_NUM_CHANNELS)
+    {
+        return TS_INVALID_PARAM;
+    }
+
+    *cal = ts->chan[chanIdx].afe.cal;
+
+    return TS_STATUS_OK;
+}
+
 int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl)
 {
     int32_t retVal = TS_STATUS_OK;
@@ -709,7 +728,6 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
 
 int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t mode, uint16_t pattern1, uint16_t pattern2)
 {
-    
     return hmcad15xx_set_test_pattern(&((ts_channel_t*)tsChannels)->adc.adcDev, mode, pattern1, pattern2);
 }
 

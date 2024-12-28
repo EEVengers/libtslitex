@@ -16,6 +16,7 @@
 #include "ts_calibration.h"
 #include "ts_channel.h"
 #include "samples.h"
+#include "ts_fw_manager.h"
 #include "util.h"
 
 #include "litepcie.h"
@@ -33,6 +34,7 @@ typedef struct ts_inst_s
     tsDeviceInfo_t identity;
     tsChannelHdl_t pChannel;
     sampleStream_t samples;
+    ts_fw_manager_t fw;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -56,6 +58,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
         //TODO Implement Serial Number
+        snprintf(info->serial_number, TS_IDENT_STR_LEN, "TS0011");
         strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
@@ -90,6 +93,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx)
     if(TS_STATUS_OK != ts_channel_init(&pInst->pChannel, pInst->ctrl))
     {
         LOG_ERROR("Failed to initialize channels");
+        litepcie_close(pInst->ctrl);
         free(pInst);
         return NULL;
     }
@@ -98,6 +102,17 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx)
     {
         LOG_ERROR("Failed to initialize samples");
         ts_channel_destroy(pInst->pChannel);
+        litepcie_close(pInst->ctrl);
+        free(pInst);
+        return NULL;
+    }
+    
+    if(TS_STATUS_OK != ts_fw_manager_init(pInst->ctrl, &pInst->fw))
+    {
+        LOG_ERROR("Failed to initialize spiflash");
+        samples_teardown(&pInst->samples);
+        ts_channel_destroy(pInst->pChannel);
+        litepcie_close(pInst->ctrl);
         free(pInst);
         return NULL;
     }
@@ -214,4 +229,11 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
     return samples_get_buffers(&pInst->samples, buffer, len);
+}
+
+
+int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    return ts_fw_manager_user_fw_update(&pInst->fw, bitstream, len);
 }

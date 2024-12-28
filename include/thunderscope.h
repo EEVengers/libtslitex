@@ -103,6 +103,16 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable);
  */
 int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len);
 
+/**
+ * @brief Load a new user firmware onto the Thunderscope
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param buffer Pointer to a buffer containing the new firmware bitstream
+ * @param len Length of the data buffer available
+ * @return int32_t TS_STATUS_OK if the firmware was updated successfully, or a negative error code
+ */
+int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len);
+
 #ifdef __cplusplus
 }
 #endif

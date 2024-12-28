@@ -54,7 +54,7 @@ static uint32_t get_flash_data(file_t fd, uint32_t flash_addr, uint8_t* pData, u
 static void spiflash_dummy_bits_setup(file_t fd, unsigned int dummy_bits)
 {
     litepcie_writel(fd, CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR, dummy_bits);
-    LOG_DEBUG("Dummy bits set to: %" PRIx32 "\n\r", litepcie_readl(fd, CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR));
+    LOG_DEBUG("Dummy bits set to: %" PRIx32 , litepcie_readl(fd, CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR));
 
 }
 #endif
@@ -145,10 +145,8 @@ static uint32_t spiflash_read_id_register(file_t fd)
 
     LOG_DEBUG("[ID: %02x %02x %02x %02x]", buf[0], buf[1], buf[2], buf[3]);
 
-    /* FIXME normally the status should be in buf[1],
-    but we have to read it a few more times to be
-    stable for unknown reasons */
-    return buf[3];
+    uint32_t flash_id = (buf[1] << 16) | (buf[2] << 8) | buf[3];
+    return flash_id;
 }
 
 static uint32_t spiflash_read_status_register(file_t fd)
@@ -198,7 +196,7 @@ static void spiflash_sector_erase(file_t fd, uint32_t addr)
     transfer_cmd(fd, w_buf, r_buf, 5);
 }
 
-int32_t spiflash_erase(file_t fd, uint32_t addr, uint32_t len)
+int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
 {
     uint32_t i = 0;
     uint32_t j = 0;
@@ -208,35 +206,32 @@ int32_t spiflash_erase(file_t fd, uint32_t addr, uint32_t len)
         LOG_ERROR("Error: Flash Erase address must be 64K-aligned (0x%08X)", addr);
         return TS_STATUS_ERROR;
     }
-    
-    spiflash_write_enable(fd);
 
     for (i=0; i<len; i+=SPI_FLASH_ERASE_SIZE) {
         LOG_DEBUG("Erase SPI Flash @0x%08lx", ((uint32_t)addr+i));
-        spiflash_sector_erase(fd, addr+i);
+        spiflash_write_enable(dev->fd);
+        spiflash_sector_erase(dev->fd, addr+i);
 
-        while (spiflash_read_status_register(fd) & 1) {
-            LOG_DEBUG(".");
+        while (spiflash_read_status_register(dev->fd) & 1) {
             NS_DELAY(250000000);
         }
-        LOG_DEBUG("\n");
 
         /* check if region was really erased */
         for (j = 0; j < SPI_FLASH_ERASE_SIZE; j+=4) {
             uint32_t flash_word;
-            get_flash_data(fd, (addr+i+j), (uint8_t*)&flash_word, sizeof(uint32_t));
+            get_flash_data(dev->fd, (addr+i+j), (uint8_t*)&flash_word, sizeof(uint32_t));
             if (flash_word != 0xffffffff) {
-                LOG_ERROR("Error: location 0x%08lx not erased (0x%08x)\n", addr+i+j, flash_word);
+                LOG_ERROR("Error: location 0x%08lx not erased (0x%08x)", addr+i+j, flash_word);
                 return TS_STATUS_ERROR;
             }
         }
     }
-    spiflash_write_disable(fd);
+    spiflash_write_disable(dev->fd);
 
     return TS_STATUS_OK;
 }
 
-int32_t spiflash_write(file_t fd, uint32_t addr, uint8_t *pData, uint32_t len)
+int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData, uint32_t len)
 {
     int res = 0;
     uint32_t w_len = min(len, SPI_FLASH_PROG_SIZE);
@@ -245,18 +240,19 @@ int32_t spiflash_write(file_t fd, uint32_t addr, uint8_t *pData, uint32_t len)
 
     LOG_DEBUG("Write SPI Flash @0x%08lx", ((uint32_t)addr));
 
-    spiflash_write_enable(fd);
     while(w_len) {
-        page_program(fd, addr+offset, pData+offset, w_len);
+        spiflash_write_enable(dev->fd);
+        page_program(dev->fd, addr+offset, (uint8_t*)pData+offset, w_len);
 
-        while(spiflash_read_status_register(fd) & 1) {
-            LOG_DEBUG(".");
+        while(spiflash_read_status_register(dev->fd) & 1) {
+            NS_DELAY(10000);
         }
 
-        get_flash_data(fd, addr+offset, (uint8_t*)r_buf, w_len);
+        get_flash_data(dev->fd, addr+offset, (uint8_t*)r_buf, w_len);
         for (j = 0; j < w_len; j++) {
             if (r_buf[j] != pData[offset+j]) {
-                LOG_ERROR("Error: verify failed at 0x%08lx (0x%02x should be 0x%02x)", (uint32_t)(offset+j), r_buf[j], pData[offset+j]);
+                LOG_ERROR("Error: verify failed at 0x%08lx (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);
+                return TS_STATUS_ERROR;
             }
         }
 
@@ -264,23 +260,27 @@ int32_t spiflash_write(file_t fd, uint32_t addr, uint8_t *pData, uint32_t len)
         w_len = min(len-offset, SPI_FLASH_PROG_SIZE);
         res = offset;
     }
-    spiflash_write_disable(fd);
-
-    LOG_DEBUG("\n");
+    spiflash_write_disable(dev->fd);
 
     return res;
 }
 
-void spiflash_init(file_t fd)
+int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
 {
+    uint32_t flash_id = 0;
+
+    dev->fd = fd;
+    //dev->ops = TBD per-IC command handlers?
+
 #ifdef CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
     spiflash_dummy_bits_setup(fd, 8);
 #endif
 
-#ifdef CSR_SPIFLASH_CORE_MASTER_CS_ADDR
+    flash_id = spiflash_read_id_register(dev->fd); //First ID read returns garbage?
+    flash_id = spiflash_read_id_register(dev->fd);
 
-    spiflash_read_id_register(fd); //First ID read returns garbage?
-    spiflash_read_id_register(fd);
+    dev->mfg_code = (flash_id >> 16) & 0xFF;
+    dev->part_id = (flash_id & 0xFFFF);
 
 //     /* Quad / QPI Configuration. */
 // #ifdef SPIFLASH_MODULE_QUAD_CAPABLE
@@ -294,10 +294,11 @@ void spiflash_init(file_t fd)
 // #endif
 
 // #endif
-#endif
+
+    return TS_STATUS_OK;
 }
 
-int32_t spiflash_read(file_t fd, uint32_t addr, uint8_t* pData, uint32_t len)
+int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32_t len)
 {
     //Validate Address and Lengths
     if((len % 4) || (addr % 4))
@@ -305,7 +306,7 @@ int32_t spiflash_read(file_t fd, uint32_t addr, uint8_t* pData, uint32_t len)
         //Only supports word-reads currently
         return TS_STATUS_ERROR;
     }
-    int32_t read_len = get_flash_data(fd, addr, pData, len);
+    int32_t read_len = get_flash_data(dev->fd, addr, pData, len);
 
     return len;
 }

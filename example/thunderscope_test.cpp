@@ -394,9 +394,10 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
 
 static void flash_test(char* arg, file_t fd)
 {
+    spiflash_dev_t spiflash;
     if(0 == strcmp(arg, "read"))
     {
-        spiflash_init(fd);
+        spiflash_init(fd, &spiflash);
         uint32_t address = 0x00B00000;
         uint32_t flash_word = read_flash_word(fd, address);
         printf("Read Flash Word 0x%08x : 0x%08X\n", address, flash_word);
@@ -406,13 +407,13 @@ static void flash_test(char* arg, file_t fd)
     }
     else if(0 == strcmp(arg, "dump"))
     {
-        spiflash_init(fd);
+        spiflash_init(fd, &spiflash);
         auto outFile = std::fstream(TS_FLASH_DUMP_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
         uint8_t *flash_data = (uint8_t*) malloc(0x40000);
         printf("Dumping Flash to file.\nProgress: ");
-        for(uint32_t address = 0x0000000; address < 0x1000000; address+=0x40000)
+        for(uint32_t address = 0x0000000; address < 0x2000000; address+=0x40000)
         {
-            spiflash_read(fd,address, flash_data, 0x40000);
+            spiflash_read(&spiflash, address, flash_data, 0x40000);
             printf("|");
             outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(flash_data)), 0x40000);
         }
@@ -422,13 +423,13 @@ static void flash_test(char* arg, file_t fd)
     }
     else if(0 == strcmp(arg, "test"))
     {
-        uint8_t test_data[8] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88};
+        uint8_t test_data[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01, 0x23, 0x45};
         uint32_t test_addr = 0x00B00000;
         int32_t status;
-        spiflash_init(fd);
+        spiflash_init(fd, &spiflash);
         
         printf("Erasing 64k Sector @ Address 0x%08X: ", test_addr);
-        status = spiflash_erase(fd, test_addr, 0x10000);
+        status = spiflash_erase(&spiflash, test_addr, 0x40000);
         if(TS_STATUS_OK == status)
         {
             printf("OK\n");
@@ -439,7 +440,7 @@ static void flash_test(char* arg, file_t fd)
         }
         
         printf("Test Write @ Address 0x%08X: ", test_addr);
-        status = spiflash_write(fd, test_addr, test_data, 8);
+        status = spiflash_write(&spiflash, test_addr, test_data, 8);
         if(8 == status)
         {
             printf("OK\n");
@@ -451,7 +452,7 @@ static void flash_test(char* arg, file_t fd)
 
         printf("Read Values @ Address 0x%08X: [", test_addr);
         uint8_t readback_data[8] = {0};
-        status = spiflash_read(fd, test_addr, readback_data, 8);
+        status = spiflash_read(&spiflash, test_addr, readback_data, 8);
         for(uint8_t i=0; i < 8; i++)
         {
             printf("%02X ", readback_data[i]);
