@@ -102,33 +102,48 @@ static void spiflash_master_write(file_t fd, uint32_t val, size_t len, size_t wi
     litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 0UL);
 }
 
-static volatile uint8_t w_buf[SPI_FLASH_PROG_SIZE + 5];
-static volatile uint8_t r_buf[SPI_FLASH_PROG_SIZE + 5];
+static uint8_t w_buf[SPI_FLASH_PROG_SIZE + 5];
+static uint8_t r_buf[SPI_FLASH_PROG_SIZE + 5];
 
-static uint32_t transfer_byte(file_t fd, uint8_t b)
+static void transfer_cmd(file_t fd, const uint8_t *bs, uint8_t *resp, int len)
 {
-    
-    /* wait for tx ready */
-    while (!spiflash_tx_ready(fd));
-    
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR, (uint32_t)b);
+    uint32_t xfer_word = 0;
+    uint32_t xfer_num_bytes = 0;
 
-    /* wait for rx ready */
-    while (!spiflash_rx_ready(fd))
-    {
-        NS_DELAY(250);
-    }
-
-    return litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR);
-}
-
-static void transfer_cmd(file_t fd, volatile uint8_t *bs, volatile uint8_t *resp, int len)
-{
-    spiflash_len_mask_width_write(fd, 8, 1, 1);
     litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 1UL);
 
-    for (int i=0; i < len; i++) {
-        resp[i] = transfer_byte(fd, bs[i]);
+    for (int i=0; i < len; i+=4)
+    {
+        xfer_num_bytes = min((len - i), 4);
+        xfer_word = (uint32_t)bs[i];
+        if(xfer_num_bytes > 1)
+            xfer_word = (xfer_word << 8) | (uint32_t)bs[i+1];
+        if(xfer_num_bytes > 2)
+            xfer_word = (xfer_word << 8) | (uint32_t)bs[i+2];
+        if(xfer_num_bytes > 3)
+            xfer_word = (xfer_word << 8) | (uint32_t)bs[i+3];
+
+        
+        spiflash_len_mask_width_write(fd, (8*xfer_num_bytes), 1, 1);
+
+        /* wait for tx ready */
+        while (!spiflash_tx_ready(fd));
+        
+        litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR, (uint32_t)xfer_word);
+
+        /* wait for rx ready */
+        while (!spiflash_rx_ready(fd))
+        {
+            NS_DELAY(250);
+        }
+        xfer_word = litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR);
+        resp[i] = (uint8_t)((xfer_word >> (8*(xfer_num_bytes-1))) & 0xFF);
+        if(xfer_num_bytes > 1)
+            resp[i+1] = (uint8_t)((xfer_word >> (8*(xfer_num_bytes-2))) & 0xFF);
+        if(xfer_num_bytes > 2)
+            resp[i+2] = (uint8_t)((xfer_word >> (8*(xfer_num_bytes-3))) & 0xFF);
+        if(xfer_num_bytes > 3)
+            resp[i+3] = (uint8_t)((xfer_word) & 0xFF);
     }
 
     litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 0UL);
@@ -136,7 +151,7 @@ static void transfer_cmd(file_t fd, volatile uint8_t *bs, volatile uint8_t *resp
 
 static uint32_t spiflash_read_id_register(file_t fd)
 {
-    volatile uint8_t buf[4];
+    uint8_t buf[4];
     w_buf[0] = 0x9F;
     w_buf[1] = 0x00;
     w_buf[2] = 0x00;
@@ -151,7 +166,7 @@ static uint32_t spiflash_read_id_register(file_t fd)
 
 static uint32_t spiflash_read_status_register(file_t fd)
 {
-    volatile uint8_t buf[2];
+    uint8_t buf[2];
     w_buf[0] = 0x05;
     w_buf[1] = 0x00;
     transfer_cmd(fd, w_buf, buf, 2);
