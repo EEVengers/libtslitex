@@ -16,6 +16,7 @@
 #include <inttypes.h>
 #include <fcntl.h>
 #include <thread>
+#include <math.h>
 
 #define OPTPARSE_IMPLEMENTATION
 #include "optparse.h"

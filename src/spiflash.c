@@ -15,23 +15,42 @@
 #include <csr.h>
 #include <liblitepcie.h>
 #include <inttypes.h>
+#include <string.h>
 
 #define SPI_FLASH_PROG_SIZE	256
-/* erase page size in bytes, check flash datasheet */
 #define SPI_FLASH_ERASE_SIZE (64*1024)
 
 #define SPI_FLASH_WINDOW_SIZE 0x10000
 
+#define SPI_FLASH_JEDEC_READ_ID_CMD             (0x9F)
+#define SPI_FLASH_JEDEC_READ_STATUS_REG_1_CMD   (0x05)
+#define SPI_FLASH_WRITE_ENABLE_CMD              (0x06)
+#define SPI_FLASH_WRITE_DISABLE_CMD             (0x04)
+
 #ifndef min
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #endif
+
+static const spiflash_ops_t s25fl256s_ops = {
+    .read = 0x6C, //4QOR
+    .program = 0x12, //4PP
+    .erase_sector = 0xDC, //4SE
+    .cmd_addr_len = 4
+};
+
+static const spiflash_ops_t mx25u6432f_ops = {
+    .read = 0x6B, //QREAD
+    .program = 0x02, //PP
+    .erase_sector = 0xD8, //BE64
+    .cmd_addr_len = 3
+};
 
 static uint32_t get_flash_data(file_t fd, uint32_t flash_addr, uint8_t* pData, uint32_t data_len)
 {
     const uint32_t flash_base = 0x10000;
     uint32_t index = 0;
     uint32_t flash_data = 0;
-    uint32_t flash_window = 0;
+    uint32_t flash_window = litepcie_readl(fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR);
     while(index < data_len)
     {
         if(flash_window != ((flash_addr+index) >> 16))
@@ -44,8 +63,6 @@ static uint32_t get_flash_data(file_t fd, uint32_t flash_addr, uint8_t* pData, u
         *(uint32_t*)&pData[index] = flash_data;
         index += 4;
     }
-
-    litepcie_writel(fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR, 0);
 
     return index;
 }
@@ -152,7 +169,7 @@ static void transfer_cmd(file_t fd, const uint8_t *bs, uint8_t *resp, int len)
 static uint32_t spiflash_read_id_register(file_t fd)
 {
     uint8_t buf[4];
-    w_buf[0] = 0x9F;
+    w_buf[0] = SPI_FLASH_JEDEC_READ_ID_CMD;
     w_buf[1] = 0x00;
     w_buf[2] = 0x00;
     w_buf[3] = 0x00;
@@ -167,7 +184,7 @@ static uint32_t spiflash_read_id_register(file_t fd)
 static uint32_t spiflash_read_status_register(file_t fd)
 {
     uint8_t buf[2];
-    w_buf[0] = 0x05;
+    w_buf[0] = SPI_FLASH_JEDEC_READ_STATUS_REG_1_CMD;
     w_buf[1] = 0x00;
     transfer_cmd(fd, w_buf, buf, 2);
 
@@ -179,36 +196,44 @@ static uint32_t spiflash_read_status_register(file_t fd)
 static void spiflash_write_enable(file_t fd)
 {
     uint8_t buf[1];
-    w_buf[0] = 0x06;
+    w_buf[0] = SPI_FLASH_WRITE_ENABLE_CMD;
     transfer_cmd(fd, w_buf, buf, 1);
 }
 
 static void spiflash_write_disable(file_t fd)
 {
     uint8_t buf[1];
-    w_buf[0] = 0x04;
+    w_buf[0] = SPI_FLASH_WRITE_DISABLE_CMD;
     transfer_cmd(fd, w_buf, buf, 1);
 }
 
-static void page_program(file_t fd, uint32_t addr, uint8_t *data, int len)
+static void page_program(spiflash_dev_t* dev, uint32_t addr, uint8_t *data, int len)
 {
-    w_buf[0] = 0x12;
-    w_buf[1] = addr>>24;
-    w_buf[2] = addr>>16;
-    w_buf[3] = addr>>8;
-    w_buf[4] = addr>>0;
-    memcpy((void *)(&w_buf[5]), (void *)data, len);
-    transfer_cmd(fd, w_buf, r_buf, len+5);
+    int cmd_idx = 0;
+    w_buf[cmd_idx++] = dev->ops.program;
+    if(dev->ops.cmd_addr_len == 4)
+    {
+        w_buf[cmd_idx++] = addr>>24;
+    }
+    w_buf[cmd_idx++] = addr>>16;
+    w_buf[cmd_idx++] = addr>>8;
+    w_buf[cmd_idx++] = addr>>0;
+    memcpy((void *)(&w_buf[cmd_idx]), (void *)data, len);
+    transfer_cmd(dev->fd, w_buf, r_buf, len+cmd_idx);
 }
 
-static void spiflash_sector_erase(file_t fd, uint32_t addr)
+static void spiflash_sector_erase(spiflash_dev_t* dev, uint32_t addr)
 {
-    w_buf[0] = 0xdc;
-    w_buf[1] = addr>>24;
-    w_buf[2] = addr>>16;
-    w_buf[3] = addr>>8;
-    w_buf[4] = addr>>0;
-    transfer_cmd(fd, w_buf, r_buf, 5);
+    int cmd_idx = 0;
+    w_buf[cmd_idx++] = dev->ops.erase_sector;
+    if(dev->ops.cmd_addr_len == 4)
+    {
+        w_buf[cmd_idx++] = addr>>24;
+    }
+    w_buf[cmd_idx++] = addr>>16;
+    w_buf[cmd_idx++] = addr>>8;
+    w_buf[cmd_idx++] = addr>>0;
+    transfer_cmd(dev->fd, w_buf, r_buf, cmd_idx);
 }
 
 int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
@@ -225,7 +250,7 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
     for (i=0; i<len; i+=SPI_FLASH_ERASE_SIZE) {
         LOG_DEBUG("Erase SPI Flash @0x%08lx", ((uint32_t)addr+i));
         spiflash_write_enable(dev->fd);
-        spiflash_sector_erase(dev->fd, addr+i);
+        spiflash_sector_erase(dev, addr+i);
 
         while (spiflash_read_status_register(dev->fd) & 1) {
             NS_DELAY(250000000);
@@ -257,7 +282,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
 
     while(w_len) {
         spiflash_write_enable(dev->fd);
-        page_program(dev->fd, addr+offset, (uint8_t*)pData+offset, w_len);
+        page_program(dev, addr+offset, (uint8_t*)pData+offset, w_len);
 
         while(spiflash_read_status_register(dev->fd) & 1) {
             NS_DELAY(10000);
@@ -285,7 +310,6 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
     uint32_t flash_id = 0;
 
     dev->fd = fd;
-    //dev->ops = TBD per-IC command handlers?
 
 #ifdef CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
     spiflash_dummy_bits_setup(fd, 8);
@@ -296,6 +320,25 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
 
     dev->mfg_code = (flash_id >> 16) & 0xFF;
     dev->part_id = (flash_id & 0xFFFF);
+
+    switch(flash_id)
+    {
+        case 0x010219:
+        {
+            dev->ops = s25fl256s_ops;
+            break;
+        }
+        case 0xC22537:
+        {
+            dev->ops = mx25u6432f_ops;
+            break;
+        }
+        default:
+        {
+            LOG_ERROR("Unknown SPI Flash Device %08X", flash_id);
+            break;
+        }
+    }
 
 //     /* Quad / QPI Configuration. */
 // #ifdef SPIFLASH_MODULE_QUAD_CAPABLE
