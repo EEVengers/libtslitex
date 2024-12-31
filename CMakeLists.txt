@@ -18,7 +18,8 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 add_definitions(-DUNICODE -D_UNICODE)
 
 add_definitions(-DEN_LOGGING)
-add_definitions(-DEN_LOGGING_DEBUG)
+
+add_compile_definitions("$<$<CONFIG:Debug>:EN_LOGGING_DEBUG>")
 
 add_subdirectory(litepcie)
 

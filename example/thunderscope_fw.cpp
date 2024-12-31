@@ -44,13 +44,16 @@ static void fw_upgrade(tsHandle_t ts, const char* file_path)
         char* bitstream = new char[file_size];
         file.read(bitstream, file_size);
 
+        printf("Gateware update in progress....");
+
         // Load New bitstream
         thunderscopeFwUpdate(ts, bitstream, file_size);
+
+        printf("Update Complete!\r\n");
 
         // Close File
         file.close();
 
-        // Reset TS
     }
     else
     {
