@@ -292,6 +292,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
         for (j = 0; j < w_len; j++) {
             if (r_buf[j] != pData[offset+j]) {
                 LOG_ERROR("Error: verify failed at 0x%08lx (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);
+                spiflash_write_disable(dev->fd);
                 return TS_STATUS_ERROR;
             }
         }

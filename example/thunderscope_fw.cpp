@@ -74,6 +74,7 @@ static void print_help(void)
     printf("\tfw_upgrade [bitstream_file] - Load a new Bitstream\r\n");
     printf("\t\t[bitstream_file] - Name of the Gateware Bitstream file to load\r\n");
     printf("\tfactory_restore - Restores the factory bitstream to the primary location\r\n");
+    printf("\tinfo - Print FPGA Information and Exit\r\n");
     printf("\thelp - Print this help message\r\n");
     printf("\tCommon Options:\r\n");
     printf("\t\t-d <device>      Device Index\r\n");
@@ -122,6 +123,12 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
+    if(0 == strcmp(arg, "help"))
+    {
+        print_help();
+        exit(0);
+    }
+
     result = thunderscopeListDevices(idx, &infos);
     if(result == TS_STATUS_ERROR)
     {
@@ -142,7 +149,6 @@ int main(int argc, char** argv)
     result = thunderscopeStatusGet(ts, &status);
     if(result == TS_STATUS_OK)
     {
-        // printf("FPGA Temperature: %0.1f �C\n", status.sys_health.temp_c);
         printf("FPGA Temperature: %0.1f \u00B0C\n", (float_t)status.sys_health.temp_c / 1000);
         printf("FPGA VCC-INT:     %0.2f V\n", (float_t)status.sys_health.vcc_int / 1000);
         printf("FPGA VCC-AUX:     %0.2f V\n", (float_t)status.sys_health.vcc_aux / 1000);
@@ -153,9 +159,10 @@ int main(int argc, char** argv)
     {
         fw_restore(ts);
     }
-    else if(0 == strcmp(arg, "help"))
+    else if(0 == strcmp(arg, "info"))
     {
-        print_help();
+        //Nothing else to do
+        ;;
     }
     else if(argCount == argc)
     {
