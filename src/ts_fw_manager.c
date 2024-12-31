@@ -9,7 +9,46 @@
 #include "ts_fw_manager.h"
 #include "platform.h"
 #include "spiflash.h"
+#include "liblitepcie.h"
 #include "util.h"
+
+// From AMD UG470
+#define IDCODE_7A200T   (0x03636093)
+#define IDCODE_7A100T   (0x03631093)
+#define IDCODE_7A50T    (0x0362C093)
+#define IDCODE_7A35T    (0x0362D093)
+#define IDCODE_MASK     (0x0FFFFFFF)
+
+#define ICAP_REG_IDCODE (0x0C)
+
+static const struct {
+    uint32_t code;
+    char name[16];
+} g_id_map[] = {
+    {IDCODE_7A35T, "7a35tcsg325"},
+    {IDCODE_7A50T, "7a50tcsg325"},
+    {IDCODE_7A100T, "7a100tfgg484"},
+    {IDCODE_7A200T, "7a200tfbg484"},
+    {0, ""}
+};
+
+static uint32_t ts_fw_get_idcode(file_t fd)
+{
+    uint32_t code;
+
+    litepcie_writel(fd, CSR_ICAP_ADDR_ADDR, ICAP_REG_IDCODE);
+    litepcie_writel(fd, CSR_ICAP_READ_ADDR, 1);
+
+    LOG_DEBUG("Read ID Code from ICAP");
+    while(litepcie_readl(fd, CSR_ICAP_DONE_ADDR) == 0)
+    {
+        LOG_DEBUG(".");
+        ;;
+    }
+    code = litepcie_readl(fd, CSR_ICAP_DATA_ADDR);
+    LOG_DEBUG("Read IDCODE 0x%08X", code);
+    return code & IDCODE_MASK;
+}
 
 static const char* ts_fw_parse_bit_header(const char* header, const char** part, uint32_t* bin_len)
 {
@@ -46,6 +85,7 @@ static const char* ts_fw_parse_bit_header(const char* header, const char** part,
         return NULL;
     }
     key_len = (uint16_t)(position[1] << 8) + (position[2]);
+    *part = &position[3];
     LOG_DEBUG("Part: %s", &position[3]);
     position += (3+key_len);
 
@@ -121,7 +161,37 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
         LOG_ERROR("INVALID length in bitstream header (%u > %u)", bin_length, len);
         return TS_STATUS_ERROR;
     }
-    //TODO - Verify FPGA Part 
+    
+    // Verify FPGA Part 
+    // Get IDCODE from TS
+    uint32_t idcode;
+    bool id_valid = false;
+    idcode = ts_fw_get_idcode(mngr->flash_dev.fd);
+
+    // Compare IDCODE with associated Part# from bitstream
+    uint32_t idx = 0;
+    while(g_id_map[idx].code != 0)
+    {
+        if(g_id_map[idx].code == idcode)
+        {
+            if(0 == strncmp(g_id_map[idx].name, part_name, strlen(g_id_map[idx].name)))
+            {
+                id_valid = true;
+            }
+            else
+            {
+                LOG_ERROR("Invalid Update bitstream for device %s", part_name);
+            }
+            break;
+        }
+        idx++;
+    }
+
+    if(id_valid == false)
+    {
+        LOG_ERROR("Bitstream IDCODE Validation Failed");
+        return TS_INVALID_PARAM;
+    }
 
     // Verify File Length Good
     uint32_t user_partition_len = mngr->partition_table->user_bitstream_end - mngr->partition_table->user_bitstream_start;
