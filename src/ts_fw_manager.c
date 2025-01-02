@@ -6,6 +6,8 @@
  * Copyright (c) 2024 Nate Meyer <nate.devel@gmail.com>
  */
 
+#include <string.h>
+
 #include "ts_fw_manager.h"
 #include "platform.h"
 #include "spiflash.h"
