@@ -159,7 +159,7 @@ static void test_io(file_t fd)
 
     /* Write to scratch register. */
     printf("Write 0x12345678 to Scratch register:\n");
-    litepcie_writel(fd, CSR_CTRL_SCRATCH_ADDR, 0x0);
+    litepcie_writel(fd, CSR_CTRL_SCRATCH_ADDR, 0x12345678);
     printf("Read: 0x%08x\n", litepcie_readl(fd, CSR_CTRL_SCRATCH_ADDR));
 
     /* Read from scratch register. */

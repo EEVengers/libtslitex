@@ -36,7 +36,12 @@
 #define TS_DMA_NAME_ARGS(chan, dev)     (chan), (dev)
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
-#else
+#elif defined(__APPLE__)
+#define TS_DMA_NAME         "%s"
+#define TS_DMA_NAME_LEN     (16)
+#define TS_DMA_NAME_ARGS(chan, dev)     "litepcie"
+#define TS_DMA_OS_FLAGS     (O_CLOEXEC)
+#elif defined(__LINUX__)
 #define TS_DMA_NAME         "/dev/thunderscope%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_NAME_ARGS(chan, dev)     (dev)
@@ -57,13 +62,26 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
 
         snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
 
-        inst->dma = litepcie_open(devName, TS_DMA_OS_FLAGS);
+        inst->dma.fds.fd = litepcie_open(devName, TS_DMA_OS_FLAGS);
+        inst->dma.channel = channel;
         
-        if((INVALID_HANDLE_VALUE != inst->dma) &&
-            litepcie_request_dma(inst->dma, 0, 1))
+        if((INVALID_HANDLE_VALUE != inst->dma.fds.fd) &&
+            litepcie_request_dma(&inst->dma, 0, 1))
         {
-            litepcie_dma_set_loopback(inst->dma, 0);
+            litepcie_dma_set_loopback(&inst->dma, 0);
             retVal = TS_STATUS_OK;
+#if defined(__APPLE__)
+            mach_vm_address_t writerAddress = 0;
+            mach_vm_size_t writerSize = 0;
+            
+            IOConnectMapMemory64(inst->dma.fds.fd, LITEPCIE_DMA_WRITER | 0, mach_task_self(), &writerAddress, &writerSize, kIOMapAnywhere);
+            
+            if (writerAddress != NULL) {
+                inst->dma.buf_rd = (uint8_t*)writerAddress;
+            } else {
+                printf("failed to acquire writer mapped buffer");
+            }
+#endif
         }
         //else, DMA Unavailable
     }
@@ -81,7 +99,7 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
     inst->active = en;
 
     //Start/Stop DMA
-    litepcie_dma_writer(inst->dma, en,
+    litepcie_dma_writer(&inst->dma, en,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
@@ -105,7 +123,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
 #if defined(_WIN32)
         uint32_t len = 0;
         
-        if (!ReadFile(inst->dma, sampleBuffer, bufferLen, &len, NULL))
+        if (!ReadFile(inst->dma.fds.fd, sampleBuffer, bufferLen, &len, NULL))
         {
             LOG_ERROR("Sample Read failed: %d", GetLastError());
             LOG_ERROR("Sample Read args: 0x%p - 0x%lx - 0x%x", sampleBuffer, bufferLen, len);
@@ -115,10 +133,31 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         {
             retVal = (int32_t)len;
         }
+#elif defined(__APPLE__)
+        while(retVal < (int32_t)bufferLen)
+        {
+            litepcie_dma_writer(&inst->dma, inst->active,
+                        &inst->dma_buffer_count,
+                        &inst->driver_buffer_count,
+                        &inst->dropped_buffer_count);
+            int64_t buff_available = inst->dma_buffer_count - inst->driver_buffer_count;
+            if(buff_available > (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ))
+            {
+                inst->driver_buffer_count = inst->dma_buffer_count - (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ);
+            }
+            printf("Sample Get buffer %llu (%llu hw) (%d/%u)\r\n", inst->driver_buffer_count, inst->dma_buffer_count, retVal, bufferLen);
+            if(buff_available > 0)
+            {
+                memcpy(sampleBuffer, &inst->dma.buf_rd[(inst->driver_buffer_count % DMA_BUFFER_COUNT) * TS_SAMPLE_BUFFER_SIZE], TS_SAMPLE_BUFFER_SIZE);
+                inst->driver_buffer_count++;
+                retVal += TS_SAMPLE_BUFFER_SIZE;
+            }
+            NS_DELAY(250);
+        }
 #else
         while (retVal < bufferLen)
         {
-            int32_t readLen = (int32_t)read(inst->dma, &sampleBuffer[retVal], (bufferLen - (uint32_t)retVal));
+            int32_t readLen = (int32_t)read(inst->dma.fds.fd, &sampleBuffer[retVal], (bufferLen - (uint32_t)retVal));
             if(readLen < 0)
             {
                 LOG_ERROR("Sample Read failed: %d", readLen);
@@ -142,7 +181,7 @@ int32_t samples_update_status(sampleStream_t* inst)
         return TS_STATUS_ERROR;
     }
 
-    litepcie_dma_writer(inst->dma, inst->active,
+    litepcie_dma_writer(&inst->dma, inst->active,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
@@ -160,13 +199,18 @@ int32_t samples_teardown(sampleStream_t* inst)
     else
     {
         inst->active = 0;
-        litepcie_dma_writer(inst->dma, 0, 
+        litepcie_dma_writer(&inst->dma, 0, 
                             &inst->dma_buffer_count,
                             &inst->driver_buffer_count,
                             &inst->dropped_buffer_count);
+#if defined(__APPLE__)
+        IOConnectUnmapMemory(inst->dma.fds.fd,
+                            LITEPCIE_DMA_WRITER | 0, mach_task_self(),
+                            (mach_vm_address_t)inst->dma.buf_rd);
+#endif
 
-        litepcie_release_dma(inst->dma, 0, 1);
-        litepcie_close(inst->dma);
+        litepcie_release_dma(&inst->dma, 0, 1);
+        litepcie_close(inst->dma.fds.fd);
     }
 
     return retVal;

@@ -11,9 +11,13 @@ if(WIN32)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_win.h
     )
-else()
+elif(LINUX)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_linux.h
+    )
+elif(APPLE)
+set(litepcie_PLATFORM_HEADERS
+    public_h/litepcie_mac.h
     )
 endif()
 
@@ -45,4 +49,6 @@ target_include_directories(litepcie PUBLIC public_h include)
 
 if(WIN32)
     target_link_libraries(litepcie setupapi)
+elif(APPLE)
+    target_link_libraries(tslitex "-framework IOKit")
 endif()
