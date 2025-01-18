@@ -98,7 +98,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx)
         return NULL;
     }
 
-    if(TS_STATUS_OK != samples_init(&pInst->samples, devIdx, 0))
+    if(TS_STATUS_OK != samples_init(&pInst->samples, pInst->ctrl, devIdx, 0))
     {
         LOG_ERROR("Failed to initialize samples");
         ts_channel_destroy(pInst->pChannel);

@@ -49,7 +49,7 @@
 #endif
 
 
-int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
+int32_t samples_init(sampleStream_t* inst, file_t fd, uint8_t devIdx, uint8_t channel)
 {
     int32_t retVal = TS_STATUS_ERROR;
     char devName[TS_DMA_NAME_LEN] = {0};
@@ -60,15 +60,16 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
         inst->driver_buffer_count = 0;
         inst->active = 0;
 
-        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
+        // snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
 
-        inst->dma.fds.fd = litepcie_open(devName, TS_DMA_OS_FLAGS);
+        // inst->dma.fds.fd = litepcie_open(devName, TS_DMA_OS_FLAGS);
+        inst->dma.fds.fd = fd;
         inst->dma.channel = channel;
         
         if((INVALID_HANDLE_VALUE != inst->dma.fds.fd) &&
             litepcie_request_dma(&inst->dma, 0, 1))
         {
-            litepcie_dma_set_loopback(&inst->dma, 0);
+            // litepcie_dma_set_loopback(&inst->dma, 0);
             retVal = TS_STATUS_OK;
 #if defined(__APPLE__)
             mach_vm_address_t writerAddress = 0;
@@ -145,14 +146,16 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             {
                 inst->driver_buffer_count = inst->dma_buffer_count - (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ);
             }
-            printf("Sample Get buffer %llu (%llu hw) (%d/%u)\r\n", inst->driver_buffer_count, inst->dma_buffer_count, retVal, bufferLen);
             if(buff_available > 0)
             {
-                memcpy(sampleBuffer, &inst->dma.buf_rd[(inst->driver_buffer_count % DMA_BUFFER_COUNT) * TS_SAMPLE_BUFFER_SIZE], TS_SAMPLE_BUFFER_SIZE);
+                memcpy(sampleBuffer, &(inst->dma.buf_rd[(inst->driver_buffer_count % DMA_BUFFER_COUNT) * TS_SAMPLE_BUFFER_SIZE]), TS_SAMPLE_BUFFER_SIZE);
                 inst->driver_buffer_count++;
                 retVal += TS_SAMPLE_BUFFER_SIZE;
             }
-            NS_DELAY(250);
+            else
+            {
+                NS_DELAY(250);
+            }
         }
 #else
         while (retVal < bufferLen)
@@ -210,7 +213,9 @@ int32_t samples_teardown(sampleStream_t* inst)
 #endif
 
         litepcie_release_dma(&inst->dma, 0, 1);
+#if !defined(__APPLE__)
         litepcie_close(inst->dma.fds.fd);
+#endif
     }
 
     return retVal;

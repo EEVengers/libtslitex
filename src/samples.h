@@ -42,7 +42,7 @@ typedef struct sampleStream_s
  * @param channel DMA Channel to read
  * @return int32_t TS_STATUS_OK if the DMA was initialized, else TS_STATUS_ERROR
  */
-int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel);
+int32_t samples_init(sampleStream_t* inst, file_t fd, uint8_t devIdx, uint8_t channel);
 
 /**
  * @brief Enable or Disable the sample engine

@@ -23,16 +23,16 @@ struct litepcie_ioctl_dma {
 } __attribute__((packed));
 
 struct litepcie_ioctl_dma_writer {
-	uint8_t enable;
-	uint8_t channel;
+	uint32_t enable;
+	uint32_t channel;
 	int64_t hw_count;
 	int64_t sw_count;
 	int64_t lost_count;
 } __attribute__((packed));
 
 struct litepcie_ioctl_dma_reader {
-	uint8_t enable;
-	uint8_t channel;
+	uint32_t enable;
+	uint32_t channel;
 	int64_t hw_count;
 	int64_t sw_count;
 	int64_t lost_count;

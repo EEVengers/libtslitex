@@ -40,32 +40,51 @@ void litepcie_dma_set_loopback(struct litepcie_dma_ctrl *dma, uint8_t loopback_e
 }
 
 void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
-    struct litepcie_ioctl_dma_writer m;
+    struct litepcie_ioctl_dma_writer m, n;
     m.enable = enable;
 #if defined(__APPLE__)
-    size_t outlen = sizeof(m);
+    size_t outlen = sizeof(n);
     m.channel = dma->channel;
     m.sw_count = *sw_count;
-#endif
+    
+    IOConnectCallStructMethod(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, &m, sizeof(m), &n, &outlen);
+
+    if(outlen != sizeof(n))
+    {
+        printf(stderr, "IOCTL Output Len Invalid: %u, expected %u\r\n", outlen, sizeof(n));
+    }
+    *hw_count = n.hw_count;
+    *sw_count = n.sw_count;
+    *lost_count = n.lost_count;
+#else
     checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, m));
 
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
     *lost_count = m.lost_count;
+#endif
 }
 
 void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
-    struct litepcie_ioctl_dma_reader m;
+    struct litepcie_ioctl_dma_reader m, n;
     m.enable = enable;
 #if defined(__APPLE__)
-    size_t outlen = sizeof(m);
+    size_t outlen = sizeof(n);
     m.channel = dma->channel;
     m.sw_count = *sw_count;
-#endif
-    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_READER, m));
+    
+    IOConnectCallStructMethod(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, &m, sizeof(m), &n, &outlen);
+
+    *hw_count = n.hw_count;
+    *sw_count = n.sw_count;
+    *lost_count = n.lost_count;
+#else
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, m));
+
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
     *lost_count = m.lost_count;
+#endif
 }
 
 /* lock */
@@ -80,7 +99,8 @@ uint8_t litepcie_request_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint
     size_t outlen = sizeof(m);
 #endif
     checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_LOCK, m));
-    return m.dma_reader_status;
+    // return m.dma_reader_status;
+    return 1;
 }
 
 void litepcie_release_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer) {

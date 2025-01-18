@@ -160,6 +160,9 @@ void _check_ioctl(int status, const char *file, int line)
     {
 #if defined(_WIN32)
         fprintf(stderr, "Failed ioctl at %s:%d: %d\n", file, line, GetLastError());
+
+#elif defined(__APPLE__)
+        fprintf(stderr, "Failed ioctl at %s:%d: %08x\n", file, line, status);
 #else
         fprintf(stderr, "Failed ioctl at %s:%d: %s\n", file, line, strerror(errno));
 #endif
