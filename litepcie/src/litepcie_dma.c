@@ -73,13 +73,13 @@ void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t 
     m.channel = dma->channel;
     m.sw_count = *sw_count;
     
-    IOConnectCallStructMethod(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, &m, sizeof(m), &n, &outlen);
+    IOConnectCallStructMethod(dma->fds.fd, LITEPCIE_IOCTL_DMA_READER, &m, sizeof(m), &n, &outlen);
 
     *hw_count = n.hw_count;
     *sw_count = n.sw_count;
     *lost_count = n.lost_count;
 #else
-    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, m));
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_READER, m));
 
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;

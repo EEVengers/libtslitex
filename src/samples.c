@@ -49,7 +49,7 @@
 #endif
 
 
-int32_t samples_init(sampleStream_t* inst, file_t fd, uint8_t devIdx, uint8_t channel)
+int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
 {
     int32_t retVal = TS_STATUS_ERROR;
     char devName[TS_DMA_NAME_LEN] = {0};
@@ -60,16 +60,15 @@ int32_t samples_init(sampleStream_t* inst, file_t fd, uint8_t devIdx, uint8_t ch
         inst->driver_buffer_count = 0;
         inst->active = 0;
 
-        // snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
+        snprintf(devName, TS_DMA_NAME_LEN, TS_DMA_NAME, TS_DMA_NAME_ARGS(channel, devIdx));
 
-        // inst->dma.fds.fd = litepcie_open(devName, TS_DMA_OS_FLAGS);
-        inst->dma.fds.fd = fd;
+        inst->dma.fds.fd = litepcie_open(devName, TS_DMA_OS_FLAGS);
         inst->dma.channel = channel;
         
         if((INVALID_HANDLE_VALUE != inst->dma.fds.fd) &&
             litepcie_request_dma(&inst->dma, 0, 1))
         {
-            // litepcie_dma_set_loopback(&inst->dma, 0);
+            litepcie_dma_set_loopback(&inst->dma, 0);
             retVal = TS_STATUS_OK;
 #if defined(__APPLE__)
             mach_vm_address_t writerAddress = 0;
@@ -145,6 +144,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             if(buff_available > (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ))
             {
                 inst->driver_buffer_count = inst->dma_buffer_count - (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ);
+                inst->dropped_buffer_count++;
             }
             if(buff_available > 0)
             {
@@ -213,9 +213,7 @@ int32_t samples_teardown(sampleStream_t* inst)
 #endif
 
         litepcie_release_dma(&inst->dma, 0, 1);
-#if !defined(__APPLE__)
         litepcie_close(inst->dma.fds.fd);
-#endif
     }
 
     return retVal;
