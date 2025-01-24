@@ -98,3 +98,8 @@ target_include_directories(tslitex_static PUBLIC include)
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
 
 add_subdirectory(example)
+
+####
+# BINDINGS
+####
+add_subdirectory(bindings/python)

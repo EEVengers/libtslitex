@@ -1,0 +1,11 @@
+[build-system]
+requires = ["scikit-build-core", "cython"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "tslitex"
+version = "0.0.1"
+license = "BSD-2-Clause"
+authors = [
+  {name = "Nate Meyer", email = "nate.devel@gmail.com"},
+]
