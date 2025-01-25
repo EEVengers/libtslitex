@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
 set(CMAKE_CXX_EXTENSIONS ON)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
@@ -103,3 +104,4 @@ add_subdirectory(example)
 # BINDINGS
 ####
 add_subdirectory(bindings/python)
+add_dependencies(PyBindings tslitex_static)

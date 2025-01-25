@@ -1,0 +1,17 @@
+[build-system]
+requires = ["cython", "setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pytslitex"
+version = "0.0.1"
+license = {text = "BSD-2-Clause"}
+authors = [
+  {name = "Nate Meyer", email = "nate.devel@gmail.com"},
+]
+
+[tool.setuptools]
+packages = ["tslitex"]
+ext-modules = [
+  { name = "tslitex.tslitex", sources = ["tslitex/tslitex.c"], libraries = ["tslitex_static", "litepcie"], library-dirs = ["@CMAKE_ARCHIVE_OUTPUT_DIRECTORY@"], include-dirs = ["@CMAKE_LIBRARY_OUTPUT_DIRECTORY@/include"]}
+]

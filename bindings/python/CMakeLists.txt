@@ -7,23 +7,20 @@ find_package(
 )
 
 add_custom_command(
-    OUTPUT tslitex.c
+    OUTPUT tslitex/tslitex.c
     COMMAND Python::Interpreter -m cython
-    "${CMAKE_CURRENT_SOURCE_DIR}/tslitex.pyx" --output-file tslitex.c
-    DEPENDS tslitex.pyx tslitex.pxd tscalibration.pxd
+    "${CMAKE_CURRENT_SOURCE_DIR}/tslitex.pyx" --output-file tslitex/tslitex.c
+    DEPENDS tslitex.pyx tslitex.pxd
     VERBATIM
     )
     
-python_add_library(pytslitex MODULE WITH_SOABI EXCLUDE_FROM_ALL tslitex.c)
-
-target_link_libraries(pytslitex PRIVATE tslitex_static)
-target_include_directories(pytslitex PUBLIC ${CMAKE_SOURCE_DIR}/include)
+configure_file(pyproject.toml.in pyproject.toml @ONLY)
+configure_file(__init__.py.in tslitex/__init__.py COPYONLY)
 
 add_custom_target(PyBindings
-        COMMAND "${PYTHON_EXECUTABLE}" -m pip wheel .
-        EXCLUDE_FROM_ALL
+        COMMAND Python::Interpreter -m pipx run build --wheel .
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Building python whl"
+        DEPENDS tslitex/tslitex.c
         )
 
-add_dependencies(PyBindings pytslitex)

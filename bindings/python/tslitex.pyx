@@ -9,7 +9,7 @@
 cimport cython
 cimport tslitex
 
-cdef ThunderscopeListDevs(devIdx:int):
+def ThunderscopeListDevs(devIdx:int):
     cdef tslitex.tsDeviceInfo_t infos
     retVal = tslitex.thunderscopeListDevices(devIdx, &infos)
     return retVal, infos
