@@ -70,6 +70,7 @@ set(TS_HEADERS
 set(TS_LIB_HEADERS 
     include/thunderscope.h
     include/ts_common.h
+    include/ts_calibration.h
     )
 
 ####

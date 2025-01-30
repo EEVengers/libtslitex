@@ -12,6 +12,11 @@ cdef extern from "thunderscope.h":
 
     ctypedef void* tsHandle_t
 
+    cdef enum:
+        TS_STATUS_OK
+        TS_STATUS_ERROR
+        TS_INVALID_PARAM
+
     cpdef enum tsChannelCoupling_e:
         TS_COUPLE_DC
         TS_COUPLE_AC
@@ -23,6 +28,9 @@ cdef extern from "thunderscope.h":
         TS_TERM_50
 
     ctypedef tsChannelTerm_e tsChannelTerm_t
+
+    cdef enum:
+        TS_MODE_8_BIT = 256
 
     cdef struct tsDeviceInfo_s:
         uint32_t device_id
@@ -43,11 +51,13 @@ cdef extern from "thunderscope.h":
 
     ctypedef tsChannelParam_s tsChannelParam_t
 
-    cdef struct _syshealth:
+    cdef struct sysHealth_s:
         uint32_t temp_c
         uint32_t vcc_int
         uint32_t vcc_aux
         uint32_t vcc_bram
+
+    ctypedef sysHealth_s sysHealth_t
 
     cdef struct tsScopeState_s:
         uint32_t adc_sample_rate
@@ -59,6 +69,7 @@ cdef extern from "thunderscope.h":
         uint8_t power_state
         uint8_t pll_state
         uint8_t afe_state
+        sysHealth_t sys_health
 
     ctypedef tsScopeState_s tsScopeState_t
 
