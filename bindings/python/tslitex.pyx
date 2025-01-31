@@ -44,7 +44,7 @@ cdef class Channel:
 
     
     @Active.setter
-    def Active(self, enable: int):
+    def Active(self, enable: bool):
         self._params.active = <uint8_t>enable
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
@@ -108,7 +108,7 @@ cdef class Channel:
 
     
     @Coupling.setter
-    def Coupling(self, coupling: int):
+    def Coupling(self, coupling: tslitex.tsChannelCoupling_t):
         if coupling not in [tslitex.TS_COUPLE_AC, tslitex.TS_COUPLE_DC]:
             raise ValueError(f"Invalid value for channel coupling")
         self._params.coupling = <uint8_t>coupling
@@ -122,14 +122,14 @@ cdef class Channel:
         cdef int32_t retVal = tslitex.thunderscopeChannelConfigGet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to retrieve Channel {self._channel} parameters")
-        return self._params.bandwidth
+        return self._params.termination
 
     
     @Termination.setter
-    def Termination(self, term: int):
+    def Termination(self, term: tslitex.tsChannelTerm_t):
         if term not in [tslitex.TS_TERM_1M, tslitex.TS_TERM_50]:
             raise ValueError(f"Invalid value for channel termination")
-        self._params.term = <uint8_t>term
+        self._params.term = term
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
@@ -140,17 +140,20 @@ cdef class Thunderscope:
     cdef uint32_t _sample_mode
     cdef uint8_t _enable
     cdef tslitex.tsHandle_t _tsHandle
+    cdef public object channel
     
+    def __cinit__(self, dev_idx: int):
+        self.channel = []
+
     def __init__(self, dev_idx: int):
         self._sample_rate = 1000000000
         self._sample_mode = 256
         self._enable = 0
         self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx)
-        self.channel = []
         if self._tsHandle == NULL:
             raise ValueError(f"Failed to Open Thunderscope Device {dev_idx}", dev_idx)
         for ch in range(4):
-            self.channel[ch] = Channel.create(self._tsHandle, ch)
+            self.channel.append(Channel.create(self._tsHandle, ch))
         
     def __del__(self):
         if self._tsHandle != NULL:
@@ -191,15 +194,12 @@ cdef class Thunderscope:
         retval = <int32_t> tslitex.thunderscopeSampleModeSet(<tslitex.tsHandle_t>self._tsHandle,
                                                             <uint32_t>self._sample_rate, <uint32_t>self._sample_resolution)
 
-    cdef Enable(self, enable: bool):
+    def Enable(self, enable: bool):
         cdef int32_t retVal = tslitex.thunderscopeDataEnable(self._tsHandle, <uint8_t>enable)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Unable to set Thunderscope Enable to {enable}")
 
-    def Read(self, uint8_t[:] data not None):
-        if not data.flags['C_CONTIGUOUS']:
-            data = numpy.ascontiguousarray(data)  # Makes a contiguous copy of the numpy array.
-
-        readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], data.size)
+    def Read(self, uint8_t[:] data not None, dataLen: int):
+        readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dataLen)
         return readLen
 
