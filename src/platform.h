@@ -11,6 +11,7 @@
 #include "ts_common.h"
 #include "mcp_clkgen.h"
 #include "mcp_zl3026x.h"
+#include "i2c.h"
 #include "csr.h"
 
 
@@ -41,6 +42,7 @@
 #define TS_ADC_CS               (4)
 
 #define TS_I2C_BASE_ADDR        CSR_I2C_BASE
+#define TS_I2C_CLK_RATE         I2C_400KHz
 
 #define TS_TRIM_DAC_I2C_ADDR    (0x60)
 #define TS_TRIM_DAC_DEFAULT     (0x800)

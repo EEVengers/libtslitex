@@ -14,138 +14,175 @@
 #include "i2c.h"
 #include "util.h"
 
-#define I2C_PERIOD	(NANOSECOND / I2C_FREQ_HZ)
-#define I2C_DELAY(n)    NS_DELAY(I2C_PERIOD * (n) / 4)
+#define I2C_WAIT_TIMEOUT    (10000)
 
-#define I2C_SCL     (1 << CSR_I2C_W_SCL_OFFSET)
-#define I2C_SDAOE   (1 << CSR_I2C_W_OE_OFFSET)
-#define I2C_SDAOUT  (1 << CSR_I2C_W_SDA_OFFSET)
-#define I2C_SDAIN   (1 << CSR_I2C_R_SDA_OFFSET)
+//I2C Transfer Settings
+#define I2C_TX_LEN(x)   (((x) & 0x7) << CSR_I2C_MASTER_SETTINGS_LEN_TX_OFFSET)
+#define I2C_RX_LEN(x)   (((x) & 0x7) << CSR_I2C_MASTER_SETTINGS_LEN_RX_OFFSET)
+#define I2C_RECOVER(x)  (((x) & 0x1) << CSR_I2C_MASTER_SETTINGS_RECOVER_OFFSET)
 
+//I2C Status
+#define I2C_TX_READY(x)     (((x) >> CSR_I2C_MASTER_STATUS_TX_READY_OFFSET) & 0x1)
+#define I2C_RX_READY(x)     (((x) >> CSR_I2C_MASTER_STATUS_RX_READY_OFFSET) & 0x1)
+#define I2C_NACK(x)         (((x) >> CSR_I2C_MASTER_STATUS_NACK_OFFSET) & 0x1)
+#define I2C_TX_PEND(x)      (((x) >> CSR_I2C_MASTER_STATUS_TX_UNFINISHED_OFFSET) & 0x1)
+#define I2C_RX_PEND(x)      (((x) >> CSR_I2C_MASTER_STATUS_RX_UNFINISHED_OFFSET) & 0x1)
 
-static inline void i2c_oe_scl_sda(i2c_t device, bool oe, bool scl, bool sda)
+/**
+ * @brief Enable the I2C core
+ */
+static inline void i2c_activate(i2c_t device, bool active)
 {
-    litepcie_writel(device.fd, CSR_I2C_W_ADDR, ((oe & 1) << CSR_I2C_W_OE_OFFSET) |
-        ((scl & 1) << CSR_I2C_W_SCL_OFFSET) |
-        ((sda & 1) << CSR_I2C_W_SDA_OFFSET));
-
+    if(active)
+    {
+        litepcie_writel(device.fd, CSR_I2C_MASTER_ACTIVE_ADDR, 1);
+    }
+    else
+    {
+        litepcie_writel(device.fd, CSR_I2C_MASTER_ACTIVE_ADDR, 0);
+    }
 }
 
-// START condition: 1-to-0 transition of SDA when SCL is 1
-static void i2c_start(i2c_t device)
+/**
+ * @brief Set the I2C Device address for a transaction
+ */
+static inline void i2c_set_addr(i2c_t device)
 {
-    i2c_oe_scl_sda(device, 1, 1, 1);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 1, 1, 0);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 1, 0, 0);
-    I2C_DELAY(1);
+    litepcie_writel(device.fd, CSR_I2C_MASTER_ADDR_ADDR, device.devAddr);
 }
 
-// STOP condition: 0-to-1 transition of SDA when SCL is 1
-static void i2c_stop(i2c_t device)
+/**
+ * @brief Poll for TX Ready status
+ */
+static inline void i2c_wait_tx_ready(i2c_t device)
 {
-    i2c_oe_scl_sda(device, 1, 0, 0);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 1, 1, 0);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 1, 1, 1);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 0, 1, 1);
+    uint32_t timeout = I2C_WAIT_TIMEOUT;
+    while(timeout && (I2C_TX_READY(litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR)) == 0))
+    {
+        NS_DELAY(1000);
+        timeout--;
+    }
 }
 
-// Call when in the middle of SCL low, advances one clk period
-static void i2c_transmit_bit(i2c_t device, bool bit)
+/**
+ * @brief Poll for RX Ready status
+ */
+static inline void i2c_wait_rx_ready(i2c_t device)
 {
-    i2c_oe_scl_sda(device, 1, 0, bit);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 1, 1, bit);
-    I2C_DELAY(2);
-    i2c_oe_scl_sda(device, 1, 0, bit);
-    I2C_DELAY(1);
+    uint32_t timeout = I2C_WAIT_TIMEOUT;
+    while(timeout && (I2C_RX_READY(litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR)) == 0))
+    {
+        NS_DELAY(1000);
+        timeout--;
+    }
 }
 
-// Call when in the middle of SCL low, advances one clk period
-static int i2c_receive_bit(i2c_t device)
+
+/**
+ * @brief Send data up to 4 bytes
+ * 
+ * @return True if device sends ACK
+ */
+static bool i2c_tx(i2c_t device, uint32_t data, uint8_t len)
 {
-    int value;
-    i2c_oe_scl_sda(device, 0, 0, 0);
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 0, 1, 0);
-    I2C_DELAY(1);
-    // read in the middle of SCL high
-    value = (int)litepcie_readl(device.fd, CSR_I2C_R_ADDR) & I2C_SDAIN;
-    I2C_DELAY(1);
-    i2c_oe_scl_sda(device, 0, 0, 0);
-    I2C_DELAY(1);
-    return value;
+    bool ack;
+    uint32_t i2cStatus;
+
+    //Write Settings
+    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_TX_LEN(len));
+
+    //Wait for TX ready
+    i2c_wait_tx_ready(device);
+
+    //Write TX word
+    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, data);
+
+    //Wait for RX ready
+    i2c_wait_rx_ready(device);
+
+    //Get ACK
+    i2cStatus = litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR);
+    ack = I2C_NACK(i2cStatus) ? false : true;
+
+    //Read the RX word
+    i2cStatus = litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+
+    return ack;
 }
 
-// Send data byte and return 1 if slave sends ACK
-static bool i2c_transmit_byte(i2c_t device, uint8_t data)
+/**
+ * @brief Receive a word from the I2C core
+ * 
+ * @return True if device sends ACK
+ */
+static bool i2c_rx(i2c_t device, uint8_t len, uint32_t* pData)
 {
     int i;
-    int ack;
+    uint32_t status = 0;
+    bool ack;
 
-    // SCL should have already been low for 1/4 cycle
-    // Keep SDA low to avoid short spikes from the pull-ups
-    i2c_oe_scl_sda(device, 1, 0, 0);
-    for (i = 0; i < 8; ++i) {
-        // MSB first
-        i2c_transmit_bit(device, (data & (1 << 7)) != 0);
-        data <<= 1;
-    }
-    i2c_oe_scl_sda(device, 0, 0, 0); // release line
-    ack = i2c_receive_bit(device);
+    //Write Settings
+    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_RX_LEN(len));
 
-    // 0 from slave means ack
-    return ack == 0;
+    //Wait for TX ready
+    i2c_wait_tx_ready(device);
+
+    //Write TX word
+    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, 0);
+
+    //Wait for RX Ready
+    i2c_wait_rx_ready(device);
+
+    //Get ACK
+    status = litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR);
+    ack = I2C_NACK(status) ? false : true;
+
+    //Read Data word
+    *pData = litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+
+    return ack;
 }
 
-// Read data byte and send ACK if ack=1
-static unsigned char i2c_receive_byte(i2c_t device, bool ack)
+int32_t i2c_init(i2c_t* device, file_t fd, uint8_t addr)
 {
-    int i;
-    uint8_t data = 0;
-
-    for (i = 0; i < 8; ++i) {
-        data <<= 1;
-        data |= i2c_receive_bit(device);
+    if(device == NULL)
+    {
+        return -1;
     }
-    i2c_transmit_bit(device, !ack);
-    i2c_oe_scl_sda(device, 0, 0, 0); // release line
 
-    return data;
+    device->fd = fd;
+    device->devAddr = addr;
+
+    return 0;
 }
 
-// Reset line state
-void i2c_reset(i2c_t dev)
+void i2c_rate_set(i2c_t device, i2c_rate_t rate)
 {
-    int i;
-    i2c_oe_scl_sda(dev, 1, 1, 1);
-    I2C_DELAY(8);
-    for (i = 0; i < 9; ++i) {
-        i2c_oe_scl_sda(dev, 1, 0, 1);
-        I2C_DELAY(2);
-        i2c_oe_scl_sda(dev, 1, 1, 1);
-        I2C_DELAY(2);
-    }
-    i2c_oe_scl_sda(dev, 0, 0, 1);
-    I2C_DELAY(1);
-    i2c_stop(dev);
-    i2c_oe_scl_sda(dev, 0, 1, 1);
-    I2C_DELAY(8);
+    //Activate false
+    i2c_activate(device, false);
+
+    //Set Clock Rate
+    litepcie_writel(device.fd, CSR_I2C_PHY_SPEED_MODE_ADDR, rate);
 }
 
-/*
-    * Read slave memory over I2C starting at given address
-    *
-    * First writes the memory starting address, then reads the data:
-    *   START WR(slaveaddr) WR(addr) STOP START WR(slaveaddr) RD(data) RD(data) ... STOP
-    * Some chips require that after transmiting the address, there will be no STOP in between:
-    *   START WR(slaveaddr) WR(addr) START WR(slaveaddr) RD(data) RD(data) ... STOP
-    */
-bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool send_stop, uint32_t addr_size)
+void i2c_reset(i2c_t device)
+{
+    i2c_activate(device, true);
+    
+    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_RECOVER(1));
+    
+    i2c_wait_tx_ready(device);
+
+    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, 0);
+
+    i2c_wait_rx_ready(device);
+
+    litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+
+    i2c_activate(device, false);
+}
+
+bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, uint32_t addr_size)
 {
     int32_t i, j;
 
@@ -153,103 +190,125 @@ bool i2c_read(i2c_t device, uint32_t addr, uint8_t* data, uint32_t len, bool sen
         return false;
     }
 
+    i2c_activate(device, true);
+
+    //Set Address
+    i2c_set_addr(device);
+
     //Write address
     if(addr_size > 0)
     {
-        i2c_start(device);
-
-        if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
-            i2c_stop(device);
-            LOG_ERROR("I2C NACK writing slave RD addr 0x%02X", device.devAddr);
+        if(!i2c_tx(device, addr, addr_size))
+        {
+            LOG_ERROR("I2C NACK writing slave %02x address %x", device.devAddr, addr);
+            i2c_activate(device, false);
             return false;
-        }
-        for (j = addr_size - 1; j >= 0; j--) {
-            if (!i2c_transmit_byte(device, (uint8_t)(0xff & (addr >> (8 * j))))) {
-                i2c_stop(device);
-                LOG_ERROR("I2C NACK writing RD register 0x%X", addr);
-                return false;
-            }
-        }
-
-        if (send_stop) {
-            i2c_stop(device);
         }
     }
 
     // Read Data
-    i2c_start(device);
+    for(i=0; i < len; i += 4)
+    {
+        uint32_t data_word;
+        uint8_t rx_size, rx_bytes;
+        rx_bytes = rx_size = (len - i);
+        if(rx_size > 5)
+        {
+            rx_size = 5;
+            rx_bytes = 4;
+        }
 
-    if (!i2c_transmit_byte(device, I2C_ADDR_RD(device.devAddr))) {
-        i2c_stop(device);
-        LOG_ERROR("I2C NACK reading slave RD addr 0x%02X", device.devAddr);
-        return false;
-    }
-    for (i = 0; (uint32_t)i < len; ++i) {
-        data[i] = i2c_receive_byte(device, ((uint32_t)i != (len - 1)));
+        if(!i2c_rx(device, rx_size, &data_word))
+        {
+            LOG_ERROR("I2C Read NACK for slave address 0x%02X", device.devAddr);
+            i2c_activate(device, false);
+            return false;
+        }
+
+        for(j=0; j < rx_bytes; j++)
+        {
+            data[i + j] = (data_word >> (8*(rx_bytes - 1 - j))) & 0xFF;
+        }
     }
 
-    i2c_stop(device);
+    i2c_activate(device, false);
 
     return true;
 }
 
-/*
-    * Write slave memory over I2C starting at given address
-    *
-    * First writes the memory starting address, then writes the data:
-    *   START WR(slaveaddr) WR(addr) WR(data) WR(data) ... STOP
-    */
 bool i2c_write(i2c_t device, uint32_t addr, const uint8_t* data, uint32_t len, uint32_t addr_size)
 {
-    int32_t i, j;
+    uint32_t tx_word = 0;
+    uint32_t tx_pend = 0;
+    uint32_t data_idx = 0;
+    uint32_t tx_size, tx_bytes=0;
 
-    if ((addr_size < 1) || (addr_size > 4)) {
+
+    if (addr_size > 4) {
         return false;
     }
 
-    i2c_start(device);
+    i2c_activate(device, true);
 
-    if (!i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr))) {
-        i2c_stop(device);
-        LOG_ERROR("I2C NACK writing slave WR addr 0x%02X", device.devAddr);
-        return false;
-    }
-    for (j = addr_size - 1; j >= 0; j--) {
-        if (!i2c_transmit_byte(device, (unsigned char)(0xff & (addr >> (8 * j))))) {
-            i2c_stop(device);
-            LOG_ERROR("I2C NACK writing WR register 0x%X", addr);
-            return false;
-        }
-    }
-    for (i = 0; (uint32_t)i < len; ++i) {
-        if (!i2c_transmit_byte(device, data[i])) {
-            i2c_stop(device);
-            LOG_ERROR("I2C NACK writing %d byte 0x%X", i, data[i]);
-            return false;
-        }
+    //Set Address
+    i2c_set_addr(device);
+
+    //Load address
+    if(addr_size > 0)
+    {
+        tx_word = addr;
+        tx_pend = addr_size;
     }
 
-    i2c_stop(device);
+    // Write Data
+    while(tx_bytes < (len + addr_size))
+    {
+        tx_size = (len + addr_size) - tx_bytes;
+        if(tx_size > 4)
+        {
+            tx_size = 5;
+        }
+
+        while(tx_pend < tx_size && tx_pend < 4)
+        {
+            tx_word <<= 8;
+            tx_word |= ((uint32_t)(data[data_idx++]) & 0xFF);
+            tx_pend++;
+        }
+
+        if( !i2c_tx(device, tx_word, (uint8_t)tx_size) )
+        {
+            LOG_ERROR("I2C NACK writing data to slave %02X", device.devAddr);
+            i2c_activate(device, false);
+            return false;
+        }
+
+        tx_bytes += tx_pend;
+    }
+
+    i2c_activate(device, false);
 
     return true;
 }
 
-/*
-    * Poll I2C slave at given address, return true if it sends an ACK back
-    */
 bool i2c_poll(i2c_t device)
 {
     bool result;
+    i2c_activate(device, true);
 
-    i2c_start(device);
-    result = i2c_transmit_byte(device, I2C_ADDR_WR(device.devAddr));
+    //Set Address
+    i2c_set_addr(device);
+
+    //Empty Write
+    result = i2c_tx(device, 0, 0);
+
     if (!result) {
-        i2c_start(device);
-        result |= i2c_transmit_byte(device, I2C_ADDR_RD(device.devAddr));
-        if (result)
-            i2c_receive_byte(device, false);
+        //Empty Read
+        uint32_t data = 0;
+        result = i2c_rx(device, 0, &data);
     }
-    i2c_stop(device);
+
+    i2c_activate(device, false);
 
     return result;
 }

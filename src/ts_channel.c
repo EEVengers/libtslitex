@@ -167,7 +167,10 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
-    
+
+    //Set I2C Clock
+    i2c_rate_set(pChan->pll.clkGen, TS_I2C_CLK_RATE);
+
     pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].enable = 1;
     pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].input_freq = TS_PLL_INPUT_RATE;
     pChan->pll.clkConf.input_select = TS_PLL_INPUT_SEL;
