@@ -330,6 +330,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
             break;
         }
         case 0xC22537:
+        case 0xC22B27: // Test SPI device MX25S6433F
         {
             dev->ops = mx25u6432f_ops;
             break;
