@@ -22,6 +22,9 @@
 
 #define SPI_FLASH_WINDOW_SIZE 0x10000
 
+#define SPI_FLASH_CLK_DIV_DEFAULT   (1)
+#define SPI_FLASH_CLK_DIV_MAX       (10)
+
 #define SPI_FLASH_JEDEC_READ_ID_CMD             (0x9F)
 #define SPI_FLASH_JEDEC_READ_STATUS_REG_1_CMD   (0x05)
 #define SPI_FLASH_WRITE_ENABLE_CMD              (0x06)
@@ -309,6 +312,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
 int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
 {
     uint32_t flash_id = 0;
+    uint32_t divisor = SPI_FLASH_CLK_DIV_DEFAULT;
 
     dev->fd = fd;
 
@@ -316,8 +320,25 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
     spiflash_dummy_bits_setup(fd, 8);
 #endif
 
-    flash_id = spiflash_read_id_register(dev->fd); //First ID read returns garbage?
-    flash_id = spiflash_read_id_register(dev->fd);
+    while(divisor <= SPI_FLASH_CLK_DIV_MAX)
+    {
+        litepcie_writel(fd, CSR_SPIFLASH_PHY_CLK_DIVISOR_ADDR, divisor);
+        flash_id = spiflash_read_id_register(dev->fd); //First ID read returns garbage?
+        flash_id = spiflash_read_id_register(dev->fd);
+        
+        if((flash_id == 0x010219) ||
+            (flash_id == 0xC22537) ||
+            (flash_id == 0xC22B27))
+        {
+            LOG_DEBUG("Using SPIFLASH Divisor %ld", divisor);
+            break;
+        }
+        else
+        {
+            divisor++;
+            continue;
+        }
+    }
 
     dev->mfg_code = (flash_id >> 16) & 0xFF;
     dev->part_id = (flash_id & 0xFFFF);
