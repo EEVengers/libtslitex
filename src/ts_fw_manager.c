@@ -233,7 +233,8 @@ int32_t ts_fw_manager_user_cal_update(ts_fw_manager_t* mngr, const char* file_st
 
     // Erase User Flash Partition
 
-    // Program New Bitstream
+    // Program New User Data
+
     return TS_STATUS_OK;
 }
 

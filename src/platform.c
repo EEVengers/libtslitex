@@ -92,18 +92,20 @@ const uint32_t ZL30250_CONF_SIZE = sizeof(ZL30250_CONF)/sizeof(ZL30250_CONF[0]);
 // | Address Range          | Content                   |
 // | :--------------------: | :-----------------        |
 // | 0x000000 - 0x27FFFF    | Factory Bitstream*        |
-// | 0x280000 - 0x3FFFFF    | Factory Calibration Data* |
+// | 0x280000 - 0x3EFFFF    | Factory Calibration Data* |
+// | 0x3F0000 - 0x3FFFFF    | Barrier Image A           |
 // | 0x400000 - 0x67FFFF    | Primary Bitstream         |
-// | 0x680000 - 0x7FFFFF    | Available for User Data   |
+// | 0x680000 - 0x68FFFF    | Barrier Image B           |
+// | 0x690000 - 0x7FFFFF    | Available for User Data   |
 
 const flash_layout_t ts_64Mb_layout = {
     .factory_bitstream_start = 0x000000,
     .factory_bitstream_end = 0x280000,
     .factory_config_start = 0x280000,
-    .factory_config_end = 0x400000,
+    .factory_config_end = 0x3F0000,
     .user_bitstream_start = 0x400000,
     .user_bitstream_end = 0x680000,
-    .user_config_start = 0x680000,
+    .user_config_start = 0x690000,
     .user_config_end = 0x800000,
 };
 
@@ -112,16 +114,18 @@ const flash_layout_t ts_64Mb_layout = {
 // | Address Range          | Content                   |
 // | :--------------------: | :-----------------        |
 // | 0x0000000 - 0x0AFFFFF  | Factory Bitstream*        |
-// | 0x0B00000 - 0x0FFFFFF  | Factory Calibration Data* |
+// | 0x0B00000 - 0x0FEFFFF  | Factory Calibration Data* |
+// | 0x0FF0000 - 0x0FFFFFF  | Barrier Image A           |
 // | 0x1000000 - 0x1AFFFFF  | Primary Bitstream         |
-// | 0x1B00000 - 0x1FFFFFF  | Available for User Data   |
+// | 0x1B00000 - 0x1B0FFFF  | Barrier Image B           |
+// | 0x1B10000 - 0x1FFFFFF  | Available for User Data   |
 const flash_layout_t ts_256Mb_layout = {
     .factory_bitstream_start = 0x0000000,
     .factory_bitstream_end = 0x0B00000,
     .factory_config_start = 0x0B00000,
-    .factory_config_end = 0x1000000,
+    .factory_config_end = 0x0FF0000,
     .user_bitstream_start = 0x1000000,
     .user_bitstream_end = 0x1B00000,
-    .user_config_start = 0x1B00000,
+    .user_config_start = 0x1B10000,
     .user_config_end = 0x2000000,
 };

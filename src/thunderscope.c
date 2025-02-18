@@ -58,7 +58,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
         //TODO Implement Serial Number
-        snprintf(info->serial_number, TS_IDENT_STR_LEN, "TS0011");
+        snprintf(info->serial_number, TS_IDENT_STR_LEN, "TS00##");
         strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
