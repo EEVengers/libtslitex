@@ -44,6 +44,7 @@
 #include "../src/hmcad15xx.h"
 #include "../src/mcp_zl3026x.h"
 #include "../src/mcp_clkgen.h"
+#include "../src/spiflash.h"
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
@@ -61,6 +62,7 @@
 /*------------*/
 #define TS_TEST_SAMPLE_FILE     "test_data.bin"
 #define TS_TEST_WAV_FILE        "test_data.wav"
+#define TS_FLASH_DUMP_FILE      "flash_dump.bin"
 
 /* Variables */
 /*-----------*/
@@ -124,6 +126,15 @@ void control_led(file_t fd, uint32_t enable) {
     litepcie_writel(fd, CSR_LEDS_OUT_ADDR, control_value);
 }
 
+static uint32_t read_flash_word(file_t fd, uint32_t flash_addr)
+{
+    const uint32_t flash_base = 0x10000;
+    uint32_t flash_data = 0;
+    uint32_t flash_window = flash_addr >> 16;
+    litepcie_writel(fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR, flash_window);
+    flash_data = litepcie_readl(fd, (flash_base + (flash_addr & 0xFFFF)));
+    return flash_data;
+}
 
 // Functioning returning 
 // current time
@@ -381,6 +392,85 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     }
 }
 
+static void flash_test(char* arg, file_t fd)
+{
+    spiflash_dev_t spiflash;
+    if(0 == strcmp(arg, "read"))
+    {
+        spiflash_init(fd, &spiflash);
+        uint32_t address = 0x00B00000;
+        uint32_t flash_word = read_flash_word(fd, address);
+        printf("Read Flash Word 0x%08x : 0x%08X\n", address, flash_word);
+        address = 0x00B00004;
+        flash_word = read_flash_word(fd, address);
+        printf("Read Flash Word 0x%08x : 0x%08X\n", address, flash_word);
+    }
+    else if(0 == strcmp(arg, "dump"))
+    {
+        spiflash_init(fd, &spiflash);
+        auto outFile = std::fstream(TS_FLASH_DUMP_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
+        uint8_t *flash_data = (uint8_t*) malloc(0x40000);
+        printf("Dumping Flash to file.\nProgress: ");
+        for(uint32_t address = 0x0000000; address < 0x2000000; address+=0x40000)
+        {
+            spiflash_read(&spiflash, address, flash_data, 0x40000);
+            printf("|");
+            outFile.write(reinterpret_cast<const char*>(const_cast<const uint8_t*>(flash_data)), 0x40000);
+        }
+        printf("Done!\n");
+        outFile.flush();
+        outFile.close();
+    }
+    else if(0 == strcmp(arg, "test"))
+    {
+        uint8_t test_data[8] = {0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0x01, 0x23, 0x45};
+        uint32_t test_addr = 0x00B00000;
+        int32_t status;
+        spiflash_init(fd, &spiflash);
+        
+        printf("Erasing 64k Sector @ Address 0x%08X: ", test_addr);
+        status = spiflash_erase(&spiflash, test_addr, 0x40000);
+        if(TS_STATUS_OK == status)
+        {
+            printf("OK\n");
+        }
+        else
+        {
+            printf("FAIL (%d)\n", status);
+        }
+        
+        printf("Test Write @ Address 0x%08X: ", test_addr);
+        status = spiflash_write(&spiflash, test_addr, test_data, 8);
+        if(8 == status)
+        {
+            printf("OK\n");
+        }
+        else
+        {
+            printf("FAIL (%d)\n", status);
+        }
+
+        printf("Read Values @ Address 0x%08X: [", test_addr);
+        uint8_t readback_data[8] = {0};
+        status = spiflash_read(&spiflash, test_addr, readback_data, 8);
+        for(uint8_t i=0; i < 8; i++)
+        {
+            printf("%02X ", readback_data[i]);
+        }
+        if(8 == status)
+        {
+            printf("] OK\n");
+        }
+        else
+        {
+            printf("] FAIL (%d)\n", status);
+        }
+        
+        printf("Done!\n");
+        
+    }
+}
+
 static void print_help(void)
 {
     printf("TS Test Util Usage:\r\n");
@@ -564,6 +654,10 @@ int main(int argc, char** argv)
     else if(0 == strcmp(arg, "capture"))
     {
         test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
+    }
+    else if(0 == strcmp(arg, "flash"))
+    {
+        flash_test(argv[argCount+1], fd);
     }
     //Print Help
     else

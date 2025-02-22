@@ -141,4 +141,23 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_AFE_3_COUPLING_MASK  (1 << (CSR_FRONTEND_CONTROL_COUPLING_OFFSET + 3))
 
 
+typedef struct flash_layout_s {
+    uint32_t factory_bitstream_start;
+    uint32_t factory_bitstream_end;
+    uint32_t factory_config_start;
+    uint32_t factory_config_end;
+    uint32_t user_bitstream_start;
+    uint32_t user_bitstream_end;
+    uint32_t user_config_start;
+    uint32_t user_config_end;
+} flash_layout_t;
+
+extern const flash_layout_t ts_256Mb_layout;
+extern const flash_layout_t ts_64Mb_layout;
+
+#define TS_FLASH_256M_MFG   (0x01) //Spansion
+#define TS_FLASH_256M_ID    (0x0219) //256Mb SPI Flash
+#define TS_FLASH_64M_MFG    (0xC2) //Macronix
+#define TS_FLASH_64M_ID     (0x2537) //64Mb SPI Flash
+
 #endif
