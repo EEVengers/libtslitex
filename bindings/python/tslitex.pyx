@@ -8,6 +8,7 @@
 
 cimport cython
 cimport tslitex
+cimport ts_calibration
 import numpy
 
 def ThunderscopeListDevs(devIdx:int):
@@ -134,6 +135,19 @@ cdef class Channel:
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to set Channel {self._channel} termination parameter")
+
+    def ManualCtrl(self, params: ts_calibration.tsChannelCtrl_t):
+        cdef int32_t retVal
+        retVal = ts_calibration.thunderscopeCalibrationManualCtrl(self.dev, self._channel, params)
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to manually set Channel {self._channel} Parameters {params}")
+
+    def CalibrationSet(self, calibration: ts_calibration.tsChannelCalibration_t):
+        cdef int32_t retVal
+        retVal = ts_calibration.thunderscopeCalibrationSet(self.dev, self._channel, &calibration)
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to set Channel {self._channel} Calibration {calibration}")
+
 
 cdef class Thunderscope:
     cdef uint32_t _sample_rate
