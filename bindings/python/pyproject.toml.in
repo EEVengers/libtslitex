@@ -13,5 +13,5 @@ authors = [
 [tool.setuptools]
 packages = ["tslitex"]
 ext-modules = [
-  { name = "tslitex.tslitex", sources = ["tslitex/tslitex.c"], libraries = ["tslitex_static", "litepcie"], library-dirs = ["@CMAKE_ARCHIVE_OUTPUT_DIRECTORY@"], include-dirs = ["@CMAKE_LIBRARY_OUTPUT_DIRECTORY@/include"]}
+  { name = "tslitex.tslitex", sources = ["tslitex/tslitex.c"], libraries = ["@PY_EXT_LIBS@"], library-dirs = ["@CMAKE_ARCHIVE_OUTPUT_DIRECTORY@"], include-dirs = ["@CMAKE_LIBRARY_OUTPUT_DIRECTORY@/include"]}
 ]

@@ -80,6 +80,12 @@ add_library(tslitex SHARED ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
+
+set_target_properties(tslitex PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
+
 target_link_libraries(tslitex litepcie)
 target_include_directories(tslitex PUBLIC include)
 
@@ -90,6 +96,11 @@ add_library(tslitex_static STATIC ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
+set_target_properties(tslitex_static PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
+            
 #target_compile_definitions(tslitex_static tslitex_static_STATIC)
 set_target_properties(tslitex_static PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
@@ -105,4 +116,5 @@ add_subdirectory(example)
 # BINDINGS
 ####
 add_subdirectory(bindings/python)
-add_dependencies(PyBindings tslitex_static)
+add_dependencies(PyBindings tslitex_static litepcie)
+

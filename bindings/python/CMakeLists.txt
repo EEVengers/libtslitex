@@ -14,6 +14,12 @@ add_custom_command(
     VERBATIM
     )
     
+set(PY_BIND_LIBS tslitex_static litepcie)
+if(WIN32)
+    list(APPEND PY_BIND_LIBS setupapi)
+endif()
+list(JOIN PY_BIND_LIBS "\", \"" PY_EXT_LIBS)
+
 configure_file(pyproject.toml.in pyproject.toml @ONLY)
 configure_file(__init__.py.in tslitex/__init__.py COPYONLY)
 
