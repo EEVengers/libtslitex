@@ -148,6 +148,13 @@ cdef class Channel:
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to set Channel {self._channel} Calibration {calibration}")
 
+    def Calibration(self):
+        cdef int32_t retVal
+        cdef ts_calibration.tsChannelCalibration_t calibration
+        retVal = ts_calibration.thunderscopeCalibrationSet(self.dev, self._channel, &calibration)
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to get Channel {self._channel} Calibration ({retVal})")
+        return calibration
 
 cdef class Thunderscope:
     cdef uint32_t _sample_rate
@@ -183,7 +190,7 @@ cdef class Thunderscope:
     def firmwareUpdate(self, bitfile):
         if type(bitfile) is not bytes:
             raise TypeError(f"bitfile arg must be 'bytes' type")
-        cdef uint32_t file_len = len(bitfile)
+        cdef uint32_t file_len = <uint32_t>len(bitfile)
         cdef char* pFile = bitfile
         return tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
 

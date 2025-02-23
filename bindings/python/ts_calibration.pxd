@@ -48,4 +48,6 @@ cdef extern from "ts_calibration.h":
 
     int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
 
+    int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
+
     int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
