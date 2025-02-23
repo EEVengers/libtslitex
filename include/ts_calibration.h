@@ -69,6 +69,24 @@ typedef struct tsScopeCalibration_s
 */
 int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal);
 
+/**
+ * @brief Get the calibration data for a channel on the Thunderscope device
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param channel Channel number
+ * @param cal Calibration Data Pointer
+ * @return int32_t TS_STATUS_OK if the calibration was retrieved
+ */
+int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal);
+
+/**
+ * @brief Manually set parameters for the devices in a channel to aid in calibration.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param channel Channel number
+ * @param ctrl AFE Control parameters
+ * @return int32_t TS_STATUS_OK if the parameters were applied
+ */
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
 #ifdef __cplusplus
 }

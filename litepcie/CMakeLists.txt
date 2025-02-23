@@ -35,6 +35,10 @@ add_library(litepcie STATIC ${litepcie_SOURCES}
             ${litepcie_PLATFORM_HEADERS}
             )
 
+set_target_properties(litepcie PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
 set_target_properties(litepcie PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
 target_include_directories(litepcie PUBLIC public_h include)

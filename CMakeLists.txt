@@ -14,6 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
 set(CMAKE_CXX_EXTENSIONS ON)
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
@@ -69,6 +70,7 @@ set(TS_HEADERS
 set(TS_LIB_HEADERS 
     include/thunderscope.h
     include/ts_common.h
+    include/ts_calibration.h
     )
 
 ####
@@ -77,6 +79,12 @@ set(TS_LIB_HEADERS
 add_library(tslitex SHARED ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
+
+
+set_target_properties(tslitex PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
 
 target_link_libraries(tslitex litepcie)
 target_include_directories(tslitex PUBLIC include)
@@ -88,6 +96,11 @@ add_library(tslitex_static STATIC ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
+set_target_properties(tslitex_static PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
+            
 #target_compile_definitions(tslitex_static tslitex_static_STATIC)
 set_target_properties(tslitex_static PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
@@ -98,3 +111,10 @@ target_include_directories(tslitex_static PUBLIC include)
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
 
 add_subdirectory(example)
+
+####
+# BINDINGS
+####
+add_subdirectory(bindings/python)
+add_dependencies(PyBindings tslitex_static litepcie)
+

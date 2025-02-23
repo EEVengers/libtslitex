@@ -68,6 +68,13 @@ typedef struct tsChannelParam_s
     uint8_t reserved;           /**< Reserved byte for 32-bit alignment*/
 } tsChannelParam_t;
 
+typedef struct sysHealth_s {
+    uint32_t temp_c;
+    uint32_t vcc_int;
+    uint32_t vcc_aux;
+    uint32_t vcc_bram;
+} sysHealth_t;
+
 typedef struct tsScopeState_s
 {
     uint32_t adc_sample_rate;           /**< Samples per Second captured by the ADC */
@@ -84,12 +91,7 @@ typedef struct tsScopeState_s
             uint8_t afe_state:1;
         };
     };
-    struct {
-        uint32_t temp_c;
-        uint32_t vcc_int;
-        uint32_t vcc_aux;
-        uint32_t vcc_bram;
-    } sys_health;
+    sysHealth_t sys_health;
 } tsScopeState_t;
 
 

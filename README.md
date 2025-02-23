@@ -18,3 +18,24 @@ For the Windows build, requires:
 > cmake --build .
 ```
 Output binaries are in the `build/artifacts` folder.
+
+## Bindings
+
+### Python
+
+To build the python bindings, you must first have pipx and cython installed. The easiest way to set this up is in a virtual env.
+
+```bash
+> python -m venv .venv
+> source .venv/bin/activate
+> pip install -r requirements.txt
+```
+
+Now you can build the `PyBindings` target with cmake
+
+```bash
+> cd build/
+> cmake --build . -t PyBindings
+```
+
+The wheel is built to the `build/bindings/python/dist` folder and can be installed with pip.

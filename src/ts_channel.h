@@ -96,6 +96,16 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
  */
 int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal);
 
+/**
+ * @brief Get the calibration parameters for a channel
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param chanIdx Channel Index
+ * @param cal Pointer to the calibration structure
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+ int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal);
+
 /** 
  * @brief Manually set the AFE controls for a channel
  * 
