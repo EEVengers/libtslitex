@@ -49,6 +49,6 @@ target_include_directories(litepcie PUBLIC public_h include)
 
 if(WIN32)
     target_link_libraries(litepcie setupapi)
-elif(APPLE)
-    target_link_libraries(tslitex "-framework IOKit")
+elseif(APPLE)
+    target_link_libraries(litepcie "-framework IOKit")
 endif()
