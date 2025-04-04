@@ -220,17 +220,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx);
 
-    // tsChannelHdl_t channels;
-    // ts_channel_init(&channels, fd);
-    // if(channels == NULL)
-    // {
-    //     printf("Failed to create channels handle");
-    //     return;
-    // }
-
-    // sampleStream_t samp;
-    // samples_init(&samp, 0, 0);
-
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE, 0x1000);
     uint64_t sampleLen = 0;
 
@@ -271,8 +260,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     {
         uint64_t data_sum = 0;
         //Start Sample capture
-        // samples_enable_set(&samp, 1);
-        // ts_channel_run(channels, 1);
         thunderscopeDataEnable(tsHdl, 1);
         
         auto startTime = std::chrono::steady_clock::now();
@@ -299,8 +286,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         auto endTime = std::chrono::steady_clock::now();
 
         //Stop Samples
-        // samples_enable_set(&samp, 0);
-        // ts_channel_run(channels, 0);
         thunderscopeDataEnable(tsHdl, 0);
         
         auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
@@ -318,8 +303,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         thunderscopeChannelConfigSet(tsHdl, i, &chConfig);
     }
 
-    // ts_channel_destroy(channels);
-    // samples_teardown(&samp);
     thunderscopeClose(tsHdl);
 
     if(sampleLen > 0)

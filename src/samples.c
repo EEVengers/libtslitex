@@ -136,6 +136,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
 #elif defined(__APPLE__)
         while(retVal < (int32_t)bufferLen)
         {
+            #if 0 //POLL
             litepcie_dma_writer(&inst->dma, inst->active,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
@@ -156,6 +157,20 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             {
                 NS_DELAY(250);
             }
+            #else
+            size_t readLen = bufferLen - retVal;
+            litepcie_ioctl_dma_transfer_t sampleTransfer = {.channel=0, .length=readLen, .buffer_addr=&sampleBuffer[retVal]};
+            size_t outlen = sizeof(litepcie_ioctl_dma_transfer_t);
+            checked_ioctl(ioctl_args(inst->dma.fds.fd, LITEPCIE_IOCTL_DMA_READ, sampleTransfer));
+            if(sampleTransfer.length == 0)
+            {
+                LOG_ERROR("Failed to acquire sample buffer");
+                retVal = TS_STATUS_ERROR;
+                break;
+            }
+            //Actual Read Length gets returned in the transfer struct
+            retVal += sampleTransfer.length;
+            #endif
         }
 #else
         while (retVal < bufferLen)

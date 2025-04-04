@@ -69,7 +69,9 @@ enum LitePCIeMessageType {
     LITEPCIE_ICAP,
     LITEPCIE_FLASH,
 	LITEPCIE_CONFIG_DMA,
-	LITEPCIE_CONFIG_DMA_LOCK
+	LITEPCIE_CONFIG_DMA_LOCK,
+    LITEPCIE_DMA_READ,
+    LITEPCIE_DMA_WRITE
 };
 
 enum LitePCIeMemoryType {
@@ -98,6 +100,12 @@ typedef struct litepcie_ioctl_icap {
     uint32_t data;
 } __attribute__((packed)) LitePCIeICAPCallData;
 
+typedef struct litepcie_ioctl_dma_transfer_s {
+    uint32_t channel;
+    uint32_t length;
+    void* buffer_addr;
+} __attribute__((packed)) litepcie_ioctl_dma_transfer_t;
+
 
 #define LITEPCIE_IOCTL_FLASH             LITEPCIE_FLASH
 #define LITEPCIE_IOCTL_ICAP              LITEPCIE_ICAP
@@ -109,5 +117,7 @@ typedef struct litepcie_ioctl_icap {
 #define LITEPCIE_IOCTL_LOCK                      LITEPCIE_CONFIG_DMA_LOCK
 // #define LITEPCIE_IOCTL_MMAP_DMA_WRITER_UPDATE    //TBD
 // #define LITEPCIE_IOCTL_MMAP_DMA_READER_UPDATE    //TBD
+#define LITEPCIE_IOCTL_DMA_READ					LITEPCIE_DMA_READ
+#define LITEPCIE_IOCTL_DMA_WRITE				LITEPCIE_DMA_WRITE
 
 #endif /* _LINUX_LITEPCIE_H */
