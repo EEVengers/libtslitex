@@ -120,10 +120,10 @@ void configure_pll_en(file_t fd, uint32_t enable) {
 }
 
 void control_led(file_t fd, uint32_t enable) {
-    uint32_t control_value = litepcie_readl(fd, CSR_LEDS_OUT_ADDR);
+    uint32_t control_value = litepcie_readl(fd, CSR_DEV_STATUS_LEDS_ADDR);
     control_value &= ~(1 * AFE_STATUS_LDO_PWR_GOOD);
     control_value |= (enable * AFE_STATUS_LDO_PWR_GOOD);
-    litepcie_writel(fd, CSR_LEDS_OUT_ADDR, control_value);
+    litepcie_writel(fd, CSR_DEV_STATUS_LEDS_ADDR, control_value);
 }
 
 static uint32_t read_flash_word(file_t fd, uint32_t flash_addr)
@@ -159,7 +159,7 @@ static void test_io(file_t fd)
 
     /* Write to scratch register. */
     printf("Write 0x12345678 to Scratch register:\n");
-    litepcie_writel(fd, CSR_CTRL_SCRATCH_ADDR, 0x0);
+    litepcie_writel(fd, CSR_CTRL_SCRATCH_ADDR, 0x12345678);
     printf("Read: 0x%08x\n", litepcie_readl(fd, CSR_CTRL_SCRATCH_ADDR));
 
     /* Read from scratch register. */
@@ -183,6 +183,7 @@ static void test_io(file_t fd)
 
     i2c_t i2cDev;
     i2cDev.fd = fd;
+    i2cDev.peripheral_baseaddr = CSR_I2CBUS_BASE;
     i2c_rate_set(i2cDev, I2C_400KHz);
 
     for (unsigned char addr = 0; addr < 0x80; addr++) {
@@ -200,11 +201,11 @@ static void test_io(file_t fd)
     }
 
     spi_bus_t spimaster;
-    spi_bus_init(&spimaster, fd, CSR_MAIN_SPI_BASE, CSR_MAIN_SPI_CS_SEL_SIZE);
+    spi_bus_init(&spimaster, fd, CSR_SPIBUS_BASE, CSR_SPIBUS_SPI0_CS_SEL_SIZE);
 
     uint8_t data[2] = {0x01, 0x02};
 
-    for (int i = 0; i < CSR_MAIN_SPI_CS_SEL_SIZE; i++) {
+    for (int i = 0; i < CSR_SPIBUS_SPI0_CS_SEL_SIZE; i++) {
         spi_dev_t spiDev;
         spi_dev_init(&spiDev, &spimaster, i);
         for (int reg = 0; reg < 10; reg++) {
@@ -218,7 +219,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
 {
     uint8_t numChan = 0;
-    tsHandle_t tsHdl = thunderscopeOpen(idx);
+    tsHandle_t tsHdl = thunderscopeOpen(idx, false);
 
     // tsChannelHdl_t channels;
     // ts_channel_init(&channels, fd);
@@ -260,9 +261,9 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
 
     printf("- Checking HMCAD1520 Sample Rate...");
-    litepcie_writel(fd, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_STAT_RST_OFFSET);
+    litepcie_writel(fd, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_STAT_RST_OFFSET);
     NS_DELAY(500000000);
-    uint32_t rate = litepcie_readl(fd, CSR_ADC_HAD1511_SAMPLE_COUNT_ADDR) * 2;
+    uint32_t rate = litepcie_readl(fd, CSR_ADC_HMCAD1520_SAMPLE_COUNT_ADDR) * 2;
     printf(" %d Samples/S\r\n", rate);
 
 
@@ -620,7 +621,7 @@ int main(int argc, char** argv)
     }
 
 
-    printf("\x1b[1m[> FPGA/SoC Information:\x1b[0m\n");
+    printf("\x1b[1m[> Device Information:\x1b[0m\n");
     printf("------------------------\n");
 
     for (i = 0; i < 256; i++)
@@ -628,7 +629,16 @@ int main(int argc, char** argv)
         fpga_identifier[i] = litepcie_readl(fd, CSR_IDENTIFIER_MEM_BASE + 4 * i);
     }
     printf("FPGA Identifier:  %s.\n", fpga_identifier);
-
+    uint32_t hw_info = litepcie_readl(fd, CSR_DEV_STATUS_HW_ID_ADDR);
+    if(hw_info & TS_HW_ID_VALID_MASK)
+    {
+        printf("HW Rev %02d - %s\n", hw_info & TS_HW_ID_REV_MASK, 
+            (hw_info & TS_HW_ID_VARIANT_MASK) ? "PCIe" : "TB" );
+    }
+    else
+    {
+        printf("HW Rev Beta\n");
+    }
 #ifdef CSR_DNA_BASE
     printf("FPGA DNA:         0x%08x%08x\n",
         litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),

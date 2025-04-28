@@ -34,6 +34,7 @@ cdef extern from "thunderscope.h":
 
     cdef struct tsDeviceInfo_s:
         uint32_t device_id
+        uint32_t hw_id
         char device_path[256]
         char identity[256]
         char serial_number[256]
@@ -56,6 +57,8 @@ cdef extern from "thunderscope.h":
         uint32_t vcc_int
         uint32_t vcc_aux
         uint32_t vcc_bram
+        uint8_t frontend_power_good
+        uint8_t acq_power_good
 
     ctypedef sysHealth_s sysHealth_t
 
@@ -75,7 +78,7 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t* info)
 
-    tsHandle_t thunderscopeOpen(uint32_t devIdx)
+    tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
 
     int32_t thunderscopeClose(tsHandle_t ts)
 

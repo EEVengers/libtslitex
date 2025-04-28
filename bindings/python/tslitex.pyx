@@ -166,11 +166,11 @@ cdef class Thunderscope:
     def __cinit__(self, dev_idx: int):
         self.channel = []
 
-    def __init__(self, dev_idx: int):
+    def __init__(self, dev_idx: int, skip_init:bool = False):
         self._sample_rate = 1000000000
         self._sample_mode = 256
         self._enable = 0
-        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx)
+        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx, skip_init)
         if self._tsHandle == NULL:
             raise ValueError(f"Failed to Open Thunderscope Device {dev_idx}", dev_idx)
         for ch in range(4):

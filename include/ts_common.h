@@ -30,6 +30,10 @@ extern "C" {
 #define TS_MAX_QUAD_CH_RATE         (250000000)
 #define TS_MIN_SAMPLE_RATE          (15000000)
 
+#define TS_HW_ID_REV_MASK           (7)
+#define TS_HW_ID_VARIANT_MASK       (1 << 8)
+#define TS_HW_ID_VALID_MASK         (1 << 9)
+
 /**
  * @brief Opaque Handle to a Thunderscope device instance
  *  
@@ -52,6 +56,7 @@ typedef enum tsChannelTerm_e
 typedef struct tsDeviceInfo_s
 {
     uint32_t device_id;
+    uint32_t hw_id;   /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
     char device_path[TS_IDENT_STR_LEN];
     char identity[TS_IDENT_STR_LEN];
     char serial_number[TS_IDENT_STR_LEN];
@@ -73,6 +78,8 @@ typedef struct sysHealth_s {
     uint32_t vcc_int;
     uint32_t vcc_aux;
     uint32_t vcc_bram;
+    uint8_t frontend_power_good;
+    uint8_t acq_power_good;
 } sysHealth_t;
 
 typedef struct tsScopeState_s

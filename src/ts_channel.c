@@ -40,6 +40,7 @@ typedef struct ts_channel_s {
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
+    spi_bus_t adcSpibus;
     spi_bus_t spibus;
     struct {
         i2c_t clkGen;
@@ -118,6 +119,7 @@ static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 {
     int32_t retVal = TS_STATUS_OK;
+    bool betaDevice = false;
 
     if(pTsChannels == NULL)
     {
@@ -131,6 +133,12 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     {
         retVal = TS_STATUS_ERROR;
         return retVal;
+    }
+
+    uint32_t id = litepcie_readl(ts, CSR_DEV_STATUS_HW_ID_ADDR);
+    if(0 == (id & (1 << CSR_DEV_STATUS_HW_ID_HW_VALID_OFFSET)))
+    {
+        betaDevice = true;
     }
 
     //Initialize Status
@@ -167,6 +175,14 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
+    if(betaDevice)
+    {
+        pChan->pll.clkGen.peripheral_baseaddr = TS_PLL_BUS_BETA;
+    }
+    else
+    {
+        pChan->pll.clkGen.peripheral_baseaddr = TS_PLL_BUS_DEV;
+    }
 
     //Set I2C Clock
     i2c_rate_set(pChan->pll.clkGen, TS_I2C_CLK_RATE);
@@ -199,18 +215,44 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         goto channel_init_error;
     }
 
-    i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
-    i2c_t trimPot = {ts, TS_TRIM_DPOT_I2C_ADDR};
+    i2c_t trimDac = {ts, TS_TRIM_DAC_BUS, TS_TRIM_DAC_I2C_ADDR};
+    i2c_t trimPot = {ts, TS_TRIM_DPOT_BUS, TS_TRIM_DPOT_I2C_ADDR};
 
-    retVal = spi_bus_init(&pChan->spibus, ts,
-                            TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_CS_NUM);
+    if(betaDevice)
+    {
+        retVal = spi_bus_init(&pChan->spibus, ts,
+                    TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_BETA_CS_NUM);
+    }
+    else
+    {
+        retVal = spi_bus_init(&pChan->spibus, ts,
+            TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_DEV_CS_NUM);
+    }
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
     }
 
+    if(!betaDevice)
+    {
+        retVal = spi_bus_init(&pChan->adcSpibus, ts,
+            TS_ADC_SPI_BUS_BASE_ADDR, TS_ADC_SPI_BUS_CS_NUM);
+        if(retVal != TS_STATUS_OK)
+        {
+            goto channel_init_error;
+        }
+    }
+
     spi_dev_t adcDev;
-    retVal = spi_dev_init(&adcDev, &pChan->spibus, TS_ADC_CS);
+    if(betaDevice)
+    {
+        retVal = spi_dev_init(&adcDev, &pChan->spibus, TS_BETA_ADC_CS);
+    }
+    else
+    {
+        retVal = spi_dev_init(&adcDev, &pChan->adcSpibus, TS_ADC_CS);
+    }
+
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
@@ -737,6 +779,8 @@ static int32_t ts_channel_health_update(ts_channel_t* pTsHdl)
     pTsHdl->status.sys_health.vcc_int = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCINT_ADDR) / 4096 * 3)*1000);
     pTsHdl->status.sys_health.vcc_aux = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCAUX_ADDR) / 4096 * 3)*1000);
     pTsHdl->status.sys_health.vcc_bram = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3)*1000);
+    pTsHdl->status.sys_health.frontend_power_good = (uint8_t)litepcie_readl(pTsHdl->ctrl_handle, CSR_FRONTEND_STATUS_ADDR) & (1 << CSR_FRONTEND_STATUS_FE_PG_OFFSET);
+    pTsHdl->status.sys_health.acq_power_good = (uint8_t)litepcie_readl(pTsHdl->ctrl_handle, CSR_ADC_STATUS_ADDR) & (1 << CSR_ADC_STATUS_ACQ_PG_OFFSET);
 
     return TS_STATUS_OK;
 }

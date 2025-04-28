@@ -87,6 +87,19 @@ const mcp_clkgen_conf_t ZL30250_CONF[] = {
 const uint32_t ZL30250_CONF_SIZE = sizeof(ZL30250_CONF)/sizeof(ZL30250_CONF[0]);
 
 
+const led_signals_t ts_beta_leds = {
+    .error = 0,
+    .ready = 0,
+    .active = 1
+};
+
+const led_signals_t ts_dev_leds = {
+    .error = 1,
+    .ready = 2,
+    .active = 4
+};
+
+
 // A35T/A50T (0x80_0000):
 
 // | Address Range          | Content                   |

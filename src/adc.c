@@ -35,8 +35,8 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 
     if(retVal == TS_STATUS_OK)
     {
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DOWNSAMPLING_ADDR, 1);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DOWNSAMPLING_ADDR, 1);
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
 
@@ -64,7 +64,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
                 }
             }
             retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-            litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+            litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
         }
     }
 
@@ -94,7 +94,7 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
             }
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -158,8 +158,8 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
         
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DATA_CHANNELS_ADDR, shuffleMode << CSR_ADC_HAD1511_DATA_CHANNELS_SHUFFLE_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DATA_CHANNELS_ADDR, shuffleMode << CSR_ADC_HMCAD1520_DATA_CHANNELS_SHUFFLE_OFFSET);
     }
 
     return retVal;
@@ -177,7 +177,7 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     if(retVal == TS_STATUS_OK)
     {
         hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_POWERDN);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal; 
@@ -210,7 +210,7 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
     if(TS_STATUS_OK == hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate, data_mode))
     {
         hmcad15xx_set_channel_config(&adc->adcDev);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
         return TS_STATUS_OK;
     }
     else

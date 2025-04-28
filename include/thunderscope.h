@@ -33,9 +33,11 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info);
  * @brief Open a new Thunderscope device instance
  * 
  * @param devIdx Device index to open
+ * @param skip_init Do not initialize device peripherals.  Useful when doing gateware upgrades
+ *                  or other maintenance.
  * @return tsHandle_t Handle to the Thunderscope device
  */
-tsHandle_t thunderscopeOpen(uint32_t devIdx);
+tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init);
 
 /**
  * @brief Close the Thunderscope device

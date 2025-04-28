@@ -28,6 +28,7 @@ typedef struct gpio_s
 uint32_t gpio_get(gpio_t gpio);
 void gpio_set(gpio_t gpio);
 void gpio_clear(gpio_t gpio);
+void gpio_group_set(gpio_t gpio, uint32_t set);
 
 #ifdef __cplusplus
 }

@@ -14,6 +14,9 @@
 #include "i2c.h"
 #include "csr.h"
 
+#define TS_STATUS_LED_ADDR                      (CSR_DEV_STATUS_LEDS_ADDR)
+#define TS_STATUS_LED_COUNT                     (3)
+#define TS_STATUS_LED_MASK                      ((1 << TS_STATUS_LED_COUNT) - 1)
 
 #define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x20) /**< Full Scale Adjust set 2V */
 #define TS_ADC_CH_COARSE_GAIN_DEFAULT           (9)
@@ -33,17 +36,22 @@
 #define TS_BIAS_RESISTOR_NOMINAL                (500)
 #define TS_PREAMP_INPUT_BIAS_CURRENT_uA         (40)
 
-#define TS_SPI_BUS_BASE_ADDR    CSR_MAIN_SPI_BASE    
-#define TS_SPI_BUS_CS_NUM       (CSR_MAIN_SPI_CS_SEL_SIZE)
+#define TS_SPI_BUS_BASE_ADDR    (CSR_SPIBUS_SPI0_CONTROL_ADDR)
+#define TS_SPI_BUS_BETA_CS_NUM  (5)
+#define TS_SPI_BUS_DEV_CS_NUM   (4)
 #define TS_AFE_0_AMP_CS         (0)
 #define TS_AFE_1_AMP_CS         (1)
 #define TS_AFE_2_AMP_CS         (2)
 #define TS_AFE_3_AMP_CS         (3)
-#define TS_ADC_CS               (4)
+#define TS_BETA_ADC_CS          (4)
 
-#define TS_I2C_BASE_ADDR        CSR_I2C_BASE
+#define TS_ADC_SPI_BUS_BASE_ADDR    (CSR_SPIBUS_SPI1_CONTROL_ADDR)
+#define TS_ADC_SPI_BUS_CS_NUM       (1)
+#define TS_ADC_CS                   (0)
+
 #define TS_I2C_CLK_RATE         I2C_400KHz
 
+#define TS_TRIM_DAC_BUS         (CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR)
 #define TS_TRIM_DAC_I2C_ADDR    (0x60)
 #define TS_TRIM_DAC_DEFAULT     (0x800)
 
@@ -52,6 +60,7 @@
 #define TS_AFE_2_TRIM_DAC       (2)
 #define TS_AFE_3_TRIM_DAC       (3)
 
+#define TS_TRIM_DPOT_BUS        (CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR)
 #define TS_TRIM_DPOT_I2C_ADDR   (0x2C)
 #define TS_TRIM_DPOT_DEFAULT    (0x40)
 
@@ -74,6 +83,8 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_PLL_CONF             ZL30250_CONF
 #define TS_PLL_CONF_SIZE        ZL30250_CONF_SIZE
 #else
+#define TS_PLL_BUS_BETA         CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR
+#define TS_PLL_BUS_DEV          CSR_I2CBUS_I2C1_PHY_SPEED_MODE_ADDR
 #define TS_PLL_I2C_ADDR         ZL30260_I2C_ADDR
 #define TS_PLL_CONF             ZL30260_CONF
 #define TS_PLL_CONF_SIZE        ZL30260_CONF_SIZE
@@ -140,6 +151,16 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_AFE_3_COUPLING_REG   CSR_FRONTEND_CONTROL_ADDR
 #define TS_AFE_3_COUPLING_MASK  (1 << (CSR_FRONTEND_CONTROL_COUPLING_OFFSET + 3))
 
+
+typedef struct led_signals_s {
+    uint32_t error;
+    uint32_t ready;
+    uint32_t active;
+    // Others TBD
+} led_signals_t;
+
+extern const led_signals_t ts_beta_leds;
+extern const led_signals_t ts_dev_leds;
 
 typedef struct flash_layout_s {
     uint32_t factory_bitstream_start;
