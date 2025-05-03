@@ -78,7 +78,7 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t* info)
 
-    tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
+    tsHandle_t thunderscopeOpen(uint32_t devIdx, bint skip_init)
 
     int32_t thunderscopeClose(tsHandle_t ts)
 
