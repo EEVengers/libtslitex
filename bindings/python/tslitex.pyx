@@ -170,7 +170,7 @@ cdef class Thunderscope:
         self._sample_rate = 1000000000
         self._sample_mode = 256
         self._enable = 0
-        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx, skip_init)
+        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx, <bint>skip_init)
         if self._tsHandle == NULL:
             raise ValueError(f"Failed to Open Thunderscope Device {dev_idx}", dev_idx)
         for ch in range(4):

@@ -8,6 +8,10 @@
 #ifndef _PLATFORM_H_
 #define _PLATFORM_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "ts_common.h"
 #include "mcp_clkgen.h"
 #include "mcp_zl3026x.h"
@@ -157,6 +161,7 @@ typedef struct led_signals_s {
     uint32_t ready;
     uint32_t active;
     // Others TBD
+    uint32_t disabled;
 } led_signals_t;
 
 extern const led_signals_t ts_beta_leds;
@@ -181,4 +186,7 @@ extern const flash_layout_t ts_64Mb_layout;
 #define TS_FLASH_64M_MFG    (0xC2) //Macronix
 #define TS_FLASH_64M_ID     (0x2537) //64Mb SPI Flash
 
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -48,6 +48,7 @@
 
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
+#include "../src/platform.h"
 
 #include "thunderscope.h"
 
@@ -105,11 +106,21 @@ void configure_frontend_ldo(file_t fd, uint32_t enable) {
     litepcie_writel(fd, CSR_FRONTEND_CONTROL_ADDR, control_value);
 }
 
+bool query_frontend_pg(file_t fd) {
+    uint32_t status_value = litepcie_readl(fd, CSR_FRONTEND_STATUS_ADDR);
+    return (status_value & (1 << CSR_FRONTEND_STATUS_FE_PG_OFFSET));
+}
+
 void configure_adc_ldo(file_t fd, uint32_t enable) {
     uint32_t control_value = litepcie_readl(fd, CSR_ADC_CONTROL_ADDR);
     control_value &= ~(1 * ADC_CONTROL_LDO_EN);
     control_value |= (enable * ADC_CONTROL_LDO_EN);
     litepcie_writel(fd, CSR_ADC_CONTROL_ADDR, control_value);
+}
+
+bool query_adc_pg(file_t fd) {
+    uint32_t status_value = litepcie_readl(fd, CSR_ADC_STATUS_ADDR);
+    return (status_value & (1 << CSR_ADC_STATUS_ACQ_PG_OFFSET));
 }
 
 void configure_pll_en(file_t fd, uint32_t enable) {
@@ -119,11 +130,8 @@ void configure_pll_en(file_t fd, uint32_t enable) {
     litepcie_writel(fd, CSR_ADC_CONTROL_ADDR, control_value);
 }
 
-void control_led(file_t fd, uint32_t enable) {
-    uint32_t control_value = litepcie_readl(fd, CSR_DEV_STATUS_LEDS_ADDR);
-    control_value &= ~(1 * AFE_STATUS_LDO_PWR_GOOD);
-    control_value |= (enable * AFE_STATUS_LDO_PWR_GOOD);
-    litepcie_writel(fd, CSR_DEV_STATUS_LEDS_ADDR, control_value);
+void control_led(file_t fd, uint8_t val) {
+    litepcie_writel(fd, CSR_DEV_STATUS_LEDS_ADDR, (uint32_t)val);
 }
 
 static uint32_t read_flash_word(file_t fd, uint32_t flash_addr)
@@ -151,7 +159,7 @@ auto awake_time()
     return now() + 500ms;
 }
 
-static void test_io(file_t fd)
+static void test_io(file_t fd, bool isBeta)
 {
     printf("\x1b[1m[> Scratch register test:\x1b[0m\n");
     printf("-------------------------\n");
@@ -170,8 +178,20 @@ static void test_io(file_t fd)
     printf("Enabling frontend LDO:\n");
     configure_frontend_ldo(fd, 1);
 
+    std::this_thread::sleep_until(awake_time());
+    if(query_frontend_pg(fd))
+    {
+        printf("\tFrontend Power Good\n");
+    }
+
     printf("Enabling ADC LDO:\n");
     configure_adc_ldo(fd, 1);
+
+    std::this_thread::sleep_until(awake_time());
+    if(query_adc_pg(fd))
+    {
+        printf("\tADC Power Good\n");
+    }
 
     printf("Disabling PLL EN & waiting 500ms:\n");
     configure_pll_en(fd, 0);
@@ -181,11 +201,37 @@ static void test_io(file_t fd)
     printf("Enabling PLL EN:\n");
     configure_pll_en(fd, 1);
 
+    //Cycle LEDs
+    const led_signals_t *leds;
+    if(isBeta)
+    {
+        leds = &ts_beta_leds;
+    }
+    else
+    {
+        leds = &ts_dev_leds;
+    }
+    
+    printf("Set READY LED\n");
+    control_led(fd, leds->ready);
+    using std::chrono::operator"" s;
+    std::this_thread::sleep_for(3s);
+    printf("Set ERROR LED\n");
+    control_led(fd, leds->error);
+    using std::chrono::operator"" s;
+    std::this_thread::sleep_for(3s);
+    printf("Set ACTIVE LED\n");
+    control_led(fd, leds->active);
+    using std::chrono::operator"" s;
+    std::this_thread::sleep_for(3s);
+
+    control_led(fd, leds->disabled);
+
     i2c_t i2cDev;
     i2cDev.fd = fd;
-    i2cDev.peripheral_baseaddr = CSR_I2CBUS_BASE;
+    i2cDev.peripheral_baseaddr = CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR;
     i2c_rate_set(i2cDev, I2C_400KHz);
-
+    printf("\nScan I2C Bus 0:\n");
     for (unsigned char addr = 0; addr < 0x80; addr++) {
         i2cDev.devAddr = addr;
         bool result = i2c_poll(i2cDev);
@@ -199,20 +245,64 @@ static void test_io(file_t fd)
             printf(" --");
         }
     }
+    
+    if(!isBeta)
+    {
+        i2cDev.peripheral_baseaddr = CSR_I2CBUS_I2C1_PHY_SPEED_MODE_ADDR;
+        i2c_rate_set(i2cDev, I2C_400KHz);
+        printf("\nScan I2C Bus 1:\n");
+        for (unsigned char addr = 0; addr < 0x80; addr++) {
+            i2cDev.devAddr = addr;
+            bool result = i2c_poll(i2cDev);
+            if (addr % 0x10 == 0) {
+                printf("\n0x%02X", addr);
+            }
+            if (result) {
+                printf(" %02X", addr);
+            }
+            else {
+                printf(" --");
+            }
+        }
+    }
 
-    spi_bus_t spimaster;
-    spi_bus_init(&spimaster, fd, CSR_SPIBUS_BASE, CSR_SPIBUS_SPI0_CS_SEL_SIZE);
+    spi_bus_t spibus0;
+    spi_bus_init(&spibus0, fd, CSR_SPIBUS_BASE, CSR_SPIBUS_SPI0_CS_SEL_SIZE);
 
     uint8_t data[2] = {0x01, 0x02};
 
     for (int i = 0; i < CSR_SPIBUS_SPI0_CS_SEL_SIZE; i++) {
         spi_dev_t spiDev;
-        spi_dev_init(&spiDev, &spimaster, i);
+        spi_dev_init(&spiDev, &spibus0, i);
         for (int reg = 0; reg < 10; reg++) {
             spi_write(spiDev, reg, data, 2);
             spi_busy_wait(spiDev);
         }
     }
+
+    if(!isBeta)
+    {
+        spi_bus_t spibus1;
+        spi_bus_init(&spibus1, fd, CSR_SPIBUS_SPI1_CONTROL_ADDR, CSR_SPIBUS_SPI1_CS_SEL_SIZE);
+
+        uint8_t data[2] = {0x01, 0x02};
+
+        for (int i = 0; i < CSR_SPIBUS_SPI1_CS_SEL_SIZE; i++) {
+            spi_dev_t spiDev;
+            spi_dev_init(&spiDev, &spibus1, i);
+            for (int reg = 0; reg < 10; reg++) {
+                spi_write(spiDev, reg, data, 2);
+                spi_busy_wait(spiDev);
+            }
+        }
+    }
+
+    printf("\nPress ENTER to continue...\n");
+    std::cin.ignore(1);
+
+    // Cleanup
+    configure_frontend_ldo(fd, 0);
+    configure_adc_ldo(fd, 0);
 }
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
@@ -476,6 +566,10 @@ static void print_help(void)
 {
     printf("TS Test Util Usage:\r\n");
     printf("\t io - run I/O Test\r\n");
+    printf("\t flash - Test Flash device\r\n");
+    printf("\t\t read             Read a word from flash\r\n");
+    printf("\t\t dump             Dump the contents of flash to a file\r\n");
+    printf("\t\t test             Destructive Flash erase/read/write test\r\n");
     printf("\t capture - run Sample Capture Test\r\n");
     printf("\t\t -d <device>      Device Index\r\n");
     printf("\t\t -c <channels>    Channel bitmap\r\n");
@@ -658,13 +752,14 @@ int main(int argc, char** argv)
     // Run Example IO
     if(0 == strcmp(arg, "io"))
     {
-        test_io(fd);
+        test_io(fd, ((hw_info & TS_HW_ID_VALID_MASK) == 0));
     }
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
         test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
     }
+    // Flash test
     else if(0 == strcmp(arg, "flash"))
     {
         flash_test(argv[argCount+1], fd);

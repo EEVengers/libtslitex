@@ -86,17 +86,23 @@ const mcp_clkgen_conf_t ZL30250_CONF[] = {
 
 const uint32_t ZL30250_CONF_SIZE = sizeof(ZL30250_CONF)/sizeof(ZL30250_CONF[0]);
 
-
+//
+// Bitmasks for LED indicators
+//
+//Beta hardware has a single LED that is active low
 const led_signals_t ts_beta_leds = {
-    .error = 0,
-    .ready = 0,
-    .active = 1
+    .error = 1,
+    .ready = 1,
+    .active = 0,
+    .disabled = 1
 };
 
+//Production hardware has 3 active high LEDs (RGB)
 const led_signals_t ts_dev_leds = {
     .error = 1,
     .ready = 2,
-    .active = 4
+    .active = 4,
+    .disabled = 0
 };
 
 
