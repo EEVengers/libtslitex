@@ -676,20 +676,6 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
         return TS_INVALID_PARAM;
     }
 
-
-    //Set AFE Bandwidth
-    retVal = ts_afe_set_bw_filter(&ts->chan[chanIdx].afe, ctrl.pga_bw);
-    if(retVal > 0)
-    {
-        LOG_DEBUG("Channel %d AFE BW set to %i MHz", chanIdx, retVal);
-    }
-    else
-    {
-        LOG_ERROR("Unable to set Channel %d bandwidth %d", chanIdx, retVal);
-        return TS_INVALID_PARAM;
-    }
-
-
     //Set AC/DC Coupling
     if(TS_STATUS_OK == ts_afe_coupling_control(&ts->chan[chanIdx].afe,
                                         ctrl.dc_couple == 1 ? TS_COUPLE_DC : TS_COUPLE_AC ))
