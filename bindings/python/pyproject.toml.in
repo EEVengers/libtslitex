@@ -3,12 +3,13 @@ requires = ["cython", "numpy", "setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pytslitex"
+name = "tslitex"
 version = "0.0.1"
 license = {text = "BSD-2-Clause"}
 authors = [
   {name = "Nate Meyer", email = "nate.devel@gmail.com"},
 ]
+dependencies = ["numpy"]
 
 [tool.setuptools]
 packages = ["tslitex"]
