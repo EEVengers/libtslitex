@@ -316,3 +316,17 @@ int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
         return TS_STATUS_ERROR;
     }
 }
+
+
+int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_get_progress(&pInst->fw, progress);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}

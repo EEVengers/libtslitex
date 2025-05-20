@@ -163,7 +163,7 @@ cdef class Thunderscope:
     cdef tslitex.tsHandle_t _tsHandle
     cdef public object channel
     
-    def __cinit__(self, dev_idx: int):
+    def __cinit__(self, dev_idx: int, skip_init:bool = False):
         self.channel = []
 
     def __init__(self, dev_idx: int, skip_init:bool = False):
@@ -192,7 +192,16 @@ cdef class Thunderscope:
             raise TypeError(f"bitfile arg must be 'bytes' type")
         cdef uint32_t file_len = <uint32_t>len(bitfile)
         cdef char* pFile = bitfile
-        return tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
+        cdef int32_t status
+        with nogil:
+            status = tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
+        return status
+
+    @property
+    def firmwareProgress(self):
+        cdef uint32_t progress
+        tslitex.thunderscopeGetFwProgress(<tslitex.tsHandle_t>self._tsHandle, &progress)
+        return <int>progress
 
     @property
     def SampleRate(self):
@@ -221,6 +230,8 @@ cdef class Thunderscope:
             raise ValueError(f"Unable to set Thunderscope Enable to {enable}")
 
     def Read(self, uint8_t[:] data not None, dataLen: int):
-        readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dataLen)
+        cdef uint32_t dlen = <uint32_t> dataLen
+        with nogil:
+            readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dlen)
         return readLen
 

@@ -115,6 +115,15 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len);
  */
 int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len);
 
+/**
+ * @brief Get the current progress of the firmware update
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param progress Pointer to a variable to store the progress percentage
+ * @return int32_t TS_STATUS_OK if the progress was retrieved successfully, or a negative error code
+ */
+int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress);
+
 #ifdef __cplusplus
 }
 #endif

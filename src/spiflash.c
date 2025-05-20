@@ -268,6 +268,12 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
                 return TS_STATUS_ERROR;
             }
         }
+
+        //Report progress
+        if(dev->op_progress != NULL)
+        {
+            dev->op_progress(dev->op_progress_ctx, SPI_FLASH_ERASE_SIZE, len);
+        }
     }
     spiflash_write_disable(dev->fd);
 
@@ -298,6 +304,12 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
                 spiflash_write_disable(dev->fd);
                 return TS_STATUS_ERROR;
             }
+        }
+
+        //Report progress
+        if(dev->op_progress != NULL)
+        {
+            dev->op_progress(dev->op_progress_ctx, w_len, len);
         }
 
         offset += w_len;

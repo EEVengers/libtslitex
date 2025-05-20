@@ -34,6 +34,8 @@ static const struct {
     {0, ""}
 };
 
+static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_total);
+
 static uint32_t ts_fw_get_idcode(file_t fd)
 {
     uint32_t code;
@@ -134,7 +136,16 @@ int32_t ts_fw_manager_init(file_t fd, ts_fw_manager_t* mngr)
         return TS_STATUS_ERROR;
     }
     //Initialize SPI Flash
-    spiflash_init(fd, &mngr->flash_dev);
+    if(TS_STATUS_OK == spiflash_init(fd, &mngr->flash_dev))
+    {
+        mngr->flash_dev.op_progress = ts_fw_progress_update;
+        mngr->flash_dev.op_progress_ctx = mngr;
+    }
+    else
+    {
+        LOG_ERROR("Failed to initialize SPI Flash");
+        return TS_STATUS_ERROR;
+    }
 
     //Set partition Table
     if( mngr->flash_dev.mfg_code == TS_FLASH_256M_MFG)
@@ -157,12 +168,16 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
     // Verify Bitstream and Strip Header Info
     uint32_t bin_length = 0;
     const char* part_name = NULL;
+    atomic_store(&mngr->fw_progress, 0);
     const char* bin_start = ts_fw_parse_bit_header(file_stream, &part_name, &bin_length);
     if(bin_length > len)
     {
         LOG_ERROR("INVALID length in bitstream header (%u > %u)", bin_length, len);
         return TS_STATUS_ERROR;
     }
+    LOG_DEBUG("Bitstream Length: %u", bin_length);
+    
+    mngr->fw_progress_max = bin_length*2;
     
     // Verify FPGA Part 
     // Get IDCODE from TS
@@ -210,6 +225,8 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
         return TS_STATUS_ERROR;
     }
 
+    atomic_store(&mngr->fw_progress, bin_length);
+
     // Program New Bitstream
     if(bin_length != spiflash_write(&mngr->flash_dev, mngr->partition_table->user_bitstream_start, bin_start, bin_length))
     {
@@ -217,6 +234,36 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
         return TS_STATUS_ERROR;
     }
 
+    atomic_store(&mngr->fw_progress, mngr->fw_progress_max);
+
+    return TS_STATUS_OK;
+}
+
+int32_t ts_fw_manager_get_progress(ts_fw_manager_t* mngr, uint32_t* progress)
+{
+    uint32_t current_progress = 0;
+    
+    // Get Progress of Flash Write
+    if(mngr == NULL || progress == NULL)
+    {
+        LOG_ERROR("Invalid manager handle");
+        return TS_STATUS_ERROR;
+    }
+    
+    if(mngr->fw_progress_max == 0)
+    {
+        LOG_ERROR("Firmware Update not in progress");
+    }
+    else if (current_progress < mngr->fw_progress_max)
+    {
+        current_progress = (mngr->fw_progress * 100) / mngr->fw_progress_max;
+    }
+    else
+    {
+        current_progress = 100;
+    }
+    
+    *progress = current_progress;
     return TS_STATUS_OK;
 }
 
@@ -243,4 +290,13 @@ int32_t ts_fw_manager_factory_cal_get(ts_fw_manager_t* mngr, const char* file_st
     // Read File from SPI Flash
 
     return TS_STATUS_OK;
+}
+
+static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_total)
+{
+    ts_fw_manager_t* mngr = (ts_fw_manager_t*)ctx;
+    if(mngr != NULL)
+    {
+        atomic_fetch_add(&mngr->fw_progress, work_done);
+    }
 }
