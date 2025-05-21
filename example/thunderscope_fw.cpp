@@ -151,7 +151,7 @@ int main(int argc, char** argv)
     if(infos.hw_id & TS_HW_ID_VALID_MASK)
     {
         printf("HW Rev %02d - %s\n", infos.hw_id & TS_HW_ID_REV_MASK, 
-            (infos.hw_id & TS_HW_ID_VARIANT_MASK) ? "PCIe" : "TB" );
+            (infos.hw_id & TS_HW_ID_VARIANT_MASK) ? "TB" : "PCIe" );
     }
     else
     {

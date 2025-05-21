@@ -339,6 +339,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
         flash_id = spiflash_read_id_register(dev->fd);
         
         if((flash_id == 0x010219) ||
+            (flash_id == 0xC22017) ||
             (flash_id == 0xC22537) ||
             (flash_id == 0xC22B27))
         {
@@ -362,6 +363,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
             dev->ops = s25fl256s_ops;
             break;
         }
+        case 0xC22017:
         case 0xC22537:
         case 0xC22B27: // Test SPI device MX25S6433F
         {
