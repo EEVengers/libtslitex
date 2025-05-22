@@ -100,7 +100,7 @@ int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCal
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
 
 /**
- * @brief Manually set parameters for the devices in a channel to aid in calibration.
+ * @brief Manually set the ADC test pattern mode.
  * 
  * @param ts Handle to the Thunderscope device
  * @param test_mode Test Pattern (see HMCAD15xx Documentation)

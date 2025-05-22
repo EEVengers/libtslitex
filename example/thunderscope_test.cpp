@@ -306,21 +306,11 @@ static void test_io(file_t fd, bool isBeta)
 }
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term)
+    uint32_t volt_scale_mV, int32_t offset_mV, uint8_t ac_couple, uint8_t term, bool watch_bitslip)
 {
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
-
-    // tsChannelHdl_t channels;
-    // ts_channel_init(&channels, fd);
-    // if(channels == NULL)
-    // {
-    //     printf("Failed to create channels handle");
-    //     return;
-    // }
-
-    // sampleStream_t samp;
-    // samples_init(&samp, 0, 0);
+    uint32_t bitslip_count = 0;
 
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE, 0x1000);
     uint64_t sampleLen = 0;
@@ -339,7 +329,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
             chConfig.coupling = ac_couple ? TS_COUPLE_AC : TS_COUPLE_DC;
             chConfig.term =  term ? TS_TERM_50 : TS_TERM_1M;
             chConfig.active = 1;
-            // ts_channel_params_set(channels, channel, &chConfig);
             thunderscopeChannelConfigSet(tsHdl, channel, &chConfig);
             numChan++;
         }
@@ -355,6 +344,11 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     NS_DELAY(500000000);
     uint32_t rate = litepcie_readl(fd, CSR_ADC_HMCAD1520_SAMPLE_COUNT_ADDR) * 2;
     printf(" %d Samples/S\r\n", rate);
+    if(watch_bitslip)
+    {
+        bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
+        printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+    }
 
 
     //Only start taking samples if the rate is non-zero
@@ -362,8 +356,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     {
         uint64_t data_sum = 0;
         //Start Sample capture
-        // samples_enable_set(&samp, 1);
-        // ts_channel_run(channels, 1);
         thunderscopeDataEnable(tsHdl, 1);
         
         auto startTime = std::chrono::steady_clock::now();
@@ -373,7 +365,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
             {
                 uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x100);
                 //Collect Samples
-                // int32_t readRes = samples_get_buffers(&samp, sampleBuffer, readReq);
                 int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
                 if(readRes < 0)
                 {
@@ -385,13 +376,17 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 }
                 data_sum += readReq;
                 sampleLen = readRes;
+                
+                if(watch_bitslip)
+                {
+                    bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
+                    printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+                }
             }
         }
         auto endTime = std::chrono::steady_clock::now();
 
         //Stop Samples
-        // samples_enable_set(&samp, 0);
-        // ts_channel_run(channels, 0);
         thunderscopeDataEnable(tsHdl, 0);
         
         auto deltaNs = std::chrono::duration_cast<std::chrono::nanoseconds>(endTime - startTime);
@@ -402,15 +397,11 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     //Disable channels
     for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
     {
-        // ts_channel_params_get(channels, i, &chConfig);
         thunderscopeChannelConfigGet(tsHdl, i, &chConfig);
         chConfig.active = 0;
-        // ts_channel_params_set(channels, i, &chConfig);
         thunderscopeChannelConfigSet(tsHdl, i, &chConfig);
     }
 
-    // ts_channel_destroy(channels);
-    // samples_teardown(&samp);
     thunderscopeClose(tsHdl);
 
     if(sampleLen > 0)
@@ -599,6 +590,7 @@ int main(int argc, char** argv)
     int32_t offset_mV = 0;
     uint8_t ac_couple = 0;
     uint8_t term = 0;
+    bool bitslip = false;
 
     struct optparse_long argList[] = {
         {"dev",      'd', OPTPARSE_REQUIRED},
@@ -608,6 +600,7 @@ int main(int argc, char** argv)
         {"offsetmv", 'o', OPTPARSE_REQUIRED},
         {"ac",       'a', OPTPARSE_NONE},
         {"term",     't', OPTPARSE_NONE},
+        {"bits",     's', OPTPARSE_NONE},
         {0}
     };
 
@@ -647,6 +640,10 @@ int main(int argc, char** argv)
             break;
         case 't':
             term = 1;
+            argCount++;
+            break;
+        case 's':
+            bitslip = true;
             argCount++;
             break;
         case '?':
@@ -757,7 +754,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term);
+        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_mV, offset_mV, ac_couple, term, bitslip);
     }
     // Flash test
     else if(0 == strcmp(arg, "flash"))
