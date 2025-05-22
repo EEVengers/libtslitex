@@ -17,6 +17,16 @@ extern "C" {
 #include <stdbool.h>
 #include "ts_common.h"
 
+typedef enum tsCalAdcTest_e
+{
+    TS_ADC_TEST_DISABLE,
+    TS_ADC_TEST_SINGLE,
+    TS_ADC_TEST_DUAL,
+    TS_ADC_TEST_RAMP,
+    TS_ADC_TEST_DESKEW,
+    TS_ADC_TEST_SYNC
+} tsCalAdcTest_t;
+
 typedef struct tsChannelCalibration_s
 {
     int32_t buffer_mV;
@@ -88,6 +98,16 @@ int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCal
  * @return int32_t TS_STATUS_OK if the parameters were applied
  */
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
+
+/**
+ * @brief Manually set parameters for the devices in a channel to aid in calibration.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param test_mode Test Pattern (see HMCAD15xx Documentation)
+ * @param test_pattern Value used for Single/Dual test modes
+ * @return int32_t TS_STATUS_OK if the parameters were applied
+ */
+int32_t thunderscopeCalibrationAdcTest(tsHandle_t ts, tsCalAdcTest_t test_mode, uint32_t test_pattern);
 #ifdef __cplusplus
 }
 #endif

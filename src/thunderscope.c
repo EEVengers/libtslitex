@@ -262,6 +262,19 @@ int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsCha
     return TS_STATUS_ERROR;
 }
 
+int32_t thunderscopeCalibrationAdcTest(tsHandle_t ts, tsCalAdcTest_t test_mode, uint32_t test_pattern)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized)
+    {
+        return ts_channel_set_adc_test(pInst->pChannel, (hmcad15xxTestMode_t)test_mode,
+                    (uint16_t)(test_pattern & 0xFFFF), (uint16_t)(test_pattern >> 16));
+    }
+    
+    return TS_STATUS_ERROR;
+}
+
 int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 {
     int32_t status = TS_STATUS_OK;

@@ -348,7 +348,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     }
 
     // Uncomment to use Test Pattern
-    // ts_channel_set_adc_test(channels, HMCAD15_TEST_SYNC, 0, 0);
+    thunderscopeCalibrationAdcTest(tsHdl, TS_ADC_TEST_RAMP, 0);
 
     printf("- Checking HMCAD1520 Sample Rate...");
     litepcie_writel(fd, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_STAT_RST_OFFSET);
