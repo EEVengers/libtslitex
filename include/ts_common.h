@@ -64,8 +64,8 @@ typedef struct tsDeviceInfo_s
 
 typedef struct tsChannelParam_s
 {
-    uint32_t volt_scale_mV;     /**< Set full scale voltage in millivolts */
-    int32_t volt_offset_mV;     /**< Set offset voltage in millivolts */
+    uint32_t volt_scale_uV;     /**< Set full scale voltage in microvolts */
+    int32_t volt_offset_uV;     /**< Set offset voltage in microvolts */
     uint32_t bandwidth;         /**< Set Bandwidth Filter in MHz. Next highest filter will be selected */
     uint8_t coupling;           /**< Select AD/DC coupling for channel.  Use tsChannelCoupling_t enum */
     uint8_t term;               /**< Select Termination mode for channel.  Use tsChannelTerm_t enum */

@@ -13,8 +13,8 @@ cdef extern from "ts_calibration.h":
     ctypedef void* tsHandle_t
 
     cdef struct tsChannelCalibration_s:
-        int32_t buffer_mV
-        int32_t bias_mV
+        int32_t buffer_uV
+        int32_t bias_uV
         int32_t attenuatorGain1M_mdB
         int32_t attenuatorGain50_mdB
         int32_t bufferGain_mdB
@@ -23,8 +23,8 @@ cdef extern from "ts_calibration.h":
         int32_t preampHighGainError_mdB
         int32_t preampAttenuatorGain_mdB[11]
         int32_t preampOutputGainError_mdB
-        int32_t preampLowOffset_mV
-        int32_t preampHighOffset_mV
+        int32_t preampLowOffset_uV
+        int32_t preampHighOffset_uV
         int32_t preampInputBias_uA
 
     ctypedef tsChannelCalibration_s tsChannelCalibration_t

@@ -44,6 +44,14 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->trimDacCh = dacCh;
     afe->trimPot = trimPot;
     afe->trimPotCh = potCh;
+    if(isBetaDevice(trimDac.fd))
+    {
+        afe->trimPotBits = MCP4432_NUM_BITS;
+    }
+    else
+    {
+        afe->trimPotBits = MCP4452_NUM_BITS;
+    }
     afe->termPin = termination;
     afe->attenuatorPin = attenuator;
     afe->couplingPin = coupling;
@@ -54,17 +62,17 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->isAttenuated = true;
     
     // Default calibration
-    afe->cal.buffer_mV = TS_VBUFFER_NOMINAL_MV;
-    afe->cal.bias_mV = TS_VBIAS_NOMINAL_MV;
+    afe->cal.buffer_uV = TS_VBUFFER_NOMINAL_UV;
+    afe->cal.bias_uV = TS_VBIAS_NOMINAL_UV;
     afe->cal.attenuatorGain1M_mdB = TS_ATTENUATION_1M_GAIN_mdB;
     afe->cal.attenuatorGain50_mdB = TS_TERMINATION_50OHM_GAIN_mdB;
     afe->cal.bufferGain_mdB = TS_BUFFER_GAIN_NOMINAL_mdB;
-    afe->cal.trimRheostat_range = MCP4432_FULL_SCALE_OHM;
+    afe->cal.trimRheostat_range = MCP4452_104_FULL_SCALE_OHM;
     afe->cal.preampLowGainError_mdB = 0;
     afe->cal.preampHighGainError_mdB = 0;
     afe->cal.preampOutputGainError_mdB = 0;
-    afe->cal.preampLowOffset_mV = 0;
-    afe->cal.preampHighOffset_mV = 0;
+    afe->cal.preampLowOffset_uV = 0;
+    afe->cal.preampHighOffset_uV = 0;
     afe->cal.preampInputBias_uA = TS_PREAMP_INPUT_BIAS_CURRENT_uA;
     
     Mcp4728ChannelConfig_t trimConf = {0};
@@ -152,14 +160,14 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     return gain_actual;
 }
 
-int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actual)
+int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_uV, int32_t* offset_actual)
 {
     uint16_t offsetVal = TS_TRIM_DAC_DEFAULT;
-    int32_t V_dac = 0;
-    int32_t R_trim = 0;
-    int32_t gain_afe = 0;
-    int32_t V_zero = 0;
-    int32_t gain_preamp = 0;
+    int64_t V_dac = 0;
+    int64_t R_trim = 0;
+    int64_t gain_afe = 0;
+    int64_t V_zero = 0;
+    int64_t gain_preamp = 0;
 
     if(NULL == afe || NULL == offset_actual)
     {
@@ -177,31 +185,30 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
         gain_afe += afe->cal.attenuatorGain1M_mdB;
     }
 
-    V_zero = afe->cal.buffer_mV;
+    V_zero = afe->cal.buffer_uV;
 
     gain_preamp = lmh6518_gain_from_config(afe->ampConf);
     if(afe->ampConf.preamp == PREAMP_LG)
     {
         gain_preamp += afe->cal.preampLowGainError_mdB;
-        V_zero += (int32_t)((double)afe->cal.preampLowOffset_mV / pow(10, ((double)gain_preamp/20000.0)));
+        V_zero += (int32_t)((double)afe->cal.preampLowOffset_uV / pow(10, ((double)gain_preamp/20000.0)));
     }
     else
     {
         gain_preamp += afe->cal.preampHighGainError_mdB;
-        V_zero += (int32_t)((double)afe->cal.preampHighOffset_mV / pow(10, ((double)gain_preamp/20000.0)));
+        V_zero += (int32_t)((double)afe->cal.preampHighOffset_uV / pow(10, ((double)gain_preamp/20000.0)));
     } 
 
     // Desired Trim Voltage
-    LOG_DEBUG("AFE Offset Request %d mv with %d mdB Input Gain", offset_mV, gain_afe);
-    int32_t V_trim = V_zero + (uint32_t)((double)offset_mV * pow(10.0, (double)gain_afe/20000.0));
-    LOG_DEBUG("AFE Offset target V_trim %d mV compared to V_zero of %d mV", V_trim, V_zero);
+    LOG_DEBUG("AFE Offset Request %d uv with %lld mdB Input Gain", offset_uV, gain_afe);
+    int64_t V_trim = V_zero + (int64_t)((double)offset_uV * pow(10.0, (double)gain_afe/20000.0));
+    LOG_DEBUG("AFE Offset target V_trim %lld uV compared to V_zero of %lld uV", V_trim, V_zero);
     
     // Progressively reduce R_trim until V_dac is within range of 0-VDD
-    uint8_t trimPotVal = MCP4432_MAX;
+    uint8_t trimPotVal = (1 << afe->trimPotBits);
     do
     {
-        // R_trim = MCP4432_503_OHM(trimPotVal);
-        R_trim = ((((trimPotVal) * afe->cal.trimRheostat_range) / MCP4432_MAX) + MCP4432_RWIPER);
+        R_trim = ((((trimPotVal) * afe->cal.trimRheostat_range) / ((1 << afe->trimPotBits))) + MCP4432_RWIPER);
 
         /** 
          * Preamp sinks an input bias current (I_trim), so need to add this factor when comparing current
@@ -212,18 +219,18 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
          *  Solved for V_dac becomes:
          *  V_dac = V_trim + R_trim * ((V_trim - V_bias)/R_bias + I_trim)
          */
-        V_dac = V_trim + (R_trim * ((1000 * (V_trim - afe->cal.bias_mV)/TS_BIAS_RESISTOR_NOMINAL) + afe->cal.preampInputBias_uA)) / 1000;
-        if(V_dac > 0 && V_dac < TS_AFE_TRIM_VDD_NOMINAL)
+        V_dac = V_trim + (R_trim * (((V_trim - (int64_t)afe->cal.bias_uV)/TS_BIAS_RESISTOR_NOMINAL) + afe->cal.preampInputBias_uA));
+        if(V_dac >= 0 && V_dac <= TS_AFE_TRIM_VDD_NOMINAL)
         {
-            LOG_DEBUG("Setting Vdac to %d mV, Rtrim to %d Ohm", V_dac, R_trim);
+            LOG_DEBUG("Setting Vdac to %lld uV, Rtrim to %lld Ohm", V_dac, R_trim);
             offsetVal = (V_dac * MCP4728_FULL_SCALE_VAL) / TS_AFE_TRIM_VDD_NOMINAL;
             break;
         }
 
         if(trimPotVal == 0)
         {
-            LOG_ERROR("AFE Unable to produce Trim voltage %d for requested offset %d", V_trim, offset_mV);
-            if(V_trim > afe->cal.bias_mV)
+            LOG_ERROR("AFE Unable to produce Trim voltage %lld for requested offset %d", V_trim, offset_uV);
+            if(V_trim > afe->cal.bias_uV)
             {
                 V_dac = TS_AFE_TRIM_VDD_NOMINAL;
                 offsetVal = MCP4728_FULL_SCALE_VAL;
@@ -254,11 +261,11 @@ int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actu
 
     // Reverse offset calc
     V_dac = (offsetVal * TS_AFE_TRIM_VDD_NOMINAL) / MCP4728_FULL_SCALE_VAL;
-    V_trim = (int32_t) ((((double)TS_BIAS_RESISTOR_NOMINAL * (double)V_dac) + ((double)afe->cal.bias_mV * R_trim)
-                            - ((double)TS_BIAS_RESISTOR_NOMINAL * (double)R_trim * (double)afe->cal.preampInputBias_uA/1000.0))
+    V_trim = (int64_t) ((((double)TS_BIAS_RESISTOR_NOMINAL * (double)V_dac) + ((double)afe->cal.bias_uV * R_trim)
+                            - ((double)TS_BIAS_RESISTOR_NOMINAL * (double)R_trim * (double)afe->cal.preampInputBias_uA))
                             /(TS_BIAS_RESISTOR_NOMINAL + R_trim));
     *offset_actual = (int32_t)(((double)V_trim - ((double)V_zero)) / pow(10.0, (double)gain_afe/20000.0));
-    LOG_DEBUG("AFE Offset actual V_trim %d mv, Offset %d mV", V_trim, *offset_actual);
+    LOG_DEBUG("AFE Offset actual V_trim %lld uv, Offset %d uV", V_trim, *offset_actual);
     return TS_STATUS_OK;
 }
 

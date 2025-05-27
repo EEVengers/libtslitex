@@ -13,7 +13,7 @@ add_custom_command(
     DEPENDS tslitex.pyx tslitex.pxd
     VERBATIM
     )
-    
+
 set(PY_BIND_LIBS tslitex_static litepcie)
 if(WIN32)
     list(APPEND PY_BIND_LIBS setupapi)

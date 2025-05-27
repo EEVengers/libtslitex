@@ -57,12 +57,12 @@ cdef class Channel:
         cdef int32_t retVal = tslitex.thunderscopeChannelConfigGet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to retrieve Channel {self._channel} parameters")
-        return <float>self._params.volt_scale_mV / 1000.0
+        return <float>self._params.volt_scale_uV / 1000000.0
 
     
     @VoltScale.setter
     def VoltScale(self, volts: float):
-        self._params.volt_scale_mV = <uint32_t>(volts*1000)
+        self._params.volt_scale_uV = <uint32_t>(volts*1000000)
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
@@ -73,12 +73,12 @@ cdef class Channel:
         cdef int32_t retVal = tslitex.thunderscopeChannelConfigGet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to retrieve Channel {self._channel} parameters")
-        return <float>self._params.volt_offset_mV / 1000.0
+        return <float>self._params.volt_offset_uV / 1000000.0
 
     
     @VoltOffset.setter
     def VoltOffset(self, volts: float):
-        self._params.volt_offset_mV = <uint32_t>(volts*1000)
+        self._params.volt_offset_uV = <uint32_t>(volts*1000000)
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:

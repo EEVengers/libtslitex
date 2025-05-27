@@ -29,13 +29,13 @@ extern "C" {
 #define TS_ADC_CH_NO_INVERT     (0)
 #define TS_ADC_CH_INVERT        (1)
 
-#define TS_AFE_OUTPUT_NOMINAL_mVPP              (700.0)
+#define TS_AFE_OUTPUT_NOMINAL_uVPP              (700000.0)
 #define TS_ATTENUATION_1M_GAIN_mdB              (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
 #define TS_TERMINATION_50OHM_GAIN_mdB           (-13979) /**< 5x Attenuation from 50Ohm mode.  20 * log(1/5) * 1000 */
 
-#define TS_VBUFFER_NOMINAL_MV                   (2500)
-#define TS_VBIAS_NOMINAL_MV                     (2500)
-#define TS_AFE_TRIM_VDD_NOMINAL                 (5000)
+#define TS_VBUFFER_NOMINAL_UV                   (2500000)
+#define TS_VBIAS_NOMINAL_UV                     (2500000)
+#define TS_AFE_TRIM_VDD_NOMINAL                 (5000000)
 #define TS_BUFFER_GAIN_NOMINAL_mdB              (-250)
 #define TS_BIAS_RESISTOR_NOMINAL                (500)
 #define TS_PREAMP_INPUT_BIAS_CURRENT_uA         (40)
@@ -185,6 +185,8 @@ extern const flash_layout_t ts_64Mb_layout;
 #define TS_FLASH_256M_ID    (0x0219) //256Mb SPI Flash
 #define TS_FLASH_64M_MFG    (0xC2) //Macronix
 #define TS_FLASH_64M_ID     (0x2537) //64Mb SPI Flash
+
+inline bool isBetaDevice(file_t ts) { return (0 == (litepcie_readl(ts, CSR_DEV_STATUS_HW_ID_ADDR) & (1 << CSR_DEV_STATUS_HW_ID_HW_VALID_OFFSET)));}
 
 #ifdef __cplusplus
 }

@@ -42,8 +42,8 @@ cdef extern from "thunderscope.h":
     ctypedef tsDeviceInfo_s tsDeviceInfo_t
 
     cdef struct tsChannelParam_s:
-        uint32_t volt_scale_mV
-        int32_t volt_offset_mV
+        uint32_t volt_scale_uV
+        int32_t volt_offset_uV
         uint32_t bandwidth
         uint8_t coupling
         uint8_t term

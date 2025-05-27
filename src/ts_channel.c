@@ -110,8 +110,8 @@ const static tsChannelParam_t g_tsParamsDefault = {.active = false,
                                                    .bandwidth = 0,
                                                    .coupling = TS_COUPLE_DC,
                                                    .term = TS_TERM_1M,
-                                                   .volt_offset_mV = 0,
-                                                   .volt_scale_mV = 700};
+                                                   .volt_offset_uV = 0,
+                                                   .volt_scale_uV = 700000};
 
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
@@ -429,46 +429,45 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     }
 
     //Set Voltage Scale
-    if(needUpdateGain || (param->volt_scale_mV != pTsHdl->chan[chanIdx].params.volt_scale_mV) || force)
+    if(needUpdateGain || (param->volt_scale_uV != pTsHdl->chan[chanIdx].params.volt_scale_uV) || force)
     {
         //Calculate dB gain value
         //TODO: Set both AFE and ADC gain?
-        int32_t afe_gain_mdB = (int32_t)(20000 * log10(TS_AFE_OUTPUT_NOMINAL_mVPP / (double)param->volt_scale_mV));
+        int32_t afe_gain_mdB = (int32_t)(20000 * log10(TS_AFE_OUTPUT_NOMINAL_uVPP / (double)param->volt_scale_uV));
 
         LOG_DEBUG("Channel %d AFE request %i mdB gain", chanIdx, afe_gain_mdB);
 
         retVal = ts_afe_set_gain(&pTsHdl->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_mV);
+            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_uV);
             return TS_INVALID_PARAM;
         }
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
-            retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_mVPP / pow(10.0, (double)retVal / 20000.0));
-            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_mV, retVal);
-            pTsHdl->chan[chanIdx].params.volt_scale_mV = retVal;
+            retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_uVPP / pow(10.0, (double)retVal / 20000.0));
+            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_uV, retVal);
+            pTsHdl->chan[chanIdx].params.volt_scale_uV = retVal;
             needUpdateOffset = true;
         }
     }
 
     //Set Voltage Offset
-    if(needUpdateOffset || (param->volt_offset_mV != pTsHdl->chan[chanIdx].params.volt_offset_mV) || force)
+    if(needUpdateOffset || (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV) || force)
     {
         //Adjust Trim DAC
         int32_t offset_actual = 0;
-        retVal = ts_afe_set_offset(&pTsHdl->chan[chanIdx].afe, param->volt_offset_mV, &offset_actual);
+        retVal = ts_afe_set_offset(&pTsHdl->chan[chanIdx].afe, param->volt_offset_uV, &offset_actual);
         if(TS_STATUS_OK != retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_mV);
+            LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_uV);
             return TS_INVALID_PARAM;
         }
         else
         {
-            LOG_DEBUG("Channel %d AFE set to %i mV offset", chanIdx, offset_actual);
-            // pTsHdl->chan[chanIdx].params.volt_offset_mV = offset_actual;
-            pTsHdl->chan[chanIdx].params.volt_offset_mV = param->volt_offset_mV;
+            LOG_DEBUG("Channel %d AFE set to %i uV offset", chanIdx, offset_actual);
+            pTsHdl->chan[chanIdx].params.volt_offset_uV = param->volt_offset_uV;
         }
     }
 
@@ -623,8 +622,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     ts->chan[chanIdx].afe.cal = *cal;
 
     LOG_DEBUG("Received Calibration for channel %d", chanIdx);
-    LOG_DEBUG("\tBuffer Output:                 %d mV", cal->buffer_mV);
-    LOG_DEBUG("\t+VBIAS:                        %d mV", cal->bias_mV);
+    LOG_DEBUG("\tBuffer Output:                 %d uV", cal->buffer_uV);
+    LOG_DEBUG("\t+VBIAS:                        %d uV", cal->bias_uV);
     LOG_DEBUG("\t1M Attenuator Gain:            %d mdB", cal->attenuatorGain1M_mdB);
     LOG_DEBUG("\t50 Ohm Terminator Gain:        %d mdB", cal->attenuatorGain50_mdB);
     LOG_DEBUG("\tBuffer Output Gain:            %d mdB", cal->bufferGain_mdB);
@@ -632,8 +631,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\tPreamp Low Input Gain Error:   %d mdB", cal->preampLowGainError_mdB);
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampHighGainError_mdB);
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampOutputGainError_mdB);
-    LOG_DEBUG("\tPreamp Low Output Offset:      %d mV", cal->preampLowOffset_mV);
-    LOG_DEBUG("\tPreamp High Output Offset:     %d mV", cal->preampHighOffset_mV);
+    LOG_DEBUG("\tPreamp Low Output Offset:      %d uV", cal->preampLowOffset_uV);
+    LOG_DEBUG("\tPreamp High Output Offset:     %d uV", cal->preampHighOffset_uV);
     LOG_DEBUG("\tPreamp Input Bias Current:     %d uA", cal->preampInputBias_uA);
 
     //Force afe to recalculate gain/offsets
