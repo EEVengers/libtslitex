@@ -472,6 +472,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         outWav.printSummary();
         outWav.save(TS_TEST_WAV_FILE);
     }
+    free(sampleBuffer);
 }
 
 static void flash_test(char* arg, file_t fd)

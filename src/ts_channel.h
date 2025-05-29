@@ -106,6 +106,24 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
  */
  int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal);
 
+/**
+ * @brief Set the calibration parameters for the adc
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param cal Pointer to the calibration structure to apply
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_adc_calibration_set(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal);
+
+/**
+ * @brief Get the calibration parameters for the adc
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param cal Pointer to the calibration structure
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+ int32_t ts_channel_adc_calibration_get(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal);
+
 /** 
  * @brief Manually set the AFE controls for a channel
  * 

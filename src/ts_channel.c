@@ -266,7 +266,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     for(uint32_t chanIdx = 0; chanIdx < TS_NUM_CHANNELS; chanIdx++)
     {
         pChan->chan[chanIdx].channelNo = chanIdx;
-        ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT, TS_ADC_CH_FINE_GAIN_DEFAULT);
+        ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT);
         retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input,
                                             g_channelConf[chanIdx].adc_invert);
         if(retVal != TS_STATUS_OK)
@@ -658,6 +658,36 @@ int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     *cal = ts->chan[chanIdx].afe.cal;
 
     return TS_STATUS_OK;
+}
+
+int32_t ts_channel_adc_calibration_set(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    LOG_DEBUG("Received Calibration for ADC");
+    LOG_DEBUG("\tFine 2-1:  %02X %02X", cal->branchFineGain[1], cal->branchFineGain[0]);
+    LOG_DEBUG("\tFine 4-3:  %02X %02X", cal->branchFineGain[3], cal->branchFineGain[2]);
+    LOG_DEBUG("\tFine 6-5:  %02X %02X", cal->branchFineGain[5], cal->branchFineGain[4]);
+    LOG_DEBUG("\tFine 8-7:  %02X %02X", cal->branchFineGain[7], cal->branchFineGain[6]);
+    
+    return ts_adc_cal_set(&ts->adc, cal);
+}
+
+int32_t ts_channel_adc_calibration_get(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    return ts_adc_cal_get(&ts->adc, cal);
 }
 
 int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl)

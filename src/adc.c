@@ -13,6 +13,7 @@
 #include "platform.h"
 #include "util.h"
 #include "liblitepcie.h"
+#include "ts_calibration.h"
 
 
 typedef enum adc_shuffle_e
@@ -71,7 +72,7 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
     return retVal;
 }
 
-int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int32_t gainFine)
+int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse)
 {
     int32_t retVal = TS_STATUS_OK;
 
@@ -82,14 +83,12 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
     else
     {
         adc->tsChannels[channel].coarse = gainCoarse;
-        adc->tsChannels[channel].fine = gainFine;
 
         for(uint8_t i = 0; i < TS_NUM_CHANNELS; i++)
         {
             if(adc->tsChannels[channel].input == adc->adcDev.channelCfg[i].input)
             {
                 adc->adcDev.channelCfg[i].coarse = gainCoarse;
-                adc->adcDev.channelCfg[i].fine = gainFine;
                 break;
             }
         }
@@ -218,4 +217,33 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
         LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, resolution);
         return TS_STATUS_ERROR;
     }
+}
+
+int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal)
+{
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
+    {
+        adc->adcDev.fineCal[i] = cal->branchFineGain[i];
+    }
+
+    return hmcad15xx_fine_gain_set(&adc->adcDev, true);
+}
+
+int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal)
+{
+        if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
+    {
+        cal->branchFineGain[i] = adc->adcDev.fineCal[i];
+    }
+    return TS_STATUS_OK;
 }

@@ -226,7 +226,7 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal)
+int32_t thunderscopeChanCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
@@ -238,13 +238,37 @@ int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCal
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal)
+int32_t thunderscopeChanCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
     if(pInst && pInst->initialized)
     {
         return ts_channel_calibration_get(pInst->pChannel, channel, cal);
+    }
+    
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeAdcCalibrationSet(tsHandle_t ts, tsAdcCalibration_t *cal)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized)
+    {
+        return ts_channel_adc_calibration_set(pInst->pChannel, cal);
+    }
+    
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized)
+    {
+        return ts_channel_adc_calibration_get(pInst->pChannel, cal);
     }
     
     return TS_STATUS_ERROR;

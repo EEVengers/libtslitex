@@ -29,7 +29,12 @@ cdef extern from "ts_calibration.h":
 
     ctypedef tsChannelCalibration_s tsChannelCalibration_t
 
-    cdef struct tsChannelCtrl_e:
+    cdef struct tsAdcCalibration_s:
+        uint8_t branchFineGain[8]
+
+    ctypedef tsAdcCalibration_s tsAdcCalibration_t
+
+    cdef struct tsChannelCtrl_s:
         uint8_t atten
         uint8_t term
         uint8_t dc_couple
@@ -39,15 +44,20 @@ cdef extern from "ts_calibration.h":
         uint8_t pga_atten
         uint8_t pga_bw
 
-    ctypedef tsChannelCtrl_e tsChannelCtrl_t
+    ctypedef tsChannelCtrl_s tsChannelCtrl_t
 
     cdef struct tsScopeCalibration_s:
         tsChannelCalibration_t afeCal[4]
+        tsAdcCalibration_t adcCal
 
     ctypedef tsScopeCalibration_s tsScopeCalibration_t
 
-    int32_t thunderscopeCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
+    int32_t thunderscopeChanCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
 
-    int32_t thunderscopeCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
+    int32_t thunderscopeChanCalibrationGet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t* cal)
+
+    int32_t thunderscopeAdcCalibrationSet(tsHandle_t ts, tsAdcCalibration_t* cal)
+
+    int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t* cal)
 
     int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
