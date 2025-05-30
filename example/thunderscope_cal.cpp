@@ -151,7 +151,7 @@ static void cal_get_average_value(tsHandle_t pTs, uint8_t chanBitmap, uint32_t n
     free(sampleBuffer);
 }
 
-static void cal_get_interleaved_average(tsHandle_t pTs, uint32_t numSamples, int8_t branchAvg[8])
+static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int64_t branchSum[8])
 {
     //Capture average
     //Setup and Enable Channels
@@ -198,33 +198,20 @@ static void cal_get_interleaved_average(tsHandle_t pTs, uint32_t numSamples, int
     //Stop Samples
     thunderscopeDataEnable(pTs, 0);
 
-    int64_t avg[8] = {0};
     uint64_t idx = 0;
     while (idx < sampleLen)
     {
-        avg[0] += sampleBuffer[idx++];
-        avg[1] += sampleBuffer[idx++];
-        avg[2] += sampleBuffer[idx++];
-        avg[3] += sampleBuffer[idx++];
-        avg[4] += sampleBuffer[idx++];
-        avg[5] += sampleBuffer[idx++];
-        avg[6] += sampleBuffer[idx++];
-        avg[7] += sampleBuffer[idx++];
+        //Branch Order from HMCAD1520 Datasheet, Table 27
+        branchSum[0] += sampleBuffer[idx++];
+        branchSum[5] += sampleBuffer[idx++];
+        branchSum[1] += sampleBuffer[idx++];
+        branchSum[4] += sampleBuffer[idx++];
+        branchSum[7] += sampleBuffer[idx++];
+        branchSum[2] += sampleBuffer[idx++];
+        branchSum[6] += sampleBuffer[idx++];
+        branchSum[3] += sampleBuffer[idx++];
     }
     printf("Num Samples: %lld\r\n",sampleLen);
-    for(uint32_t i=0; i < 8; i++)
-    {
-        printf("\t Branch %d Sum: %lld\r\n",i, avg[i]);
-    }
-    //Branch Order from HMCAD1520 Datasheet, Table 27
-    branchAvg[0] = (int8_t)(avg[0] / (sampleLen / 8));
-    branchAvg[5] = (int8_t)(avg[1] / (sampleLen / 8));
-    branchAvg[1] = (int8_t)(avg[2] / (sampleLen / 8));
-    branchAvg[4] = (int8_t)(avg[3] / (sampleLen / 8));
-    branchAvg[7] = (int8_t)(avg[4] / (sampleLen / 8));
-    branchAvg[2] = (int8_t)(avg[5] / (sampleLen / 8));
-    branchAvg[6] = (int8_t)(avg[6] / (sampleLen / 8));
-    branchAvg[3] = (int8_t)(avg[7] / (sampleLen / 8));
 
     //Disable channels
     for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
@@ -512,6 +499,9 @@ static void cal_step_4(tsHandle_t pTs, uint8_t chanBitmap)
 
 static void cal_fine_gain(tsHandle_t pTs)
 {
+    tsAdcCalibration_t cal = {0};
+    thunderscopeAdcCalibrationGet(pTs, &cal);
+
     // Characterize ADC Branch Offsets
     // Set V_trim to 2.5V
     // Set Low Gain (no attenuator, 1M termination, Low preamp gain)
@@ -535,16 +525,16 @@ static void cal_fine_gain(tsHandle_t pTs)
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
     // Measure Average values
-    int8_t branchVals[8] = {0};
-    cal_get_interleaved_average(pTs, DMA_BUFFER_SIZE*8, branchVals);
+    int64_t branchVals[8] = {0};
+    cal_get_interleaved_samples(pTs, DMA_BUFFER_SIZE*1024, branchVals);
 
-    int32_t median_sample;
-    int8_t max_sample = branchVals[0];
-    int8_t min_sample = branchVals[0];
+    int64_t median_sample;
+    int64_t max_sample = branchVals[0];
+    int64_t min_sample = branchVals[0];
     printf("Sampled Branch Averages:\r\n");
     for(uint32_t i=0; i < 8; i++)
     {
-        printf("\t Branch %d: %3d\r\n", i, branchVals[i]);
+        printf("\t Branch %d: %lld\r\n", i+1, branchVals[i]);
         if(branchVals[i] > max_sample)
         {
             max_sample = branchVals[i];
@@ -556,29 +546,70 @@ static void cal_fine_gain(tsHandle_t pTs)
     }
 
     // Find median branch val
-
+    median_sample = (max_sample + min_sample) / 2;
+    printf("Branch median value: %lld\r\n", median_sample);
 
     //Scale branches to match
-
-
-    //Print Calibration
-
-
-    //Verify Calibration
-    cal_get_interleaved_average(pTs, DMA_BUFFER_SIZE*8, branchVals);
-    printf("Calibrated Branch Averages:\r\n");
     for(uint32_t i=0; i < 8; i++)
     {
-        printf("\t Branch %d: %3d\r\n", i, branchVals[i]);
+        uint8_t config;
+        double branchScale = (double)median_sample/(double)branchVals[i];
+        printf("Branch %d differs from the median by a factor of %.8f\r\n", i+1, branchScale);
+        if(branchScale > 1)
+        {
+            branchScale = (branchScale - 1) * 8192;
+            // Round and limit to 63
+            config = branchScale > 63 ? 63 : (uint8_t)(branchScale + 0.5);
+        }
+        else
+        {
+            branchScale = (1 - branchScale) * 8192;
+            // Round and limit to 63
+            config = branchScale > 63 ? 63 : (uint8_t)(branchScale + 0.5);
+            // Invert
+            config = ~config;
+        }
+        cal.branchFineGain[i] = config & 0x7F;
+    }
+    
+    //Print Calibration
+    for(int i=0; i<8; i++)
+    {
+        printf("Branch %d Fine Gain Cal: %02X\r\n", i, cal.branchFineGain[i]);
     }
 
+    //Verify Calibration
+    thunderscopeAdcCalibrationSet(pTs, &cal);
+    cal_get_interleaved_samples(pTs, DMA_BUFFER_SIZE*1024, branchVals);
+    printf("Calibrated Branch Averages:\r\n");
+    max_sample = branchVals[0];
+    min_sample = branchVals[0];
+    for(uint32_t i=0; i < 8; i++)
+    {
+        printf("\t Branch %d: %lld\r\n", i+1, branchVals[i]);
+        if(branchVals[i] > max_sample)
+        {
+            max_sample = branchVals[i];
+        }
+        if(branchVals[i] < min_sample)
+        {
+            min_sample = branchVals[i];
+        }
+    }
     
+    median_sample = (max_sample + min_sample) / 2;
+    for(uint32_t i=0; i < 8; i++)
+    {
+        uint8_t config;
+        double branchScale = (double)branchVals[i] / median_sample;
+        printf("Calibrated Branch %d differs from the median by a factor of %.8f\r\n", i, branchScale);
+    }
+
     FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 }
 
-#define TS_CAL_STEPS 4
 static void do_calibration(file_t fd, uint32_t idx, uint8_t channelBitmap, uint32_t stepNo)
 {
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
