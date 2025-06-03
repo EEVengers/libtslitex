@@ -34,6 +34,7 @@
 
 #include "../src/mcp443x.h"
 #include "../src/platform.h"
+#include "../src/util.h"
 
 #include "liblitepcie.h"
 #include "thunderscope.h"
