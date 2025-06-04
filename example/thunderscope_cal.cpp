@@ -73,6 +73,7 @@ static void cal_get_average_value(tsHandle_t pTs, uint8_t chanBitmap, uint32_t n
 {
     //Capture average
     //Setup and Enable Channels
+    uint8_t* sampleBuffer = NULL;
     tsChannelParam_t chConfig = {0};
     uint8_t numChan = 0;
     uint8_t channel = 0;
@@ -86,11 +87,12 @@ static void cal_get_average_value(tsHandle_t pTs, uint8_t chanBitmap, uint32_t n
         }
         channel++;
         chanBitmap >>= 1;
+        numChan++;
     }
     if(numChan > 2)
             numChan = 4;
 
-    int8_t* sampleBuffer = (int8_t*)calloc(((numSamples*numChan) + DMA_BUFFER_SIZE-1)/DMA_BUFFER_SIZE, DMA_BUFFER_SIZE);
+    sampleBuffer = (uint8_t*)calloc(((numSamples*numChan) + DMA_BUFFER_SIZE-1)/DMA_BUFFER_SIZE, DMA_BUFFER_SIZE);
     uint64_t sampleLen = 0;
 
     uint64_t data_sum = 0;
@@ -100,10 +102,10 @@ static void cal_get_average_value(tsHandle_t pTs, uint8_t chanBitmap, uint32_t n
     if(sampleBuffer != NULL)
     {
             //Collect Samples
-            int32_t readRes = thunderscopeRead(pTs, (uint8_t*)sampleBuffer, numSamples);
+            int32_t readRes = thunderscopeRead(pTs, sampleBuffer, numSamples);
             if(readRes < 0)
             {
-                printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
+                printf("ERROR: Sample Get Buffers failed with %" PRIi32"\r\n", readRes);
             }
             else if(readRes != numSamples)
             {
@@ -156,6 +158,7 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
 {
     //Capture average
     //Setup and Enable Channels
+    uint8_t* sampleBuffer = NULL;
     tsChannelParam_t chConfig = {0};
     for(uint32_t i=0; i < TS_NUM_CHANNELS; i++)
     {
@@ -172,7 +175,7 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
     }
 
 
-    int8_t* sampleBuffer = (int8_t*)calloc(DMA_BUFFER_SIZE, (numSamples + DMA_BUFFER_SIZE-1)/DMA_BUFFER_SIZE);
+    sampleBuffer = (uint8_t*)calloc(DMA_BUFFER_SIZE, (numSamples + DMA_BUFFER_SIZE-1)/DMA_BUFFER_SIZE);
     int64_t sampleLen = 0;
 
     //Start Sample capture
@@ -181,7 +184,7 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
     if(sampleBuffer != NULL)
     {
             //Collect Samples
-            int32_t readRes = thunderscopeRead(pTs, (uint8_t*)sampleBuffer, numSamples);
+            int32_t readRes = thunderscopeRead(pTs, sampleBuffer, numSamples);
             if(readRes < 0)
             {
                 printf("ERROR: Sample Get Buffers failed with %" PRIi32 "\r\n", readRes);
@@ -203,14 +206,14 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
     while (idx < sampleLen)
     {
         //Branch Order from HMCAD1520 Datasheet, Table 27
-        branchSum[0] += sampleBuffer[idx++];
-        branchSum[5] += sampleBuffer[idx++];
-        branchSum[1] += sampleBuffer[idx++];
-        branchSum[4] += sampleBuffer[idx++];
-        branchSum[7] += sampleBuffer[idx++];
-        branchSum[2] += sampleBuffer[idx++];
-        branchSum[6] += sampleBuffer[idx++];
-        branchSum[3] += sampleBuffer[idx++];
+        branchSum[0] += sampleBuffer[idx++]; //D1A
+        branchSum[5] += sampleBuffer[idx++]; //D1B
+        branchSum[1] += sampleBuffer[idx++]; //D2A
+        branchSum[4] += sampleBuffer[idx++]; //D2B
+        branchSum[7] += sampleBuffer[idx++]; //D3A
+        branchSum[2] += sampleBuffer[idx++]; //D3B
+        branchSum[6] += sampleBuffer[idx++]; //D4A
+        branchSum[3] += sampleBuffer[idx++]; //D4B
     }
     printf("Num Samples: %lld\r\n",sampleLen);
 
@@ -268,8 +271,8 @@ static void cal_step_1(uint8_t chanBitmap)
         }
         printf("Invalid Value for VBIAS\r\n");
     }
-
     FLUSH();
+
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 
@@ -317,10 +320,10 @@ static void cal_step_2(tsHandle_t pTs, uint8_t chanBitmap)
                 }
                 printf("Invalid Value for VTRIM\r\n");
             }
+            FLUSH();
         }
     }
 
-    FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
     
@@ -356,6 +359,7 @@ static void cal_step_2(tsHandle_t pTs, uint8_t chanBitmap)
                 }
                 printf("Invalid Value for VTRIM\r\n");
             }
+            FLUSH();
         }
     }
 
@@ -369,7 +373,6 @@ static void cal_step_2(tsHandle_t pTs, uint8_t chanBitmap)
         }
     }
 
-    FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 }
@@ -415,10 +418,9 @@ static void cal_step_3(tsHandle_t pTs, uint8_t chanBitmap)
                 }
                 printf("Invalid Value for VTRIM\r\n");
             }
+            FLUSH();
         }
     }
-
-    FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 }
@@ -459,7 +461,6 @@ static void cal_step_4(tsHandle_t pTs, uint8_t chanBitmap)
         }
     }
    
-    FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 
@@ -492,8 +493,7 @@ static void cal_step_4(tsHandle_t pTs, uint8_t chanBitmap)
             printf("Saving value of %i uV for Channel %d Preamp High-gain Offset\r\n", calibration.afeCal[i].preampHighOffset_uV, i);
         }
     }
-    
-    FLUSH();
+
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 }
@@ -554,6 +554,16 @@ static void cal_fine_gain(tsHandle_t pTs)
     for(uint32_t i=0; i < 8; i++)
     {
         uint8_t config;
+        /**
+         * branch * cal_scale = median
+         * ... cal_scale = median / branch
+         * we want to find the abs delta from 1, our resolution is 2^-13
+         * cal_scale = 1 + x/8192
+         * ... x = (cal_scale - 1) * 8192
+         * for scale < 1, value is negative
+         * ... -x = -(cal_scale - 1) * 8192
+         * ... x = (1 - cal_scale) * 8192
+         */
         double branchScale = (double)median_sample/(double)branchVals[i];
         printf("Branch %d differs from the median by a factor of %.8f\r\n", i+1, branchScale);
         if(branchScale > 1)
@@ -606,12 +616,11 @@ static void cal_fine_gain(tsHandle_t pTs)
         printf("Calibrated Branch %d differs from the median by a factor of %.8f\r\n", i, branchScale);
     }
 
-    FLUSH();
     printf("<Press ENTER to continue>\r\n");
     while(getchar() != '\n') {;;}
 }
 
-static void do_calibration(file_t fd, uint32_t idx, uint8_t channelBitmap, uint32_t stepNo)
+static void do_calibration(uint32_t idx, uint8_t channelBitmap, uint32_t stepNo)
 {
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
 
@@ -763,12 +772,11 @@ int main(int argc, char** argv)
     printf("FPGA VCC-BRAM:    %0.2f V\n",
         (double)litepcie_readl(fd, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3);
 #endif
-
-    // Walk the user through calibration steps
-    do_calibration(fd, idx, channelBitmap, stepNo);
-
     /* Close LitePCIe device. */
     litepcie_close(fd);
+
+    // Walk the user through calibration steps
+    do_calibration(idx, channelBitmap, stepNo);
 
     return 0;
 }
