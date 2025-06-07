@@ -745,7 +745,7 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
     lmh6518Config_t preamp = LMH6518_CONFIG_INIT;
     preamp.atten = ctrl.pga_atten;
     preamp.filter = ctrl.pga_bw;
-    preamp.preamp = ctrl.pga_high_gain = 0 ? PREAMP_LG : PREAMP_HG;
+    preamp.preamp = ctrl.pga_high_gain == 0 ? PREAMP_LG : PREAMP_HG;
     preamp.pm = PM_AUX_HIZ;
 
     retVal = lmh6518_apply_config(ts->chan[chanIdx].afe.amp, preamp);

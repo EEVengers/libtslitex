@@ -159,28 +159,13 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
     //Capture average
     //Setup and Enable Channels
     uint8_t* sampleBuffer = NULL;
-    tsChannelParam_t chConfig = {0};
-    for(uint32_t i=0; i < TS_NUM_CHANNELS; i++)
-    {
-        thunderscopeChannelConfigGet(pTs, i, &chConfig);
-        if(i==0)
-        {
-            chConfig.active = 1;
-        }
-        else
-        {
-            chConfig.active = 0;
-        }
-        thunderscopeChannelConfigSet(pTs, i, &chConfig);
-    }
-
 
     sampleBuffer = (uint8_t*)calloc(DMA_BUFFER_SIZE, (numSamples + DMA_BUFFER_SIZE-1)/DMA_BUFFER_SIZE);
     int64_t sampleLen = 0;
 
     //Start Sample capture
     thunderscopeDataEnable(pTs, 1);
-    
+
     if(sampleBuffer != NULL)
     {
             //Collect Samples
@@ -215,15 +200,7 @@ static void cal_get_interleaved_samples(tsHandle_t pTs, uint32_t numSamples, int
         branchSum[6] += sampleBuffer[idx++]; //D4A
         branchSum[3] += sampleBuffer[idx++]; //D4B
     }
-    printf("Num Samples: %lld\r\n",sampleLen);
 
-    //Disable channels
-    for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
-    {
-        thunderscopeChannelConfigGet(pTs, i, &chConfig);
-        chConfig.active = 0;
-        thunderscopeChannelConfigSet(pTs, i, &chConfig);
-    }
     free(sampleBuffer);
 }
 

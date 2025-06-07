@@ -74,6 +74,17 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->cal.preampLowOffset_uV = 0;
     afe->cal.preampHighOffset_uV = 0;
     afe->cal.preampInputBias_uA = TS_PREAMP_INPUT_BIAS_CURRENT_uA;
+    afe->cal.preampAttenuatorGain_mdB[0] =  TS_AFE_PREAMP_ATTEN_0_mdB;
+    afe->cal.preampAttenuatorGain_mdB[1] =  TS_AFE_PREAMP_ATTEN_1_mdB;
+    afe->cal.preampAttenuatorGain_mdB[2] =  TS_AFE_PREAMP_ATTEN_2_mdB;
+    afe->cal.preampAttenuatorGain_mdB[3] =  TS_AFE_PREAMP_ATTEN_3_mdB;
+    afe->cal.preampAttenuatorGain_mdB[4] =  TS_AFE_PREAMP_ATTEN_4_mdB;
+    afe->cal.preampAttenuatorGain_mdB[5] =  TS_AFE_PREAMP_ATTEN_5_mdB;
+    afe->cal.preampAttenuatorGain_mdB[6] =  TS_AFE_PREAMP_ATTEN_6_mdB;
+    afe->cal.preampAttenuatorGain_mdB[7] =  TS_AFE_PREAMP_ATTEN_7_mdB;
+    afe->cal.preampAttenuatorGain_mdB[8] =  TS_AFE_PREAMP_ATTEN_8_mdB;
+    afe->cal.preampAttenuatorGain_mdB[9] =  TS_AFE_PREAMP_ATTEN_9_mdB;
+    afe->cal.preampAttenuatorGain_mdB[10] = TS_AFE_PREAMP_ATTEN_10_mdB;
     
     Mcp4728ChannelConfig_t trimConf = {0};
     trimConf.vref = MCP4728_VREF_VDD;

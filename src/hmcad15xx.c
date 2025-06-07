@@ -57,6 +57,9 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     //Gain dB mode
     hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
 
+    //Set Jitter Ctrl
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CLK_JITTER, 0xFF);
+
     //Channel Conf
     hmcad15xxApplySampleMode(adc);
     hmcad15xxApplyChannelMap(adc);

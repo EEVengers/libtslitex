@@ -40,6 +40,18 @@ extern "C" {
 #define TS_BIAS_RESISTOR_NOMINAL                (500)
 #define TS_PREAMP_INPUT_BIAS_CURRENT_uA         (40)
 
+#define TS_AFE_PREAMP_ATTEN_0_mdB               (0)
+#define TS_AFE_PREAMP_ATTEN_1_mdB               (-2000)
+#define TS_AFE_PREAMP_ATTEN_2_mdB               (-4000)
+#define TS_AFE_PREAMP_ATTEN_3_mdB               (-6000)
+#define TS_AFE_PREAMP_ATTEN_4_mdB               (-8000)
+#define TS_AFE_PREAMP_ATTEN_5_mdB               (-10000)
+#define TS_AFE_PREAMP_ATTEN_6_mdB               (-12000)
+#define TS_AFE_PREAMP_ATTEN_7_mdB               (-14000)
+#define TS_AFE_PREAMP_ATTEN_8_mdB               (-16000)
+#define TS_AFE_PREAMP_ATTEN_9_mdB               (-18000)
+#define TS_AFE_PREAMP_ATTEN_10_mdB              (-20000)
+
 #define TS_SPI_BUS_BASE_ADDR    (CSR_SPIBUS_SPI0_CONTROL_ADDR)
 #define TS_SPI_BUS_BETA_CS_NUM  (5)
 #define TS_SPI_BUS_DEV_CS_NUM   (4)
