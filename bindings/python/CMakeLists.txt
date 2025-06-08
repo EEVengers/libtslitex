@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 find_package(
     Python
     COMPONENTS Interpreter Development.Module
-    REQUIRED
 )
 
 add_custom_command(
