@@ -268,6 +268,12 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
                 return TS_STATUS_ERROR;
             }
         }
+
+        //Report progress
+        if(dev->op_progress != NULL)
+        {
+            dev->op_progress(dev->op_progress_ctx, SPI_FLASH_ERASE_SIZE, len);
+        }
     }
     spiflash_write_disable(dev->fd);
 
@@ -300,6 +306,12 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
             }
         }
 
+        //Report progress
+        if(dev->op_progress != NULL)
+        {
+            dev->op_progress(dev->op_progress_ctx, w_len, len);
+        }
+
         offset += w_len;
         w_len = min(len-offset, SPI_FLASH_PROG_SIZE);
         res = offset;
@@ -327,6 +339,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
         flash_id = spiflash_read_id_register(dev->fd);
         
         if((flash_id == 0x010219) ||
+            (flash_id == 0xC22017) ||
             (flash_id == 0xC22537) ||
             (flash_id == 0xC22B27))
         {
@@ -350,6 +363,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
             dev->ops = s25fl256s_ops;
             break;
         }
+        case 0xC22017:
         case 0xC22537:
         case 0xC22B27: // Test SPI device MX25S6433F
         {

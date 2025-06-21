@@ -39,7 +39,6 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     adc->channelCfg[0].input = HMCAD15_ADC_IN1;
     adc->channelCfg[0].invert = 1;
     adc->channelCfg[0].coarse = 0;
-    adc->channelCfg[0].fine = 0;
     adc->clockDiv = HMCAD15_CLK_DIV_1;
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
@@ -57,6 +56,9 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
 
     //Gain dB mode
     hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
+
+    //Set Jitter Ctrl
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CLK_JITTER, 0xFF);
 
     //Channel Conf
     hmcad15xxApplySampleMode(adc);
@@ -173,6 +175,40 @@ int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment)
     adc->fullScale_x10 = adjustment;
 
     return TS_STATUS_OK;
+}
+
+int32_t hmcad15xx_fine_gain_set(hmcad15xxADC_t* adc, bool enable)
+{
+    uint16_t gainVals = 0;
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    if(enable)
+    {
+        gainVals = adc->fineCal[0];
+        gainVals |= adc->fineCal[1] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_1_2, gainVals);
+        gainVals = adc->fineCal[2];
+        gainVals |= adc->fineCal[3] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_3_4, gainVals);
+        gainVals = adc->fineCal[4];
+        gainVals |= adc->fineCal[5] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_5_6, gainVals);
+        gainVals = adc->fineCal[6];
+        gainVals |= adc->fineCal[7] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_7_8, gainVals);
+        //Enable Fine Gain Control
+        hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, HMCAD15_FGAIN_EN);
+    }
+    else
+    {
+        //Disable Fine Gain Control
+        hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
+    }
+    return TS_STATUS_OK;
+
 }
 
 int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode, uint16_t testData1, uint16_t testData2)

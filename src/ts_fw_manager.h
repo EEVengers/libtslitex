@@ -16,9 +16,13 @@ extern "C" {
 #include "spiflash.h"
 #include "platform.h"
 
+#include <stdatomic.h>
+
 typedef struct ts_fw_manager_s {
     spiflash_dev_t flash_dev;
     const flash_layout_t* partition_table;
+    _Atomic uint32_t fw_progress;
+    uint32_t fw_progress_max;
 } ts_fw_manager_t;
 
 /**
@@ -41,6 +45,16 @@ int32_t ts_fw_manager_init(file_t fd, ts_fw_manager_t* mngr);
  * @return TS_STATUS_OK on success.
  */
 int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_stream, uint32_t len);
+
+/**
+ * @brief Get the current progress of the firmware update
+ * 
+ * @param mngr Pointer to a manager instance
+ * @param progress Pointer to a variable to store the progress percentage
+ * 
+ * @return TS_STATUS_OK on success.
+ */
+int32_t ts_fw_manager_get_progress(ts_fw_manager_t* mngr, uint32_t* progress);
 
 /**
  * @brief Read the User Calibration data from flash

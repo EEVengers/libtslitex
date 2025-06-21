@@ -18,6 +18,8 @@ extern "C" {
 #include "ts_common.h"
 #include "liblitepcie.h"
 
+typedef void (*spiflash_progress_cb_t)(void* ctx, uint32_t work_done, uint32_t work_total);
+
 typedef struct spiflash_ops_s {
     uint8_t read;
     uint8_t program;
@@ -30,6 +32,8 @@ typedef struct spiflash_dev_s {
     uint8_t mfg_code;
     uint16_t part_id;
     spiflash_ops_t ops;
+    spiflash_progress_cb_t op_progress;
+    void* op_progress_ctx;
 } spiflash_dev_t;
 
 /**

@@ -3,7 +3,6 @@ cmake_minimum_required(VERSION 3.20)
 find_package(
     Python
     COMPONENTS Interpreter Development.Module
-    REQUIRED
 )
 
 add_custom_command(
@@ -13,7 +12,7 @@ add_custom_command(
     DEPENDS tslitex.pyx tslitex.pxd
     VERBATIM
     )
-    
+
 set(PY_BIND_LIBS tslitex_static litepcie)
 if(WIN32)
     list(APPEND PY_BIND_LIBS setupapi)

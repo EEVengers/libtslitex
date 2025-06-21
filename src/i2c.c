@@ -14,19 +14,45 @@
 #include "i2c.h"
 #include "util.h"
 
+#define I2C_PHY_SPEED_MODE_REG      (0x0000)
+#define I2C_MASTER_ACTIVE_REG       (0x0004)
+#define I2C_MASTER_SETTINGS_REG     (0x0008)
+#define I2C_MASTER_ADDR_REG         (0x000C)
+#define I2C_MASTER_RXTX_REG         (0x0010)
+#define I2C_MASTER_STATUS_REG       (0x0014)
+
+#define I2C_MASTER_SETTINGS_LEN_TX_OFFSET       (0)
+#define I2C_MASTER_SETTINGS_LEN_RX_OFFSET       (8)
+#define I2C_MASTER_SETTINGS_RECOVER_OFFSET      (16)
+#define I2C_MASTER_STATUS_TX_READY_OFFSET       (0)
+#define I2C_MASTER_STATUS_RX_READY_OFFSET       (1)
+#define I2C_MASTER_STATUS_NACK_OFFSET           (8)
+#define I2C_MASTER_STATUS_TX_UNFINISHED_OFFSET  (16)
+#define I2C_MASTER_STATUS_RX_UNFINISHED_OFFSET  (17)
+
 #define I2C_WAIT_TIMEOUT    (10000)
 
 //I2C Transfer Settings
-#define I2C_TX_LEN(x)   (((x) & 0x7) << CSR_I2C_MASTER_SETTINGS_LEN_TX_OFFSET)
-#define I2C_RX_LEN(x)   (((x) & 0x7) << CSR_I2C_MASTER_SETTINGS_LEN_RX_OFFSET)
-#define I2C_RECOVER(x)  (((x) & 0x1) << CSR_I2C_MASTER_SETTINGS_RECOVER_OFFSET)
+#define I2C_TX_LEN(x)   (((x) & 0x7) << I2C_MASTER_SETTINGS_LEN_TX_OFFSET)
+#define I2C_RX_LEN(x)   (((x) & 0x7) << I2C_MASTER_SETTINGS_LEN_RX_OFFSET)
+#define I2C_RECOVER(x)  (((x) & 0x1) << I2C_MASTER_SETTINGS_RECOVER_OFFSET)
 
 //I2C Status
-#define I2C_TX_READY(x)     (((x) >> CSR_I2C_MASTER_STATUS_TX_READY_OFFSET) & 0x1)
-#define I2C_RX_READY(x)     (((x) >> CSR_I2C_MASTER_STATUS_RX_READY_OFFSET) & 0x1)
-#define I2C_NACK(x)         (((x) >> CSR_I2C_MASTER_STATUS_NACK_OFFSET) & 0x1)
-#define I2C_TX_PEND(x)      (((x) >> CSR_I2C_MASTER_STATUS_TX_UNFINISHED_OFFSET) & 0x1)
-#define I2C_RX_PEND(x)      (((x) >> CSR_I2C_MASTER_STATUS_RX_UNFINISHED_OFFSET) & 0x1)
+#define I2C_TX_READY(x)     (((x) >> I2C_MASTER_STATUS_TX_READY_OFFSET) & 0x1)
+#define I2C_RX_READY(x)     (((x) >> I2C_MASTER_STATUS_RX_READY_OFFSET) & 0x1)
+#define I2C_NACK(x)         (((x) >> I2C_MASTER_STATUS_NACK_OFFSET) & 0x1)
+#define I2C_TX_PEND(x)      (((x) >> I2C_MASTER_STATUS_TX_UNFINISHED_OFFSET) & 0x1)
+#define I2C_RX_PEND(x)      (((x) >> I2C_MASTER_STATUS_RX_UNFINISHED_OFFSET) & 0x1)
+
+static inline void i2c_reg_write(i2c_t dev, uint32_t reg, uint32_t val)
+{
+    litepcie_writel(dev.fd, (dev.peripheral_baseaddr + reg), val);
+}
+
+static inline uint32_t i2c_reg_read(i2c_t dev, uint32_t reg)
+{
+    return litepcie_readl(dev.fd, (dev.peripheral_baseaddr + reg));
+}
 
 /**
  * @brief Enable the I2C core
@@ -35,11 +61,11 @@ static inline void i2c_activate(i2c_t device, bool active)
 {
     if(active)
     {
-        litepcie_writel(device.fd, CSR_I2C_MASTER_ACTIVE_ADDR, 1);
+        i2c_reg_write(device, I2C_MASTER_ACTIVE_REG, 1);
     }
     else
     {
-        litepcie_writel(device.fd, CSR_I2C_MASTER_ACTIVE_ADDR, 0);
+        i2c_reg_write(device, I2C_MASTER_ACTIVE_REG, 0);
     }
 }
 
@@ -48,7 +74,7 @@ static inline void i2c_activate(i2c_t device, bool active)
  */
 static inline void i2c_set_addr(i2c_t device)
 {
-    litepcie_writel(device.fd, CSR_I2C_MASTER_ADDR_ADDR, device.devAddr);
+    i2c_reg_write(device, I2C_MASTER_ADDR_REG, device.devAddr);
 }
 
 /**
@@ -57,7 +83,7 @@ static inline void i2c_set_addr(i2c_t device)
 static inline void i2c_wait_tx_ready(i2c_t device)
 {
     uint32_t timeout = I2C_WAIT_TIMEOUT;
-    while(timeout && (I2C_TX_READY(litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR)) == 0))
+    while(timeout && (I2C_TX_READY(i2c_reg_read(device, I2C_MASTER_STATUS_REG)) == 0))
     {
         NS_DELAY(1000);
         timeout--;
@@ -70,7 +96,7 @@ static inline void i2c_wait_tx_ready(i2c_t device)
 static inline void i2c_wait_rx_ready(i2c_t device)
 {
     uint32_t timeout = I2C_WAIT_TIMEOUT;
-    while(timeout && (I2C_RX_READY(litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR)) == 0))
+    while(timeout && (I2C_RX_READY(i2c_reg_read(device, I2C_MASTER_STATUS_REG)) == 0))
     {
         NS_DELAY(1000);
         timeout--;
@@ -89,23 +115,23 @@ static bool i2c_tx(i2c_t device, uint32_t data, uint8_t len)
     uint32_t i2cStatus;
 
     //Write Settings
-    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_TX_LEN(len));
+    i2c_reg_write(device, I2C_MASTER_SETTINGS_REG, I2C_TX_LEN(len));
 
     //Wait for TX ready
     i2c_wait_tx_ready(device);
 
     //Write TX word
-    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, data);
+    i2c_reg_write(device, I2C_MASTER_RXTX_REG, data);
 
     //Wait for RX ready
     i2c_wait_rx_ready(device);
 
     //Get ACK
-    i2cStatus = litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR);
+    i2cStatus = i2c_reg_read(device, I2C_MASTER_STATUS_REG);
     ack = I2C_NACK(i2cStatus) ? false : true;
 
     //Read the RX word
-    i2cStatus = litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+    i2cStatus = i2c_reg_read(device, I2C_MASTER_RXTX_REG);
 
     return ack;
 }
@@ -122,23 +148,23 @@ static bool i2c_rx(i2c_t device, uint8_t len, uint32_t* pData)
     bool ack;
 
     //Write Settings
-    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_RX_LEN(len));
+    i2c_reg_write(device, I2C_MASTER_SETTINGS_REG, I2C_RX_LEN(len));
 
     //Wait for TX ready
     i2c_wait_tx_ready(device);
 
     //Write TX word
-    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, 0);
+    i2c_reg_write(device, I2C_MASTER_RXTX_REG, 0);
 
     //Wait for RX Ready
     i2c_wait_rx_ready(device);
 
     //Get ACK
-    status = litepcie_readl(device.fd, CSR_I2C_MASTER_STATUS_ADDR);
+    status = i2c_reg_read(device, I2C_MASTER_STATUS_REG);
     ack = I2C_NACK(status) ? false : true;
 
     //Read Data word
-    *pData = litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+    *pData = i2c_reg_read(device, I2C_MASTER_RXTX_REG);
 
     return ack;
 }
@@ -162,22 +188,22 @@ void i2c_rate_set(i2c_t device, i2c_rate_t rate)
     i2c_activate(device, false);
 
     //Set Clock Rate
-    litepcie_writel(device.fd, CSR_I2C_PHY_SPEED_MODE_ADDR, rate);
+    i2c_reg_write(device, I2C_PHY_SPEED_MODE_REG, rate);
 }
 
 void i2c_reset(i2c_t device)
 {
     i2c_activate(device, true);
     
-    litepcie_writel(device.fd, CSR_I2C_MASTER_SETTINGS_ADDR, I2C_RECOVER(1));
+    i2c_reg_write(device, I2C_MASTER_SETTINGS_REG, I2C_RECOVER(1));
     
     i2c_wait_tx_ready(device);
 
-    litepcie_writel(device.fd, CSR_I2C_MASTER_RXTX_ADDR, 0);
+    i2c_reg_write(device, I2C_MASTER_RXTX_REG, 0);
 
     i2c_wait_rx_ready(device);
 
-    litepcie_readl(device.fd, CSR_I2C_MASTER_RXTX_ADDR);
+    i2c_reg_read(device, I2C_MASTER_RXTX_REG);
 
     i2c_activate(device, false);
 }

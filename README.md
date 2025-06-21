@@ -31,10 +31,11 @@ To build the python bindings, you must first have pipx and cython installed. The
 > pip install -r requirements.txt
 ```
 
-Now you can build the `PyBindings` target with cmake
+Now you can build the `PyBindings` target with cmake.  If you get an error about some module not being installed, recreate the cmake cache with `cmake --fresh ..`
 
 ```bash
 > cd build/
+> cmake --fresh ..
 > cmake --build . -t PyBindings
 ```
 

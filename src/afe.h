@@ -31,6 +31,7 @@ typedef struct ts_afe_s
     uint8_t trimDacCh;
     i2c_t trimPot;
     uint8_t trimPotCh;
+    uint8_t trimPotBits;
     gpio_t termPin;
     tsChannelTerm_t termination;
     gpio_t attenuatorPin;
@@ -72,11 +73,11 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB);
  * @brief Set the AFE input gain for a channel
  * 
  * @param afe   Pointer to an AFE instance
- * @param offset_mV Offset in mV
- * @param offset_mV Applied Offset in mV
+ * @param offset_uV Offset in uV
+ * @param offset_uV Applied Offset in uV
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_mV, int32_t* offset_actual);
+int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_uV, int32_t* offset_actual);
 
 /**
  * @brief Set the AFE Bandwidth filter for a channel

@@ -34,6 +34,7 @@ cdef extern from "thunderscope.h":
 
     cdef struct tsDeviceInfo_s:
         uint32_t device_id
+        uint32_t hw_id
         char device_path[256]
         char identity[256]
         char serial_number[256]
@@ -41,8 +42,8 @@ cdef extern from "thunderscope.h":
     ctypedef tsDeviceInfo_s tsDeviceInfo_t
 
     cdef struct tsChannelParam_s:
-        uint32_t volt_scale_mV
-        int32_t volt_offset_mV
+        uint32_t volt_scale_uV
+        int32_t volt_offset_uV
         uint32_t bandwidth
         uint8_t coupling
         uint8_t term
@@ -56,6 +57,8 @@ cdef extern from "thunderscope.h":
         uint32_t vcc_int
         uint32_t vcc_aux
         uint32_t vcc_bram
+        uint8_t frontend_power_good
+        uint8_t acq_power_good
 
     ctypedef sysHealth_s sysHealth_t
 
@@ -75,7 +78,7 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t* info)
 
-    tsHandle_t thunderscopeOpen(uint32_t devIdx)
+    tsHandle_t thunderscopeOpen(uint32_t devIdx, bint skip_init)
 
     int32_t thunderscopeClose(tsHandle_t ts)
 
@@ -89,6 +92,8 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 
-    int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
+    int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len) nogil
 
-    int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
+    int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len) nogil
+
+    int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)

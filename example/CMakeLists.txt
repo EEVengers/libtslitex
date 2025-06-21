@@ -22,3 +22,11 @@ elseif(APPLE)
     target_link_libraries(thunderscope_fw "-framework IOKit")
 endif()
 
+# Thunderscope Cal CLI
+add_executable(thunderscope_cal thunderscope_cal.cpp)
+
+target_link_libraries(thunderscope_cal tslitex_static)
+
+if(WIN32)
+    target_link_libraries(thunderscope_cal setupapi)
+endif()

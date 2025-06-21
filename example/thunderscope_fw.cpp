@@ -139,23 +139,23 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
-    ts = thunderscopeOpen(idx);
+    ts = thunderscopeOpen(idx, true);
     if(ts == NULL) {
         fprintf(stderr, "Could not init driver\n");
         exit(EXIT_FAILURE);
     }
 
-    printf("\x1b[1m[> FPGA/SoC Information:\x1b[0m\n");
+    printf("\x1b[1m[> Device Information:\x1b[0m\n");
     printf("------------------------\n");
     printf("FPGA Identifier:  %s.\n", infos.identity);
-
-    result = thunderscopeStatusGet(ts, &status);
-    if(result == TS_STATUS_OK)
+    if(infos.hw_id & TS_HW_ID_VALID_MASK)
     {
-        printf("FPGA Temperature: %0.1f \u00B0C\n", (float_t)status.sys_health.temp_c / 1000);
-        printf("FPGA VCC-INT:     %0.2f V\n", (float_t)status.sys_health.vcc_int / 1000);
-        printf("FPGA VCC-AUX:     %0.2f V\n", (float_t)status.sys_health.vcc_aux / 1000);
-        printf("FPGA VCC-BRAM:    %0.2f V\n", (float_t)status.sys_health.vcc_bram / 1000);
+        printf("HW Rev %02d - %s\n", infos.hw_id & TS_HW_ID_REV_MASK, 
+            (infos.hw_id & TS_HW_ID_VARIANT_MASK) ? "TB" : "PCIe" );
+    }
+    else
+    {
+        printf("HW Rev Beta\n");
     }
 
     if(0 == strcmp(arg, "factory_restore"))

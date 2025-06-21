@@ -57,12 +57,12 @@ cdef class Channel:
         cdef int32_t retVal = tslitex.thunderscopeChannelConfigGet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to retrieve Channel {self._channel} parameters")
-        return <float>self._params.volt_scale_mV / 1000.0
+        return <float>self._params.volt_scale_uV / 1000000.0
 
     
     @VoltScale.setter
     def VoltScale(self, volts: float):
-        self._params.volt_scale_mV = <uint32_t>(volts*1000)
+        self._params.volt_scale_uV = <uint32_t>(volts*1000000)
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
@@ -73,12 +73,12 @@ cdef class Channel:
         cdef int32_t retVal = tslitex.thunderscopeChannelConfigGet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to retrieve Channel {self._channel} parameters")
-        return <float>self._params.volt_offset_mV / 1000.0
+        return <float>self._params.volt_offset_uV / 1000000.0
 
     
     @VoltOffset.setter
     def VoltOffset(self, volts: float):
-        self._params.volt_offset_mV = <uint32_t>(volts*1000)
+        self._params.volt_offset_uV = <uint32_t>(volts*1000000)
         cdef int32_t retVal
         retVal = tslitex.thunderscopeChannelConfigSet(self.dev, self._channel, &self._params)
         if retVal != tslitex.TS_STATUS_OK:
@@ -144,14 +144,14 @@ cdef class Channel:
 
     def CalibrationSet(self, calibration: ts_calibration.tsChannelCalibration_t):
         cdef int32_t retVal
-        retVal = ts_calibration.thunderscopeCalibrationSet(self.dev, self._channel, &calibration)
+        retVal = ts_calibration.thunderscopeChanCalibrationSet(self.dev, self._channel, &calibration)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to set Channel {self._channel} Calibration {calibration}")
 
     def Calibration(self):
         cdef int32_t retVal
         cdef ts_calibration.tsChannelCalibration_t calibration
-        retVal = ts_calibration.thunderscopeCalibrationSet(self.dev, self._channel, &calibration)
+        retVal = ts_calibration.thunderscopeChanCalibrationSet(self.dev, self._channel, &calibration)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to get Channel {self._channel} Calibration ({retVal})")
         return calibration
@@ -163,14 +163,14 @@ cdef class Thunderscope:
     cdef tslitex.tsHandle_t _tsHandle
     cdef public object channel
     
-    def __cinit__(self, dev_idx: int):
+    def __cinit__(self, dev_idx: int, skip_init:bool = False):
         self.channel = []
 
-    def __init__(self, dev_idx: int):
+    def __init__(self, dev_idx: int, skip_init:bool = False):
         self._sample_rate = 1000000000
         self._sample_mode = 256
         self._enable = 0
-        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx)
+        self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx, <bint>skip_init)
         if self._tsHandle == NULL:
             raise ValueError(f"Failed to Open Thunderscope Device {dev_idx}", dev_idx)
         for ch in range(4):
@@ -187,12 +187,35 @@ cdef class Thunderscope:
             tslitex.thunderscopeStatusGet(<tslitex.tsHandle_t>self._tsHandle, &status_vals)
             return status_vals
 
+    def AdcCalibrationSet(self, calibration: ts_calibration.tsAdcCalibration_t):
+        cdef int32_t retVal
+        retVal = ts_calibration.thunderscopeAdcCalibrationSet(self._tsHandle, &calibration)
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to set ADC Calibration {calibration}")
+
+    def AdcCalibration(self):
+        cdef int32_t retVal
+        cdef ts_calibration.tsAdcCalibration_t calibration
+        retVal = ts_calibration.thunderscopeAdcCalibrationGet(self._tsHandle, &calibration)
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to get ADC Calibration ({retVal})")
+        return calibration
+
     def firmwareUpdate(self, bitfile):
         if type(bitfile) is not bytes:
             raise TypeError(f"bitfile arg must be 'bytes' type")
         cdef uint32_t file_len = <uint32_t>len(bitfile)
         cdef char* pFile = bitfile
-        return tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
+        cdef int32_t status
+        with nogil:
+            status = tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
+        return status
+
+    @property
+    def firmwareProgress(self):
+        cdef uint32_t progress
+        tslitex.thunderscopeGetFwProgress(<tslitex.tsHandle_t>self._tsHandle, &progress)
+        return <int>progress
 
     @property
     def SampleRate(self):
@@ -221,6 +244,8 @@ cdef class Thunderscope:
             raise ValueError(f"Unable to set Thunderscope Enable to {enable}")
 
     def Read(self, uint8_t[:] data not None, dataLen: int):
-        readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dataLen)
+        cdef uint32_t dlen = <uint32_t> dataLen
+        with nogil:
+            readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dlen)
         return readLen
 
