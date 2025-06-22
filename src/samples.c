@@ -136,7 +136,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
 #elif defined(__APPLE__)
         while(retVal < (int32_t)bufferLen)
         {
-            #if 0 //POLL
+            #if 1 //POLL
             litepcie_dma_writer(&inst->dma, inst->active,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
