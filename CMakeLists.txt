@@ -119,5 +119,4 @@ add_subdirectory(example)
 # BINDINGS
 ####
 add_subdirectory(bindings/python)
-add_dependencies(PyBindings tslitex_static litepcie)
 

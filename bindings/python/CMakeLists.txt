@@ -12,6 +12,20 @@ add_custom_command(
     DEPENDS tslitex.pyx tslitex.pxd
     VERBATIM
     )
+    
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/include/thunderscope.h
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "$<TARGET_FILE_DIR:tslitex_static>"
+    "${CMAKE_CURRENT_BINARY_DIR}/lib"
+    DEPENDS tslitex_static
+)
+
+add_custom_target(pydeps
+    DEPENDS tslitex/tslitex.c
+    ${CMAKE_CURRENT_BINARY_DIR}/lib/include/thunderscope.h
+    tslitex_static
+)
 
 set(PY_BIND_LIBS tslitex_static litepcie)
 if(WIN32)
@@ -26,6 +40,19 @@ add_custom_target(PyBindings
         COMMAND Python::Interpreter -m pipx run build --wheel .
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Building python whl"
-        DEPENDS tslitex/tslitex.c
+        DEPENDS pydeps tslitex_static
         )
 
+if (NOT DEFINED PY_PLATFORM)
+    set(PY_PLATFORM "auto")
+endif()
+if (NOT DEFINED PY_ARCH)
+    set(PY_ARCH "auto64")
+endif()
+
+add_custom_target(PyWheels
+        COMMAND Python::Interpreter -m cibuildwheel --platform ${PY_PLATFORM} --archs ${PY_ARCH} --config-file pyproject.toml
+        WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+        COMMENT "Building all Python wheels"
+        DEPENDS pydeps tslitex_static
+        )
