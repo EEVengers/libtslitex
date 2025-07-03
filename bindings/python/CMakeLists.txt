@@ -33,6 +33,11 @@ if(WIN32)
 endif()
 list(JOIN PY_BIND_LIBS "\", \"" PY_EXT_LIBS)
 
+set(PY_WHL_VERSION_STRING "${${PROJECT_NAME}_VERSION}")
+if (NOT ${${PROJECT_NAME}_VERSION_AHEAD} EQUAL "0")
+    set(PY_WHL_VERSION_STRING "${PY_WHL_VERSION_STRING}.dev${${PROJECT_NAME}_VERSION_AHEAD}")
+endif()
+
 configure_file(pyproject.toml.in pyproject.toml @ONLY)
 configure_file(__init__.py.in tslitex/__init__.py COPYONLY)
 
