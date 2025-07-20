@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.22)
 
 project(libtslitex)
 
+# Set Version
+include(version.cmake)
+
 enable_language(C)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON) # error if compiler doesn't support c17
@@ -83,7 +86,7 @@ add_library(tslitex SHARED ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
-
+set_target_properties(tslitex PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
 set_target_properties(tslitex PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
@@ -104,6 +107,7 @@ add_library(tslitex_static STATIC ${TS_SOURCES}
             ${TS_LIB_HEADERS}
             )
 
+set_target_properties(tslitex_static PROPERTIES VERSION ${${PROJECT_NAME}_VERSION})
 set_target_properties(tslitex_static PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
@@ -118,11 +122,13 @@ target_include_directories(tslitex_static PUBLIC include)
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
 
+####
+# EXAMPLE APPLICATIONS
+####
 add_subdirectory(example)
 
 ####
 # BINDINGS
 ####
 add_subdirectory(bindings/python)
-add_dependencies(PyBindings tslitex_static litepcie)
 
