@@ -382,7 +382,7 @@ char *litepcie_dma_next_read_buffer(struct litepcie_dma_ctrl *dma)
     if (!dma->buffers_available_read)
         return NULL;
     dma->buffers_available_read--;
-    char *ret = dma->buf_rd + dma->usr_read_buf_offset * DMA_BUFFER_SIZE;
+    char *ret = (char*)dma->buf_rd + dma->usr_read_buf_offset * DMA_BUFFER_SIZE;
     dma->usr_read_buf_offset = (dma->usr_read_buf_offset + 1) % DMA_BUFFER_COUNT;
     return ret;
 }
@@ -392,7 +392,7 @@ char *litepcie_dma_next_write_buffer(struct litepcie_dma_ctrl *dma)
     if (!dma->buffers_available_write)
         return NULL;
     dma->buffers_available_write--;
-    char *ret = dma->buf_wr + dma->usr_write_buf_offset * DMA_BUFFER_SIZE;
+    char *ret = (char*)dma->buf_wr + dma->usr_write_buf_offset * DMA_BUFFER_SIZE;
     dma->usr_write_buf_offset = (dma->usr_write_buf_offset + 1) % DMA_BUFFER_COUNT;
     return ret;
 }

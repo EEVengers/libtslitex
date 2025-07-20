@@ -365,7 +365,10 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
                     HMCAD15_CH_INVERT_Q2(adc->channelCfg[1].invert) |
                     HMCAD15_CH_INVERT_Q3(adc->channelCfg[2].invert) |
                     HMCAD15_CH_INVERT_Q4(adc->channelCfg[3].invert));
-        break;
+            break;
+        default:
+            LOG_ERROR("ADC Mode Not Supported: %d", adc->mode);
+            return;
     }
 
     hmcad15xxRegWrite(adc, HMCAD15_REG_IN_SEL_1_2, in12);
@@ -394,6 +397,9 @@ static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc)
             cgain |= HMCAD15_CGAIN_Q3(adc->channelCfg[2].coarse);
             cgain |= HMCAD15_CGAIN_Q4(adc->channelCfg[3].coarse);
             hmcad15xxRegWrite(adc, HMCAD15_REG_COARSE_GAIN_1, cgain);
-        break;
+            break;
+        default:
+            LOG_ERROR("ADC Mode Not Supported: %d", adc->mode);
+            break;
     }
 }

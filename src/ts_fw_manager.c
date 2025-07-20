@@ -56,7 +56,7 @@ static uint32_t ts_fw_get_idcode(file_t fd)
 
 static const char* ts_fw_parse_bit_header(const char* header, const char** part, uint32_t* bin_len)
 {
-    const uint8_t* position = header;
+    const char* position = header;
     uint16_t key_len = 0;
 
     //First Field ('0FF0...')
@@ -228,7 +228,7 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
     atomic_store(&mngr->fw_progress, bin_length);
 
     // Program New Bitstream
-    if(bin_length != spiflash_write(&mngr->flash_dev, mngr->partition_table->user_bitstream_start, bin_start, bin_length))
+    if(bin_length != spiflash_write(&mngr->flash_dev, mngr->partition_table->user_bitstream_start, (const uint8_t*)bin_start, bin_length))
     {
         LOG_ERROR("Failed to write user bitstream partition");
         return TS_STATUS_ERROR;
