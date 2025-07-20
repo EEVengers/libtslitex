@@ -41,6 +41,7 @@
 #define TS_DMA_NAME_LEN     (16)
 #define TS_DMA_NAME_ARGS(chan, dev)     "litepcie"
 #define TS_DMA_OS_FLAGS     (O_CLOEXEC)
+#define APPLE_MMAP_DMA
 #elif defined(__LINUX__)
 #define TS_DMA_NAME         "/dev/thunderscope%u"
 #define TS_DMA_NAME_LEN     (24)
@@ -70,18 +71,18 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
         {
             litepcie_dma_set_loopback(&inst->dma, 0);
             retVal = TS_STATUS_OK;
-#if defined(__APPLE__)
+#if defined(APPLE_MMAP_DMA)
             mach_vm_address_t writerAddress = 0;
             mach_vm_size_t writerSize = 0;
             
             IOConnectMapMemory64(inst->dma.fds.fd, LITEPCIE_DMA_WRITER | 0, mach_task_self(), &writerAddress, &writerSize, kIOMapAnywhere);
             
-            if (writerAddress != NULL) {
+            if (writerAddress != 0 && writerSize > 0) {
                 inst->dma.buf_rd = (uint8_t*)writerAddress;
             } else {
                 printf("failed to acquire writer mapped buffer");
             }
-#endif
+#endif //APPLE_MMAP_DMA
         }
         //else, DMA Unavailable
     }
@@ -136,7 +137,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
 #elif defined(__APPLE__)
         while(retVal < (int32_t)bufferLen)
         {
-            #if 1 //POLL
+            #if defined (APPLE_MMAP_DMA) //POLLING
             litepcie_dma_writer(&inst->dma, inst->active,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
@@ -155,7 +156,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             }
             else
             {
-                NS_DELAY(250);
+                NS_DELAY(10000); //10us
             }
             #else
             size_t readLen = bufferLen - retVal;
@@ -170,7 +171,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             }
             //Actual Read Length gets returned in the transfer struct
             retVal += sampleTransfer.length;
-            #endif
+            #endif //APPLE_MMAP_DMA
         }
 #else
         while (retVal < bufferLen)
@@ -221,7 +222,7 @@ int32_t samples_teardown(sampleStream_t* inst)
                             &inst->dma_buffer_count,
                             &inst->driver_buffer_count,
                             &inst->dropped_buffer_count);
-#if defined(__APPLE__)
+#if defined(APPLE_MMAP_DMA)
         IOConnectUnmapMemory(inst->dma.fds.fd,
                             LITEPCIE_DMA_WRITER | 0, mach_task_self(),
                             (mach_vm_address_t)inst->dma.buf_rd);

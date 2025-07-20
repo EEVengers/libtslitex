@@ -184,8 +184,7 @@ file_t litepcie_open(const char* name, int32_t flags)
     fd = CreateFile(devName, (GENERIC_READ | GENERIC_WRITE), 0, NULL,
         OPEN_EXISTING, flags, NULL);
 #elif defined(__APPLE__)
-static const char* dextIdentifier = "litepcie";
-
+    static const char* dextIdentifier = "litepcie";
     kern_return_t ret = kIOReturnSuccess;
     io_iterator_t iterator = IO_OBJECT_NULL;
     io_service_t service = IO_OBJECT_NULL;

@@ -83,9 +83,7 @@ uint8_t litepcie_request_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint
     size_t outlen = sizeof(m);
 #endif
     checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_LOCK, m));
-    //TODO
-    // return m.dma_reader_status;
-    return 1;
+    return m.dma_reader_status;
 }
 
 void litepcie_release_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer) {
