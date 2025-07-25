@@ -184,7 +184,6 @@ file_t litepcie_open(const char* name, int32_t flags)
     fd = CreateFile(devName, (GENERIC_READ | GENERIC_WRITE), 0, NULL,
         OPEN_EXISTING, flags, NULL);
 #elif defined(__APPLE__)
-    static const char* dextIdentifier = "litepcie";
     kern_return_t ret = kIOReturnSuccess;
     io_iterator_t iterator = IO_OBJECT_NULL;
     io_service_t service = IO_OBJECT_NULL;
@@ -192,7 +191,7 @@ file_t litepcie_open(const char* name, int32_t flags)
     fd = IO_OBJECT_NULL;
 
     /// - Tag: ClientApp_Connect
-    ret = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceNameMatching(dextIdentifier), &iterator);
+    ret = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceNameMatching(name), &iterator);
     if (ret != kIOReturnSuccess) {
         printf("Unable to find service for identifier with error: 0x%08x.\n", ret);
         _print_kerr_details(ret);

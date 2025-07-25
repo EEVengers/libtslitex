@@ -11,11 +11,11 @@ if(WIN32)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_win.h
     )
-elif(LINUX)
+elseif(LINUX)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_linux.h
     )
-elif(APPLE)
+elseif(APPLE)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_mac.h
     )

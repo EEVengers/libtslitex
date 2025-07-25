@@ -12,6 +12,7 @@
 #define LITEPCIE_LIB_DMA_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "litepcie_helpers.h"
 #include "litepcie.h"
@@ -22,7 +23,7 @@ typedef struct pollfd_s
     file_t fd;
 } pollfd_t;
 #else
-#include <poll.h>
+#include <sys/poll.h>
 typedef struct pollfd pollfd_t;
 #endif
 

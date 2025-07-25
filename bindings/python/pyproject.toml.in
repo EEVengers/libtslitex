@@ -5,7 +5,6 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tslitex"
 version = "@PY_WHL_VERSION_STRING@"
-license = "BSD-2-Clause"
 authors = [
   {name = "Nate Meyer", email = "nate.devel@gmail.com"},
 ]
