@@ -568,10 +568,10 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
         actual_rate = rate * 4;
     }
 
+    ts_adc_run(&ts->adc, 0);
+
     if(actual_rate != ts->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq)
     {
-        ts_adc_run(&ts->adc, 0);
-        
         // Apply resolution,rate configuration
         zl3026x_clk_config_t newConf = ts->pll.clkConf;
         newConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = actual_rate;
@@ -591,14 +591,14 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
             LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
             return clk_len;
         }
-
-        ts->status.adc_sample_rate = rate;
-        ts->status.adc_sample_resolution = resolution;
-        ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
-
-        ts_adc_set_sample_mode(&ts->adc, rate, resolution);
-        ts_adc_run(&ts->adc, ts->status.adc_state);
     }
+
+    ts->status.adc_sample_rate = rate;
+    ts->status.adc_sample_resolution = resolution;
+    ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
+
+    ts_adc_set_sample_mode(&ts->adc, rate, resolution);
+    ts_adc_run(&ts->adc, ts->status.adc_state);
 
     return  TS_STATUS_OK;
 }
