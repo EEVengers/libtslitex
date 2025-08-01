@@ -24,10 +24,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
 add_definitions(-DUNICODE -D_UNICODE)
 
-IF(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    add_definitions(-D__LINUX__)
-ENDIF()
-
 add_definitions(-DEN_LOGGING)
 
 add_compile_definitions("$<$<CONFIG:Debug>:EN_LOGGING_DEBUG>")

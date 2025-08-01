@@ -119,7 +119,7 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
              FILE_FLAG_NO_BUFFERING |
              FILE_FLAG_OVERLAPPED);
     //Last char is channel ID.  Zero remove char before opening file
-#elif defined(__LINUX__)
+#elif defined(__linux__)
     if (dma->use_reader)
         dma->fds.events |= POLLOUT;
     if (dma->use_writer)

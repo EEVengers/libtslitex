@@ -42,7 +42,7 @@
 #define TS_DMA_NAME_ARGS(chan, dev)     "litepcie"
 #define TS_DMA_OS_FLAGS     (O_CLOEXEC)
 #define APPLE_MMAP_DMA
-#elif defined(__LINUX__)
+#elif defined(__linux__)
 #define TS_DMA_NAME         "/dev/thunderscope%u"
 #define TS_DMA_NAME_LEN     (24)
 #define TS_DMA_NAME_ARGS(chan, dev)     (dev)

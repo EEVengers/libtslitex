@@ -19,7 +19,7 @@ extern "C" {
 
 #if defined(__APPLE__)
 #define INVALID_HANDLE_VALUE (IO_OBJECT_NULL)
-#elif defined(__LINUX__)
+#elif defined(__linux__)
 #define INVALID_HANDLE_VALUE (-1)
 #endif
 

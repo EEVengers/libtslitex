@@ -17,14 +17,14 @@
 #include "litepcie_helpers.h"
 #include "litepcie.h"
 
-#if !defined(__LINUX__)
+#if defined(__linux__)
+#include <sys/poll.h>
+typedef struct pollfd pollfd_t;
+#else
 typedef struct pollfd_s
 {
     file_t fd;
 } pollfd_t;
-#else
-#include <sys/poll.h>
-typedef struct pollfd pollfd_t;
 #endif
 
 struct litepcie_dma_ctrl {
