@@ -264,7 +264,7 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
             uint32_t flash_word;
             get_flash_data(dev->fd, (addr+i+j), (uint8_t*)&flash_word, sizeof(uint32_t));
             if (flash_word != 0xffffffff) {
-                LOG_ERROR("Error: location 0x%08lx not erased (0x%08x)", addr+i+j, flash_word);
+                LOG_ERROR("Error: location 0x%08x not erased (0x%08x)", addr+i+j, flash_word);
                 return TS_STATUS_ERROR;
             }
         }
@@ -300,7 +300,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
         get_flash_data(dev->fd, addr+offset, (uint8_t*)r_buf, w_len);
         for (j = 0; j < w_len; j++) {
             if (r_buf[j] != pData[offset+j]) {
-                LOG_ERROR("Error: verify failed at 0x%08lx (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);
+                LOG_ERROR("Error: verify failed at 0x%08x (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);
                 spiflash_write_disable(dev->fd);
                 return TS_STATUS_ERROR;
             }

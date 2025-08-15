@@ -93,6 +93,11 @@ set_target_properties(tslitex PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
 
 target_link_libraries(tslitex litepcie)
+
+if(APPLE)
+    target_link_libraries(tslitex "-framework IOKit")
+endif()
+
 target_include_directories(tslitex PUBLIC include)
 
 ####
