@@ -169,7 +169,7 @@ int32_t thunderscopeClose(tsHandle_t ts)
     {
         samples_teardown(&pInst->samples);
         ts_channel_destroy(pInst->pChannel);
-        gpio_group_set(pInst->status_leds, 0);
+        gpio_group_set(pInst->status_leds, pInst->signals->disabled);
 
     }
     litepcie_close(pInst->ctrl);
