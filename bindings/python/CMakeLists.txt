@@ -5,6 +5,8 @@ find_package(
     COMPONENTS Interpreter Development.Module
 )
 
+if(Python_FOUND)
+
 add_custom_command(
     OUTPUT tslitex/tslitex.c
     COMMAND Python::Interpreter -m cython
@@ -61,3 +63,6 @@ add_custom_target(PyWheels
         COMMENT "Building all Python wheels"
         DEPENDS pydeps tslitex_static
         )
+else()
+message(STATUS "Python bindings not available: Python not found")
+endif()
