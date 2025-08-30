@@ -306,14 +306,16 @@ static void test_io(file_t fd, bool isBeta)
 }
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip)
+    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip, bool is12bit)
 {
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
     uint32_t bitslip_count = 0;
+    uint32_t dbg_monitor;
 
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE, 0x1000);
     uint64_t sampleLen = 0;
+    uint32_t sampleRate = 1000000000;
 
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
@@ -339,6 +341,16 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     // Uncomment to use Test Pattern
     // thunderscopeCalibrationAdcTest(tsHdl, TS_ADC_TEST_RAMP, 0);
 
+    if(is12bit)
+    {
+        sampleRate = 600000000;
+        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, 4096);
+    }
+    else
+    {
+        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, 256);
+    }
+
     printf("- Checking HMCAD1520 Sample Rate...");
     litepcie_writel(fd, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_STAT_RST_OFFSET);
     NS_DELAY(500000000);
@@ -348,6 +360,8 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     {
         bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
         printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+        dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
+        printf("RANGE: 0x%08x\r\n", dbg_monitor);
     }
 
 
@@ -381,6 +395,8 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 {
                     bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
                     printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+                    dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
+                    printf("RANGE: 0x%08x\r\n", dbg_monitor);
                 }
             }
         }
@@ -412,15 +428,15 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         outFile.close();
         
         AudioFile<uint8_t> outWav;
-        outWav.setBitDepth(8);
+        is12bit ? outWav.setBitDepth(16) : outWav.setBitDepth(8);
         outWav.setNumChannels(numChan);
         if(numChan > 2)
         {
-            outWav.setSampleRate(1000000000/4);
+            outWav.setSampleRate(sampleRate/4);
         }
         else
         {
-            outWav.setSampleRate(1000000000/numChan);
+            outWav.setSampleRate(sampleRate/numChan);
         }
 
         AudioFile<uint8_t>::AudioBuffer wavBuffer;
@@ -592,6 +608,7 @@ int main(int argc, char** argv)
     uint8_t ac_couple = 0;
     uint8_t term = 0;
     bool bitslip = false;
+    bool mode12bit = false;
 
     struct optparse_long argList[] = {
         {"dev",      'd', OPTPARSE_REQUIRED},
@@ -602,6 +619,7 @@ int main(int argc, char** argv)
         {"ac",       'a', OPTPARSE_NONE},
         {"term",     't', OPTPARSE_NONE},
         {"bits",     's', OPTPARSE_NONE},
+        {"12bit",    'm', OPTPARSE_NONE},
         {0}
     };
 
@@ -645,6 +663,10 @@ int main(int argc, char** argv)
             break;
         case 's':
             bitslip = true;
+            argCount++;
+            break;
+        case 'm':
+            mode12bit = true;
             argCount++;
             break;
         case '?':
@@ -755,7 +777,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip);
+        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit);
     }
     // Flash test
     else if(0 == strcmp(arg, "flash"))

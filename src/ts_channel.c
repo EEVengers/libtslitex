@@ -539,7 +539,7 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
 
     //TODO - Support valid rate/resolution combinations
     if((rate < TS_MIN_SAMPLE_RATE) || (rate > TS_MAX_SAMPLE_RATE)
-         || (resolution != 256))
+         || ((resolution != 256) && (resolution != 4096)))
     {
         return TS_INVALID_PARAM;
     }

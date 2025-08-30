@@ -166,9 +166,9 @@ typedef enum hmcad15xxMode_e
 
 typedef enum hmcad15xxDataWidth_e
 {
-    HMCAD15_8_BIT,
-    HMCAD15_12_BIT,
-    HMCAD15_14_BIT
+    HMCAD15_8_BIT = 0,
+    HMCAD15_12_BIT = 1,
+    HMCAD15_14_BIT = 5
 } hmcad15xxDataWidth_t;
 
 typedef enum hmcad15xxPower_e
