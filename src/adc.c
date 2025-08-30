@@ -126,9 +126,9 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         {
             //Disable Unused channels in config
             LOG_DEBUG("Disable CH %d", i);
+            inactiveCount++;
             adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount] = adc->tsChannels[i];
             adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount].active = 0;
-            inactiveCount++;
         }
     }
 

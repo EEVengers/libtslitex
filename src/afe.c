@@ -120,15 +120,24 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     //Remove Preamp Output gain calibration value
     gain_request -= afe->cal.preampOutputGainError_mdB;
 
-    // If 50-Ohm mode in use, limit gain to TBD
-    if(afe->termination == TS_TERM_50)
+    if(isBetaDevice(afe->termPin.fd))
     {
-        gain_request -= afe->cal.attenuatorGain50_mdB;
+        // If 50-Ohm mode in use, limit gain to TBD
+        if(afe->termination == TS_TERM_50)
+        {
+            gain_request -= afe->cal.attenuatorGain50_mdB;
+        }
+        else if(gain_request < LMH6518_MIN_GAIN_mdB)
+        {
+            // Update Attenuation if needed
+            afe->isAttenuated = true;
+            ts_afe_attenuation_control(afe, true);
+            gain_request -= afe->cal.attenuatorGain1M_mdB;
+        }
     }
     else if(gain_request < LMH6518_MIN_GAIN_mdB)
     {
         // Update Attenuation if needed
-        afe->isAttenuated = true;
         ts_afe_attenuation_control(afe, true);
         gain_request -= afe->cal.attenuatorGain1M_mdB;
     }
@@ -148,7 +157,7 @@ int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
     else
     {
         ts_afe_attenuation_control(afe, false);
-        if(afe->termination == TS_TERM_50)
+        if(isBetaDevice(afe->termPin.fd) && afe->termination == TS_TERM_50)
         {
             gain_actual += afe->cal.attenuatorGain50_mdB;
         }
