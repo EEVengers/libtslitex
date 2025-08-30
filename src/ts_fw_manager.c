@@ -228,6 +228,9 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
     atomic_store(&mngr->fw_progress, bin_length);
 
     // Program New Bitstream
+    // TODO: AMD Recommends programming the SYNC word last, so program the bitstream from end to start
+    // Ref: AMD AR 58090 [https://adaptivesupport.amd.com/s/article/58090]
+    // Ref: AMD AR 58249 [https://adaptivesupport.amd.com/s/article/58249]
     if(bin_length != spiflash_write(&mngr->flash_dev, mngr->partition_table->user_bitstream_start, (const uint8_t*)bin_start, bin_length))
     {
         LOG_ERROR("Failed to write user bitstream partition");

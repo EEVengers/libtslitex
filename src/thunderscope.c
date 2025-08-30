@@ -169,9 +169,9 @@ int32_t thunderscopeClose(tsHandle_t ts)
     {
         samples_teardown(&pInst->samples);
         ts_channel_destroy(pInst->pChannel);
-        gpio_group_set(pInst->status_leds, pInst->signals->disabled);
-
     }
+    
+    gpio_group_set(pInst->status_leds, pInst->signals->disabled);
     litepcie_close(pInst->ctrl);
     free(pInst);
 
@@ -346,14 +346,21 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
 int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
     if(pInst)
     {
-        return ts_fw_manager_user_fw_update(&pInst->fw, bitstream, len);
+        status = ts_fw_manager_user_fw_update(&pInst->fw, bitstream, len);
+        if(status == TS_STATUS_OK)
+        {
+            LOG_DEBUG("Bitstream Update Complete");
+        }
+        else
+        {
+            LOG_ERROR("Bitstream Update Failed: %d", status);
+        }
     }
-    else
-    {
-        return TS_STATUS_ERROR;
-    }
+
+    return TS_STATUS_ERROR;
 }
 
 

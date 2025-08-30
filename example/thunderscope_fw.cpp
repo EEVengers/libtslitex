@@ -53,7 +53,7 @@ static void fw_upgrade(tsHandle_t ts, const char* file_path)
 
         // Close File
         file.close();
-
+        delete bitstream;
     }
     else
     {
