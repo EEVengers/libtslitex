@@ -42,6 +42,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     adc->clockDiv = HMCAD15_CLK_DIV_1;
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
+    adc->lvdsTerm = HMCAD15_LVDS_TERM_94;
     adc->lvdsPhase = HMCAD15_LVDS_PHASE_DEFAULT;
     adc->low_clk = 0;
 
@@ -295,6 +296,14 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
             HMCAD15_LVDS_DS_FRAME(adc->drive) |
             HMCAD15_LVDS_DS_DATA(adc->drive));
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_CURRENT, data);
+
+    // Set LVDS Termination
+    data = adc->lvdsTerm == 0 ? 0 :
+            (HMCAD15_LVDS_DS_LCLK(adc->lvdsTerm)  |
+             HMCAD15_LVDS_DS_FRAME(adc->lvdsTerm) |
+             HMCAD15_LVDS_DS_DATA(adc->lvdsTerm)  |
+             HMCAD15_LVDS_TERM_EN_MASK);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_TERM, data);
 
     // Set LVDS Data Width (bits per sample)
     data = (HMCAD15_DATA_WIDTH(adc->width) |

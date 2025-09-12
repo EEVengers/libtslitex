@@ -108,6 +108,11 @@ extern "C" {
 #define HMCAD15_LVDS_DS_FRAME(x)    (((x) & 0x07) << 4)
 #define HMCAD15_LVDS_DS_DATA(x)     (((x) & 0x07) << 8)
 
+#define HMCAD15_LVDS_TERM_LCLK(x)   ((x) & 0x07)
+#define HMCAD15_LVDS_TERM_FRAME(x)  (((x) & 0x07) << 4)
+#define HMCAD15_LVDS_TERM_DATA(x)   (((x) & 0x07) << 8)
+#define HMCAD15_LVDS_TERM_EN_MASK   (1 << 14)
+
 #define HMCAD15_DATA_WIDTH(x)       ((x) & 0x07)
 #define HMCAD15_LOW_CLK(x)          (((x) & 0x01) << 3)
 
@@ -147,6 +152,14 @@ extern "C" {
 #define HMCAD15_LVDS_DS_55          (6)
 #define HMCAD15_LVDS_DS_45          (7)
 
+#define HMCAD15_LVDS_TERM_DEFAULT   (0)
+#define HMCAD15_LVDS_TERM_260       (1)
+#define HMCAD15_LVDS_TERM_150       (2)
+#define HMCAD15_LVDS_TERM_94        (3)
+#define HMCAD15_LVDS_TERM_125       (4)
+#define HMCAD15_LVDS_TERM_80        (5)
+#define HMCAD15_LVDS_TERM_66        (6)
+#define HMCAD15_LVDS_TERM_55        (7)
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
 #define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
@@ -214,6 +227,7 @@ typedef struct hmcad15xxADC_s
     uint8_t clockDiv;
     uint8_t lvdsPhase;
     uint8_t drive;
+    uint8_t lvdsTerm;
     uint8_t low_clk;
 } hmcad15xxADC_t;
 

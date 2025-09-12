@@ -25,9 +25,8 @@ extern "C" {
 
 #define TS_IDENT_STR_LEN            (256)
 
-#define TS_MAX_SAMPLE_RATE          (1000000000)
-#define TS_MAX_DUAL_CH_RATE         (500000000)
-#define TS_MAX_QUAD_CH_RATE         (250000000)
+#define TS_MAX_8BIT_SAMPLE_RATE     (1000000000)
+#define TS_MAX_12BIT_SAMPLE_RATE    (640000000)
 #define TS_MIN_SAMPLE_RATE          (15000000)
 
 #define TS_HW_ID_REV_MASK           (7)
