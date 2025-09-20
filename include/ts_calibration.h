@@ -58,10 +58,10 @@ typedef struct tsChannelCtrl_s
     uint8_t term;
     // DC Coupling
     uint8_t dc_couple;
-    // Trim DAC
-    uint16_t dac;
     // Trim DPOT
     uint8_t dpot;
+    // Trim DAC
+    uint16_t dac;
     //Preamp Control
     uint8_t pga_high_gain;
     uint8_t pga_atten;
@@ -108,7 +108,7 @@ int32_t thunderscopeAdcCalibrationSet(tsHandle_t ts, tsAdcCalibration_t *cal);
  * @brief Get the calibration data for the ADC on the Thunderscope device
  * 
  * @param ts Handle to the Thunderscope device
- * @param cal ADC Calibration data Pointer
+ * @param cal ADC Calibration Data Pointer
  * @return int32_t TS_STATUS_OK if the calibration was retrieved
  */
 int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal);
@@ -118,10 +118,10 @@ int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal);
  * 
  * @param ts Handle to the Thunderscope device
  * @param channel Channel number
- * @param ctrl AFE Control parameters
+ * @param ctrl AFE Control Parameters Pointer
  * @return int32_t TS_STATUS_OK if the parameters were applied
  */
-int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl);
+int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t *ctrl);
 
 /**
  * @brief Manually set the ADC test pattern mode.

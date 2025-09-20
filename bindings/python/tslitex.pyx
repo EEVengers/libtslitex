@@ -138,7 +138,7 @@ cdef class Channel:
 
     def ManualCtrl(self, params: ts_calibration.tsChannelCtrl_t):
         cdef int32_t retVal
-        retVal = ts_calibration.thunderscopeCalibrationManualCtrl(self.dev, self._channel, params)
+        retVal = ts_calibration.thunderscopeCalibrationManualCtrl(self.dev, self._channel, &params)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to manually set Channel {self._channel} Parameters {params}")
 

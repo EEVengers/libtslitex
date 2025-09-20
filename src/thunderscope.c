@@ -276,13 +276,13 @@ int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal)
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
+int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t *ctrl)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
     if(pInst && pInst->initialized)
     {
-        return ts_channel_calibration_manual(pInst->pChannel, channel, ctrl);
+        return ts_channel_calibration_manual(pInst->pChannel, channel, *ctrl);
     }
     
     return TS_STATUS_ERROR;

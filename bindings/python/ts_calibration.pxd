@@ -38,8 +38,8 @@ cdef extern from "ts_calibration.h":
         uint8_t atten
         uint8_t term
         uint8_t dc_couple
-        uint16_t dac
         uint8_t dpot
+        uint16_t dac
         uint8_t pga_high_gain
         uint8_t pga_atten
         uint8_t pga_bw
@@ -60,4 +60,4 @@ cdef extern from "ts_calibration.h":
 
     int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t* cal)
 
-    int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
+    int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t* ctrl)
