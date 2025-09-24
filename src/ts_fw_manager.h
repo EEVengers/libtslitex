@@ -57,37 +57,26 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
 int32_t ts_fw_manager_get_progress(ts_fw_manager_t* mngr, uint32_t* progress);
 
 /**
- * @brief Read the User Calibration data from flash
- * 
- * @param mngr Pointer to a manager instance
- * @param file_stream Pointer to a buffer to store the User Calibration data
- * @param len Available space in the calibration data buffer
- * 
- * @return TS_STATUS_OK on success.
- */
-int32_t ts_fw_manager_user_cal_get(ts_fw_manager_t* mngr, const char* file_stream, uint32_t max_len);
-
-/**
  * @brief Load User Calibration data to flash
  * 
  * @param mngr Pointer to a manager instance
- * @param file_stream Pointer to a buffer containing User calibration data
+ * @param buffer Pointer to a buffer containing User data
  * @param len Length of the calibration data buffer
  * 
  * @return TS_STATUS_OK on success.
  */
-int32_t ts_fw_manager_user_cal_update(ts_fw_manager_t* mngr, const char* file_stream, uint32_t len);
+int32_t ts_fw_manager_user_data_write(ts_fw_manager_t* mngr, const char* buffer, uint32_t offset, uint32_t len);
 
 /**
  * @brief Save the Factory calibration data to a file
  *
  * @param mngr Pointer to a manager instance
- * @param file_stream Pointer to a buffer to store the factory calibration
+ * @param buffer Pointer to a buffer to store the user data
  * @param max_len Available space in the buffer
  * 
  * @return TS_STATUS_OK on success.
  */
-int32_t ts_fw_manager_factory_cal_get(ts_fw_manager_t* mngr, const char* file_stream, uint32_t max_len);
+int32_t ts_fw_manager_user_data_read(ts_fw_manager_t* mngr, char* buffer, uint32_t offset, uint32_t max_len);
 
 /**
  * @brief Reset the user flash partitions with the Factory image

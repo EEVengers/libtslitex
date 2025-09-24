@@ -17,9 +17,6 @@
 #include <inttypes.h>
 #include <string.h>
 
-#define SPI_FLASH_PROG_SIZE	256
-#define SPI_FLASH_ERASE_SIZE (64*1024)
-
 #define SPI_FLASH_WINDOW_SIZE 0x10000
 
 #define SPI_FLASH_CLK_DIV_DEFAULT   (1)
@@ -244,7 +241,7 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
     uint32_t i = 0;
     uint32_t j = 0;
     //Check Address is aligned to the erase sector
-    if(addr & 0xffff)
+    if((addr % SPI_FLASH_ERASE_SIZE) != 0)
     {
         LOG_ERROR("Error: Flash Erase address must be 64K-aligned (0x%08X)", addr);
         return TS_STATUS_ERROR;

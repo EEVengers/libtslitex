@@ -94,6 +94,6 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len) nogil
 
-    int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len) nogil
+    int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len) nogil
 
     int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
