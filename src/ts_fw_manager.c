@@ -306,8 +306,6 @@ int32_t ts_fw_manager_user_data_read(ts_fw_manager_t* mngr, char* buffer, uint32
         readLen = max_offset - offset;
     }
     
-    //TODO Support unaligned reads
-
     // Read File from SPI Flash
     if(readLen != spiflash_read(&mngr->flash_dev, (mngr->partition_table->user_config_start + offset), buffer, readLen))
     {

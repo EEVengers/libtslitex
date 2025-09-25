@@ -211,6 +211,26 @@ cdef class Thunderscope:
             status = tslitex.thunderscopeFwUpdate(self._tsHandle, pFile, file_len)
         return status
 
+    def userDataRead(self, datafile not None, datalen: int, offset: int):
+        cdef uint32_t max_len = <uint32_t>datalen
+        cdef char* pFile = <char*> datafile
+        cdef int32_t status
+        cdef uint32_t user_offset = <uint32_t> offset
+        with nogil:
+            status = tslitex.thunderscopeUserDataRead(self._tsHandle, pFile, user_offset, max_len)
+        return status
+
+    def userDataWrite(self, datafile, offset:int):
+        if type(datafile) is not bytes:
+            raise TypeError(f"bitfile arg must be 'bytes' type")
+        cdef uint32_t file_len = <uint32_t>len(datafile)
+        cdef char* pFile = datafile
+        cdef uint32_t offs = <uint32_t> offset
+        cdef int32_t status
+        with nogil:
+            status = tslitex.thunderscopeUserDataWrite(self._tsHandle, pFile, offs, file_len)
+        return status
+
     @property
     def firmwareProgress(self):
         cdef uint32_t progress

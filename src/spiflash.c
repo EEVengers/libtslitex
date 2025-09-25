@@ -392,13 +392,51 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
 
 int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32_t len)
 {
+    uint32_t read_len = 0;
+    uint32_t remaining = len;
+    uint32_t tempAddr = (addr/4)*4; //Round address down
+    uint8_t flashBytes[4];
     //Validate Address and Lengths
-    if((len % 4) || (addr % 4))
+    if(len == 0)
     {
-        //Only supports word-reads currently
+        LOG_ERROR("Failed to read with length 0");
         return TS_STATUS_ERROR;
     }
-    int32_t read_len = get_flash_data(dev->fd, addr, pData, len);
+    
+    if(addr % 4 != 0)
+    {
+        read_len = get_flash_data(dev->fd, tempAddr, flashBytes, 4);
+        if( 4 != read_len )
+        {
+            LOG_ERROR("Failed to read with length 0");
+            return TS_STATUS_ERROR;
+        }
+        read_len = (4 - (addr%4));
+        memcpy(pData, &flashBytes[addr%4], read_len);
+        addr += read_len;
+        pData += read_len;
+        remaining -= read_len;
+    }
 
-    return len;
+    read_len = get_flash_data(dev->fd, addr, pData, (remaining/4)*4);
+    addr += read_len;
+    pData += read_len;
+    remaining -= read_len;
+
+    if(remaining >= 4)
+    {
+        LOG_ERROR("SPIFLASH READ FAILED (%d - %d)", read_len, remaining);
+    }
+    else if(0 != remaining)
+    {
+        //Should only be 1-3 bytes left
+        if( 4 != get_flash_data(dev->fd, addr, flashBytes, 4))
+        {
+            LOG_ERROR("Failed to read end of data (%d / %d)", read_len, len);
+            return TS_STATUS_ERROR;
+        }
+        memcpy(pData, flashBytes, remaining);
+    }
+
+    return (int32_t)len;
 }
