@@ -276,13 +276,13 @@ int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal)
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t ctrl)
+int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t *ctrl)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
     if(pInst && pInst->initialized)
     {
-        return ts_channel_calibration_manual(pInst->pChannel, channel, ctrl);
+        return ts_channel_calibration_manual(pInst->pChannel, channel, *ctrl);
     }
     
     return TS_STATUS_ERROR;
@@ -343,7 +343,7 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
 }
 
 
-int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
+int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
     int32_t status = TS_STATUS_ERROR;
@@ -360,9 +360,32 @@ int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
         }
     }
 
-    return TS_STATUS_ERROR;
+    return status;
 }
 
+int32_t thunderscopeUserDataRead(tsHandle_t ts, char* buffer, uint32_t offset, uint32_t readLen)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst)
+    {
+        status = ts_fw_manager_user_data_read(&pInst->fw, buffer, offset, readLen);
+    }
+
+    return status;
+}
+
+int32_t thunderscopeUserDataWrite(tsHandle_t ts, const char* buffer, uint32_t offset, uint32_t writeLen)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst)
+    {
+        status = ts_fw_manager_user_data_write(&pInst->fw, buffer, offset, writeLen);
+    }
+
+    return status;
+}
 
 int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
 {

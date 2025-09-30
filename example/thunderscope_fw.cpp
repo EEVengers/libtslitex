@@ -23,15 +23,62 @@
 
 #include <thunderscope.h>
 
+#define MAX_USER_DATA_SIZE  (0x500000)
 
-static void cal_save(tsHandle_t ts, const char* file_path)
+static void user_write(tsHandle_t ts, const char* file_path, uint32_t offset)
 {
-    
+    auto file_size = std::filesystem::file_size(file_path);
+    int32_t status;
+    // Open data file
+    std::ifstream file(file_path, std::ios::binary);
+    if(file)
+    {
+        char* bitstream = new char[file_size];
+        file.read(bitstream, file_size);
+
+        printf("User Data write in progress....");
+
+        // Load New bitstream
+        status = thunderscopeUserDataWrite(ts, bitstream, offset, (uint32_t)file_size);
+
+        printf("Data Write %dB Complete!\r\n", status);
+
+        // Close File
+        file.close();
+        delete bitstream;
+    }
+    else
+    {
+        printf("ERROR User Data Write: Failed to open file %s\r\n", file_path);
+    }
 }
 
-static void cal_load(tsHandle_t ts, const char* file_path)
+static void user_read(tsHandle_t ts, const char* file_path)
 {
-    
+    int32_t read_len = 0;
+    // Open file to store data
+    std::ofstream file(file_path, std::ios::binary);
+    if(file)
+    {
+        char* data_buffer = new char[MAX_USER_DATA_SIZE];
+        
+        printf("Reading User Data ....");
+        
+        // Get data from TS
+        read_len = thunderscopeUserDataRead(ts, data_buffer, 0, MAX_USER_DATA_SIZE);
+        file.write(data_buffer, read_len);
+        
+        printf("Read %dB Complete!\r\n", read_len);
+
+        // Close File
+        file.flush();
+        file.close();
+        delete data_buffer;
+    }
+    else
+    {
+        printf("ERROR User Data Read: Failed to open file %s\r\n", file_path);
+    }
 }
 
 static void fw_upgrade(tsHandle_t ts, const char* file_path)
@@ -70,10 +117,10 @@ static void fw_restore(tsHandle_t ts)
 static void print_help(void)
 {
     printf("TS FW Update Util Usage:\r\n");
-    printf("\tcal_save [dest_file] - Save the current calibration to an XML file\r\n");
+    printf("\tuser_read [dest_file] - Save user data to a file\r\n");
     printf("\t\t[dest_file] - Name of the file to save\r\n");
-    printf("\tcal_load [cal_file] - Load user calibration data\r\n");
-    printf("\t\t[cal_file] - Name of the XML Calibration file to load\r\n");
+    printf("\tuser_write [data_file] - Load user data to the Thunderscope\r\n");
+    printf("\t\t[data_file] - Name of the XML Calibration file to load\r\n");
     printf("\tfw_upgrade [bitstream_file] - Load a new Bitstream\r\n");
     printf("\t\t[bitstream_file] - Name of the Gateware Bitstream file to load\r\n");
     printf("\tfactory_restore - Restores the factory bitstream to the primary location\r\n");
@@ -92,9 +139,11 @@ int main(int argc, char** argv)
     tsHandle_t ts;
     tsDeviceInfo_t infos;
     tsScopeState_t status;
+    uint32_t offs = 0;
 
     struct optparse_long argList[] = {
         {"dev",      'd', OPTPARSE_REQUIRED},
+        {"offs",     'o', OPTPARSE_REQUIRED},
         {0}
     };
 
@@ -111,6 +160,10 @@ int main(int argc, char** argv)
         case 'd':
             idx = strtol(options.optarg, NULL, 0);
             argCount+=2;
+            break;
+        case 'o':
+            offs = strtol(options.optarg, NULL, 0);
+            argCount += 2;
             break;
         case '?':
             fprintf(stderr, "%s: %s\n", argv[0], options.errmsg);
@@ -176,14 +229,14 @@ int main(int argc, char** argv)
     {
         file_path = argv[argCount];
 
-        if(0 == strcmp(arg, "cal_save"))
+        if(0 == strcmp(arg, "user_write"))
         {
-            cal_save(ts, file_path);
+            user_write(ts, file_path, offs);
         }
         // Setup Channel, record samples to buffer, save buffer to file
-        else if(0 == strcmp(arg, "cal_load"))
+        else if(0 == strcmp(arg, "user_read"))
         {
-            cal_load(ts, file_path);
+            user_read(ts, file_path);
         }
         else if(0 == strcmp(arg, "fw_upgrade"))
         {

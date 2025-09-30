@@ -14,6 +14,8 @@
 #include "liblitepcie.h"
 #include "util.h"
 
+#define FLASH_PAGE_LEN   (SPI_FLASH_ERASE_SIZE)
+
 // From AMD UG470
 #define IDCODE_7A200T   (0x03636093)
 #define IDCODE_7A100T   (0x03631093)
@@ -270,20 +272,192 @@ int32_t ts_fw_manager_get_progress(ts_fw_manager_t* mngr, uint32_t* progress)
     return TS_STATUS_OK;
 }
 
-int32_t ts_fw_manager_user_cal_get(ts_fw_manager_t* mngr, const char* file_stream, uint32_t max_len)
+int32_t ts_fw_manager_user_data_read(ts_fw_manager_t* mngr, char* buffer, uint32_t offset, uint32_t max_len)
 {
-    // Read File from SPI Flash
+    if(mngr == NULL)
+    {
+        LOG_ERROR("Invalid manager handle");
+        return TS_STATUS_ERROR;
+    }
 
-    return TS_STATUS_OK;
+    uint32_t max_offset = mngr->partition_table->user_config_end - mngr->partition_table->user_config_start;
+    uint32_t readLen = max_len;
+    atomic_store(&mngr->fw_progress, 0);
+    mngr->fw_progress_max = max_len;
+    
+    if(buffer == NULL)
+    {
+        LOG_ERROR("User Data Read Invalid Buffer Address");
+        return TS_STATUS_ERROR;
+    }
+    if (offset > max_offset)
+    {
+        LOG_ERROR("User Data Read Invalid Offset (%d is beyond range of %d)", offset, max_offset);
+        return TS_STATUS_ERROR;
+    }
+    if(max_len == 0)
+    {
+        LOG_ERROR("User Data Read Invalid Len (%d)", max_len);
+        return TS_STATUS_ERROR;
+    }
+
+    if((offset + max_len) > (max_offset))
+    {
+        readLen = max_offset - offset;
+    }
+    
+    // Read File from SPI Flash
+    if(readLen != spiflash_read(&mngr->flash_dev, (mngr->partition_table->user_config_start + offset), buffer, readLen))
+    {
+        LOG_ERROR("Failed to read user data partition (%d)", readLen);
+        return TS_STATUS_ERROR;
+    }
+
+    return readLen;
 }
 
-int32_t ts_fw_manager_user_cal_update(ts_fw_manager_t* mngr, const char* file_stream, uint32_t len)
+int32_t ts_fw_manager_user_data_write(ts_fw_manager_t* mngr, const char* buffer, uint32_t offset, uint32_t len)
 {
-    // Verify File Good
+    if(mngr == NULL)
+    {
+        LOG_ERROR("Invalid manager handle");
+        return TS_STATUS_ERROR;
+    }
 
+    int32_t status;
+    uint8_t start_buffer[FLASH_PAGE_LEN];
+    uint8_t end_buffer[FLASH_PAGE_LEN];
+    uint32_t max_offset = mngr->partition_table->user_config_end - mngr->partition_table->user_config_start;
+    uint32_t start_addr = mngr->partition_table->user_config_start + (offset & ~(FLASH_PAGE_LEN - 1));
+    uint32_t op_len = ((len + (offset % FLASH_PAGE_LEN) //Add prepend page len
+                        + (FLASH_PAGE_LEN - 1)) / FLASH_PAGE_LEN) //Round up to total number of pages
+                        * FLASH_PAGE_LEN; // Multiply to get number of bytes
+
+    
+    atomic_store(&mngr->fw_progress, 0);
+    mngr->fw_progress_max = op_len*2;
+
+
+    // Verify Parameters Good
+    if(buffer == NULL)
+    {
+        LOG_ERROR("User Data Write Invalid Buffer Address");
+        return TS_STATUS_ERROR;
+    }
+    if (offset >= max_offset)
+    {
+        LOG_ERROR("User Data Write Invalid Offset (%d is beyond range of %d)", offset, max_offset);
+        return TS_STATUS_ERROR;
+    }
+    if(len == 0)
+    {
+        LOG_ERROR("User Data Write Invalid Len (%d)", len);
+        return TS_STATUS_ERROR;
+    }
+    else if((len + offset) > max_offset)
+    {
+        LOG_ERROR("User Data Write Invalid Offset 0x%06X Len %d exceeds end of User Data Region (0x%06X)", offset, len, max_offset);
+        return TS_STATUS_ERROR;
+    }
+
+    //Save initial page if offset not 4k-aligned
+    if((offset % FLASH_PAGE_LEN) != 0)
+    {
+        LOG_DEBUG("Read %d bytes at address %08X", (FLASH_PAGE_LEN), (start_addr + op_len - FLASH_PAGE_LEN));
+        status = spiflash_read(&mngr->flash_dev, start_addr, start_buffer, FLASH_PAGE_LEN);
+        if(status != FLASH_PAGE_LEN)
+        {
+            LOG_ERROR("Failed to read SPI Flash page 0x%06X (%d)", start_addr, status);
+            return status;
+        }
+    }
+
+    //Save final page
+    LOG_DEBUG("Read %d bytes at address %08X", (FLASH_PAGE_LEN), (start_addr + op_len - FLASH_PAGE_LEN));
+    status = spiflash_read(&mngr->flash_dev, (start_addr + op_len - FLASH_PAGE_LEN), end_buffer, FLASH_PAGE_LEN);
+    if(status != FLASH_PAGE_LEN)
+    {
+        LOG_ERROR("Failed to read SPI Flash page 0x%06X (%d)", (start_addr + op_len - FLASH_PAGE_LEN), status);
+        return status;
+    }
+    
     // Erase User Flash Partition
+    LOG_DEBUG("Erase %d bytes at address %08X", (op_len), (start_addr));
+    if(TS_STATUS_OK != spiflash_erase(&mngr->flash_dev, start_addr, op_len))
+    {
+        LOG_ERROR("Failed to erase user data partition (0x%06X 0x%06X)", start_addr, op_len);
+        return TS_STATUS_ERROR;
+    }
+
+    atomic_store(&mngr->fw_progress, op_len);
 
     // Program New User Data
+    if((offset % FLASH_PAGE_LEN) != 0)
+    {
+        //Copy beginning of user data over saved first page
+        uint32_t start_page_len = ((offset % FLASH_PAGE_LEN) + len) > FLASH_PAGE_LEN ? 
+                                    (FLASH_PAGE_LEN - (offset % FLASH_PAGE_LEN)) :
+                                    len;
+        memcpy(&start_buffer[offset % FLASH_PAGE_LEN], buffer, start_page_len);
+        LOG_DEBUG("Copy %d bytes at offset %08X to start buffer", start_page_len, (offset % FLASH_PAGE_LEN));
+        
+        LOG_DEBUG("Write %d bytes at address %08X", FLASH_PAGE_LEN, (start_addr));
+        if(FLASH_PAGE_LEN != spiflash_write(&mngr->flash_dev, start_addr, start_buffer, FLASH_PAGE_LEN))
+        {
+            LOG_ERROR("Failed to erase user bitstream partition");
+            return TS_STATUS_ERROR;
+        }
+        
+        start_addr += FLASH_PAGE_LEN;
+        op_len -= FLASH_PAGE_LEN;
+    }
+
+    if(op_len > FLASH_PAGE_LEN)
+    {
+        if(start_addr + op_len >
+             mngr->partition_table->user_config_end)
+        {
+            LOG_ERROR("Failed to write %d bytes at 0x%06X", op_len, start_addr);
+            return TS_STATUS_ERROR;
+        }
+
+        LOG_DEBUG("Write %d bytes at address %08X", (op_len - FLASH_PAGE_LEN), (start_addr));
+        if(TS_STATUS_ERROR == spiflash_write(&mngr->flash_dev, (start_addr), (uint8_t*)buffer,
+                                                (op_len - FLASH_PAGE_LEN)))
+        {
+            LOG_ERROR("Failed to write user bitstream partition");
+            return TS_STATUS_ERROR;
+        }
+        start_addr += op_len - FLASH_PAGE_LEN;
+        op_len = FLASH_PAGE_LEN;
+    }
+
+    if(op_len != 0)
+    {
+        //Copy end of user data over saved final page
+        uint32_t remainder = (len+offset) % FLASH_PAGE_LEN;
+        if(remainder == 0)
+        {
+            remainder = FLASH_PAGE_LEN;
+        }
+        memcpy(end_buffer, &buffer[len - remainder], remainder);
+        LOG_DEBUG("Copy %d bytes at src offset %08X to final buffer", (remainder), (len - remainder));
+
+        if(start_addr + FLASH_PAGE_LEN > mngr->partition_table->user_config_end)
+        {
+            LOG_ERROR("Failed to write final page at 0x%06X", start_addr + FLASH_PAGE_LEN);
+            return TS_STATUS_ERROR;
+        }
+
+        LOG_DEBUG("Write %d bytes at address %08X", (FLASH_PAGE_LEN), (start_addr));
+        if(FLASH_PAGE_LEN != spiflash_write(&mngr->flash_dev, start_addr, end_buffer, FLASH_PAGE_LEN))
+        {
+            LOG_ERROR("Failed to erase user bitstream partition");
+            return TS_STATUS_ERROR;
+        }
+    }
+
+    atomic_store(&mngr->fw_progress, mngr->fw_progress_max);
 
     return TS_STATUS_OK;
 }

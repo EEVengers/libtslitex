@@ -18,6 +18,10 @@ extern "C" {
 #include "ts_common.h"
 #include "liblitepcie.h"
 
+
+#define SPI_FLASH_PROG_SIZE	256
+#define SPI_FLASH_ERASE_SIZE (64*1024)
+
 typedef void (*spiflash_progress_cb_t)(void* ctx, uint32_t work_done, uint32_t work_total);
 
 typedef struct spiflash_ops_s {

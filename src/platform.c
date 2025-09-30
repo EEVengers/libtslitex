@@ -138,6 +138,7 @@ const flash_layout_t ts_64Mb_layout = {
 // | 0x1000000 - 0x1AFFFFF  | Primary Bitstream         |
 // | 0x1B00000 - 0x1B0FFFF  | Barrier Image B           |
 // | 0x1B10000 - 0x1FFFFFF  | Available for User Data   |
+
 const flash_layout_t ts_256Mb_layout = {
     .factory_bitstream_start = 0x0000000,
     .factory_bitstream_end = 0x0B00000,

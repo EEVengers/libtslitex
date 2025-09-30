@@ -274,7 +274,7 @@ static void cal_step_2(tsHandle_t pTs, uint8_t chanBitmap)
     {
         if((chanBitmap >> i) & 0x1)
         {
-            thunderscopeCalibrationManualCtrl(pTs, i, afe_ctrl);
+            thunderscopeCalibrationManualCtrl(pTs, i, &afe_ctrl);
         }
     }
 
@@ -313,7 +313,7 @@ static void cal_step_2(tsHandle_t pTs, uint8_t chanBitmap)
     {
         if((chanBitmap >> i) & 0x1)
         {
-            thunderscopeCalibrationManualCtrl(pTs, i, afe_ctrl);
+            thunderscopeCalibrationManualCtrl(pTs, i, &afe_ctrl);
         }
     }
 
@@ -372,7 +372,7 @@ static void cal_step_3(tsHandle_t pTs, uint8_t chanBitmap)
             afe_ctrl.dac = (uint16_t)(calibration.afeCal[i].bias_uV);
             // afe_ctrl.dac = (int32_t)(calibration.afeCal[i].bias_mV * 4095 / 5);
             afe_ctrl.dpot =  ((((500) * calibration.afeCal[i].trimRheostat_range) / MCP4432_MAX) + MCP4432_RWIPER);
-            thunderscopeCalibrationManualCtrl(pTs, i, afe_ctrl);
+            thunderscopeCalibrationManualCtrl(pTs, i, &afe_ctrl);
         }
     }
 

@@ -113,7 +113,34 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len);
  * @param len Length of the data buffer available
  * @return int32_t TS_STATUS_OK if the firmware was updated successfully, or a negative error code
  */
-int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len);
+int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len);
+
+/**
+ * @brief Read user-defined data blob from the Thunderscope
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param buffer Pointer to a buffer to store the data as read.
+ * @param offset Offset to begin reading within the user data section
+ * @param readLen Length of the data buffer
+ * @return int32_t Length of the data read if successfull, or a negative error code
+ */
+int32_t thunderscopeUserDataRead(tsHandle_t ts, char* buffer, uint32_t offset, uint32_t readLen);
+
+/**
+ * @brief Write a user-defined data blob to the Thunderscope
+ * 
+ * This function writes from a section of SPI Flash reserved for application-defined data, such as 
+ * calibration data, persistent settings, etc.  Because the SPI flash needs to erase on a 4k page,
+ * any offset or length not aligned with a 4k boundary will be read to a temporary buffer, modified,
+ * and written back.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param buffer Pointer to a buffer of data to be stored.
+ * @param offset Offset to begin writing within the user data section
+ * @param writeLen Length of the data buffer
+ * @return int32_t Length of the data written if successfull, or a negative error code
+ */
+int32_t thunderscopeUserDataWrite(tsHandle_t ts, const char* buffer, uint32_t offset, uint32_t writeLen);
 
 /**
  * @brief Get the current progress of the firmware update
