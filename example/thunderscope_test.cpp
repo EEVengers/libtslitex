@@ -343,7 +343,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
 
     if(is12bit)
     {
-        sampleRate = 600000000;
+        sampleRate = 660000000;
         thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, 4096);
     }
     else
@@ -362,8 +362,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
         dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_FRAME_DEBUG_ADDR);
         printf("FRAME Debug: 0x%08x\r\n", dbg_monitor);
-        dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_ADC_DEBUG_ADDR);
-        printf("Gearbox Valid: %04x\r\n", dbg_monitor);
         dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
         printf("RANGE: 0x%08x\r\n", dbg_monitor);
     }
@@ -380,7 +378,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         auto startTime = std::chrono::steady_clock::now();
         if(sampleBuffer != NULL)
         {
-            for(uint32_t loop=0; loop < 100; loop++)
+            for(uint32_t loop=0; loop < 8; loop++)
             {
                 uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x100);
                 //Collect Samples
@@ -402,8 +400,6 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                     printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_FRAME_DEBUG_ADDR);
                     printf("FRAME Debug: 0x%08x\r\n", dbg_monitor);
-                    dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_ADC_DEBUG_ADDR);
-                    printf("Gearbox Valid: %04x\r\n", dbg_monitor);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
                     printf("RANGE: 0x%08x\r\n", dbg_monitor);
                 }
