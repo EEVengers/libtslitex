@@ -263,7 +263,8 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmc
     
     if(((adc->mode == HMCAD15_SINGLE_CHANNEL) && (sample_rate < HMCAD15_SINGLE_LOW_CLK_THRESHOLD)) ||
         ((adc->mode == HMCAD15_DUAL_CHANNEL) && (sample_rate < HMCAD15_DUAL_LOW_CLK_THRESHOLD)) ||
-        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)))
+        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)) ||
+        ((adc->mode == HMCAD15_14BIT_QUAD_CHANNEL) && (sample_rate < HMCAD15_PREC_LOW_CLK_THRESHOLD)))
     {
         adc->low_clk = 1;
     }
@@ -335,10 +336,15 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
         case HMCAD15_QUAD_CHANNEL:
-        case HMCAD15_14BIT_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_4;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
-                    HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            break;
+        case HMCAD15_14BIT_QUAD_CHANNEL:
+            adc->clockDiv = HMCAD15_CLK_DIV_1;
+            data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
+            HMCAD15_SAMPLE_MODE_PREC |
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
     }
     hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_MODE, data);

@@ -556,7 +556,7 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
         return TS_INVALID_PARAM;
     }
 
-     if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
+    if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
     {
         actual_rate = rate;
     }

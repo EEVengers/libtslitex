@@ -225,7 +225,12 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
         data_mode = HMCAD15_12_BIT;
         sample_bits = TS_ADC_DATA_FRAMING_12BIT;
     }
-    //else support 14-bit precise mode?
+    else if(resolution == 16384)
+    {
+        data_mode = HMCAD15_14_BIT;
+        //Precision mode uses Dual-8 LVDS
+        sample_bits = TS_ADC_DATA_FRAMING_8BIT;
+    }
 
     if(TS_STATUS_OK == hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate, data_mode))
     {

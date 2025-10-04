@@ -63,6 +63,8 @@ extern "C" {
 
 #define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x0F)
 
+#define HMCAD15_SAMPLE_MODE_PREC    (1 << 3)
+
 #define HMCAD15_CLK_DIV_SET(x)      (((x) & 0x03) << 8)
 #define HMCAD15_CLK_DIV_1           (0)
 #define HMCAD15_CLK_DIV_2           (1)
@@ -162,7 +164,7 @@ extern "C" {
 #define HMCAD15_LVDS_TERM_55        (7)
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
-#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_270DEG)
+#define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
 
 #define HMCAD15_SINGLE_LOW_CLK_THRESHOLD    (240000000)
 #define HMCAD15_DUAL_LOW_CLK_THRESHOLD      (120000000)
@@ -181,7 +183,7 @@ typedef enum hmcad15xxDataWidth_e
 {
     HMCAD15_8_BIT = 0,
     HMCAD15_12_BIT = 1,
-    HMCAD15_14_BIT = 5
+    HMCAD15_14_BIT = 4
 } hmcad15xxDataWidth_t;
 
 typedef enum hmcad15xxPower_e
