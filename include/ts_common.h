@@ -57,6 +57,7 @@ typedef struct tsDeviceInfo_s
 {
     uint32_t device_id;
     uint32_t hw_id;   /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
+    uint32_t gw_id;  // 32-bit version ID
     char device_path[TS_IDENT_STR_LEN];
     char identity[TS_IDENT_STR_LEN];
     char serial_number[TS_IDENT_STR_LEN];

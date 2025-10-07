@@ -58,7 +58,7 @@ static uint32_t ts_fw_get_idcode(file_t fd)
 
 static const char* ts_fw_parse_bit_header(const char* header, const char** part, uint32_t* bin_len)
 {
-    const char* position = header;
+    const uint8_t* position = header;
     uint16_t key_len = 0;
 
     //First Field ('0FF0...')

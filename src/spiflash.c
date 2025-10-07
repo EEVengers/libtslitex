@@ -27,9 +27,79 @@
 #define SPI_FLASH_WRITE_ENABLE_CMD              (0x06)
 #define SPI_FLASH_WRITE_DISABLE_CMD             (0x04)
 
+/**
+ * LiteSPI Register Maps
+ */
+/** pre-2025 liteSPI **/
+/* SPIFLASH_CORE Registers */
+#ifndef CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
+#define CSR_SPIFLASH_CORE_BASE CSR_SPIFLASH_BASE
+#define CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR (CSR_SPIFLASH_CORE_BASE + 0x00L)
+#define CSR_SPIFLASH_CORE_MMAP_WRITE_CONFIG_ADDR (CSR_SPIFLASH_CORE_BASE +  0x04L)
+#define CSR_SPIFLASH_CORE_MMAP_WRITE_CONFIG_SIZE 1
+#define CSR_SPIFLASH_CORE_MASTER_CS_ADDR (CSR_SPIFLASH_CORE_BASE +  0x08L)
+#define CSR_SPIFLASH_CORE_MASTER_CS_SIZE 1
+#define CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_ADDR (CSR_SPIFLASH_CORE_BASE +  0x0cL)
+#define CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_SIZE 1
+#define CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR (CSR_SPIFLASH_CORE_BASE +  0x10L)
+#define CSR_SPIFLASH_CORE_MASTER_RXTX_SIZE 1
+#define CSR_SPIFLASH_CORE_MASTER_STATUS_ADDR (CSR_SPIFLASH_CORE_BASE +  0x14L)
+#define CSR_SPIFLASH_CORE_MASTER_STATUS_SIZE 1
+/* SPIFLASH_PHY Registers */
+#define CSR_SPIFLASH_CORE_PHY_CLK_DIVISOR_ADDR (CSR_SPIFLASH_CORE_BASE + 0x800L)
+#endif
+
+/** post 2025 liteSPI **/
+/* SPIFLASH Registers */
+#ifndef CSR_SPIFLASH_PHY_CLK_DIVISOR_ADDR
+#define CSR_SPIFLASH_BASE CSR_SPIFLASH_CORE_BASE
+#define CSR_SPIFLASH_PHY_CLK_DIVISOR_ADDR (CSR_SPIFLASH_BASE + 0x00L)
+#define CSR_SPIFLASH_PHY_CLK_DIVISOR_SIZE 1
+#define CSR_SPIFLASH_MMAP_DUMMY_BITS_ADDR (CSR_SPIFLASH_BASE + 0x04L)
+#define CSR_SPIFLASH_MMAP_DUMMY_BITS_SIZE 1
+#define CSR_SPIFLASH_MMAP_WRITE_CONFIG_ADDR (CSR_SPIFLASH_BASE + 0x08L)
+#define CSR_SPIFLASH_MMAP_WRITE_CONFIG_SIZE 1
+#define CSR_SPIFLASH_MASTER_CS_ADDR (CSR_SPIFLASH_BASE + 0x0cL)
+#define CSR_SPIFLASH_MASTER_CS_SIZE 1
+#define CSR_SPIFLASH_MASTER_PHYCONFIG_ADDR (CSR_SPIFLASH_BASE + 0x10L)
+#define CSR_SPIFLASH_MASTER_PHYCONFIG_SIZE 1
+#define CSR_SPIFLASH_MASTER_RXTX_ADDR (CSR_SPIFLASH_BASE + 0x14L)
+#define CSR_SPIFLASH_MASTER_RXTX_SIZE 1
+#define CSR_SPIFLASH_MASTER_STATUS_ADDR (CSR_SPIFLASH_BASE + 0x18L)
+#define CSR_SPIFLASH_MASTER_STATUS_SIZE 1
+#endif
+
 #ifndef min
 #define min(x, y) (((x) < (y)) ? (x) : (y))
 #endif
+
+typedef struct spiflash_regs_s {
+    uint32_t PHY_CLK_DIV;
+    uint32_t MASTER_CS;
+    uint32_t MASTER_RXTX;
+    uint32_t MASTER_STATUS;
+    uint32_t MASTER_PHYCONFIG;
+    uint32_t DUMMY_BITS;
+} spiflash_regs_t;
+
+static const spiflash_regs_t spiflash_regs[] = {
+    {
+        .PHY_CLK_DIV = CSR_SPIFLASH_CORE_PHY_CLK_DIVISOR_ADDR,
+        .MASTER_CS = CSR_SPIFLASH_CORE_MASTER_CS_ADDR,
+        .MASTER_RXTX = CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR,
+        .MASTER_STATUS = CSR_SPIFLASH_CORE_MASTER_STATUS_ADDR,
+        .MASTER_PHYCONFIG = CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_ADDR,
+        .DUMMY_BITS = CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
+    },
+    {
+        .PHY_CLK_DIV = CSR_SPIFLASH_PHY_CLK_DIVISOR_ADDR,
+        .MASTER_CS = CSR_SPIFLASH_MASTER_CS_ADDR,
+        .MASTER_RXTX = CSR_SPIFLASH_MASTER_RXTX_ADDR,
+        .MASTER_STATUS = CSR_SPIFLASH_MASTER_STATUS_ADDR,
+        .MASTER_PHYCONFIG = CSR_SPIFLASH_MASTER_PHYCONFIG_ADDR,
+        .DUMMY_BITS = CSR_SPIFLASH_MMAP_DUMMY_BITS_ADDR
+    }
+};
 
 static const spiflash_ops_t s25fl256s_ops = {
     .read = 0x6C, //4QOR
@@ -45,21 +115,21 @@ static const spiflash_ops_t mx25u6432f_ops = {
     .cmd_addr_len = 3
 };
 
-static uint32_t get_flash_data(file_t fd, uint32_t flash_addr, uint8_t* pData, uint32_t data_len)
+static uint32_t get_flash_data(spiflash_dev_t* dev, uint32_t flash_addr, uint8_t* pData, uint32_t data_len)
 {
     const uint32_t flash_base = 0x10000;
     uint32_t index = 0;
     uint32_t flash_data = 0;
-    uint32_t flash_window = litepcie_readl(fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR);
+    uint32_t flash_window = litepcie_readl(dev->fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR);
     while(index < data_len)
     {
         if(flash_window != ((flash_addr+index) >> 16))
         {
             flash_window = (flash_addr+index) >> 16;
-            litepcie_writel(fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR, flash_window);
+            litepcie_writel(dev->fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR, flash_window);
         }
 
-        flash_data = litepcie_readl(fd, (flash_base + ((flash_addr+index) & 0xFFFF)));
+        flash_data = litepcie_readl(dev->fd, (flash_base + ((flash_addr+index) & 0xFFFF)));
         *(uint32_t*)&pData[index] = flash_data;
         index += 4;
     }
@@ -67,67 +137,65 @@ static uint32_t get_flash_data(file_t fd, uint32_t flash_addr, uint8_t* pData, u
     return index;
 }
 
-#ifdef CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
-static void spiflash_dummy_bits_setup(file_t fd, unsigned int dummy_bits)
+
+static void spiflash_dummy_bits_setup(spiflash_dev_t* dev, unsigned int dummy_bits)
 {
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR, dummy_bits);
-    LOG_DEBUG("Dummy bits set to: %" PRIx32 , litepcie_readl(fd, CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR));
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].DUMMY_BITS, dummy_bits);
+    LOG_DEBUG("Dummy bits set to: %" PRIx32 , litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].DUMMY_BITS));
 
 }
-#endif
 
-static void spiflash_len_mask_width_write(file_t fd, uint32_t len, uint32_t width, uint32_t mask)
+static void spiflash_len_mask_width_write(spiflash_dev_t* dev, uint32_t len, uint32_t width, uint32_t mask)
 {
-    uint32_t tmp = len & ((1 <<  CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_LEN_SIZE) - 1);
-    uint32_t word = tmp << CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_LEN_OFFSET;
-    tmp = width & ((1 << CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_WIDTH_SIZE) - 1);
-    word |= tmp << CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_WIDTH_OFFSET;
-    tmp = mask & ((1 <<  CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_MASK_SIZE) - 1);
-    word |= tmp << CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_MASK_OFFSET;
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_PHYCONFIG_ADDR, word);
+    uint32_t tmp = len & ((1 <<  CSR_SPIFLASH_MASTER_PHYCONFIG_LEN_SIZE) - 1);
+    uint32_t word = tmp << CSR_SPIFLASH_MASTER_PHYCONFIG_LEN_OFFSET;
+    tmp = width & ((1 << CSR_SPIFLASH_MASTER_PHYCONFIG_WIDTH_SIZE) - 1);
+    word |= tmp << CSR_SPIFLASH_MASTER_PHYCONFIG_WIDTH_OFFSET;
+    tmp = mask & ((1 <<  CSR_SPIFLASH_MASTER_PHYCONFIG_MASK_SIZE) - 1);
+    word |= tmp << CSR_SPIFLASH_MASTER_PHYCONFIG_MASK_OFFSET;
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_PHYCONFIG, word);
 }
 
-static bool spiflash_tx_ready(file_t fd)
+static bool spiflash_tx_ready(spiflash_dev_t* dev)
 {
-    return (litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_STATUS_ADDR) >> CSR_SPIFLASH_CORE_MASTER_STATUS_TX_READY_OFFSET) & 1;
+    return (litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].MASTER_STATUS) >> CSR_SPIFLASH_MASTER_STATUS_TX_READY_OFFSET) & 1;
 }
 
-static bool spiflash_rx_ready(file_t fd)
+static bool spiflash_rx_ready(spiflash_dev_t* dev)
 {
-    return (litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_STATUS_ADDR) >> CSR_SPIFLASH_CORE_MASTER_STATUS_RX_READY_OFFSET) & 1;
+    return (litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].MASTER_STATUS) >> CSR_SPIFLASH_MASTER_STATUS_RX_READY_OFFSET) & 1;
 }
 
-static void spiflash_master_write(file_t fd, uint32_t val, size_t len, size_t width, uint32_t mask)
+static void spiflash_master_write(spiflash_dev_t* dev, uint32_t val, size_t len, size_t width, uint32_t mask)
 {
     /* Be sure to empty RX queue before doing Xfer. */
-    while (spiflash_rx_ready(fd))
-        litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR);
+    while (spiflash_rx_ready(dev))
+        litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].MASTER_RXTX);
 
     /* Configure Master */
-    spiflash_len_mask_width_write(fd, 8*len, width, mask);
+    spiflash_len_mask_width_write(dev, 8*len, width, mask);
 
     /* Set CS. */
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 1UL);
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_CS, 1UL);
 
     /* Do Xfer. */
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR, val);
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_RXTX, val);
 
-    while (!spiflash_rx_ready(fd));
+    while (!spiflash_rx_ready(dev));
 
     /* Clear CS. */
-    // spiflash_core_master_cs_write(0);
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 0UL);
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_CS, 0UL);
 }
 
 static uint8_t w_buf[SPI_FLASH_PROG_SIZE + 5];
 static uint8_t r_buf[SPI_FLASH_PROG_SIZE + 5];
 
-static void transfer_cmd(file_t fd, const uint8_t *bs, uint8_t *resp, int len)
+static void transfer_cmd(spiflash_dev_t* dev, const uint8_t *bs, uint8_t *resp, int len)
 {
     uint32_t xfer_word = 0;
     uint32_t xfer_num_bytes = 0;
 
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 1UL);
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_CS, 1UL);
 
     for (int i=0; i < len; i+=4)
     {
@@ -141,19 +209,22 @@ static void transfer_cmd(file_t fd, const uint8_t *bs, uint8_t *resp, int len)
             xfer_word = (xfer_word << 8) | (uint32_t)bs[i+3];
 
         
-        spiflash_len_mask_width_write(fd, (8*xfer_num_bytes), 1, 1);
+        spiflash_len_mask_width_write(dev, (8*xfer_num_bytes), 1, 1);
 
         /* wait for tx ready */
-        while (!spiflash_tx_ready(fd));
+        while (!spiflash_tx_ready(dev))
+        {
+            litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].MASTER_RXTX);
+        }
         
-        litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR, (uint32_t)xfer_word);
+        litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_RXTX, (uint32_t)xfer_word);
 
         /* wait for rx ready */
-        while (!spiflash_rx_ready(fd))
+        while (!spiflash_rx_ready(dev))
         {
             NS_DELAY(250);
         }
-        xfer_word = litepcie_readl(fd, CSR_SPIFLASH_CORE_MASTER_RXTX_ADDR);
+        xfer_word = litepcie_readl(dev->fd, spiflash_regs[dev->ip_rev].MASTER_RXTX);
         resp[i] = (uint8_t)((xfer_word >> (8*(xfer_num_bytes-1))) & 0xFF);
         if(xfer_num_bytes > 1)
             resp[i+1] = (uint8_t)((xfer_word >> (8*(xfer_num_bytes-2))) & 0xFF);
@@ -163,17 +234,17 @@ static void transfer_cmd(file_t fd, const uint8_t *bs, uint8_t *resp, int len)
             resp[i+3] = (uint8_t)((xfer_word) & 0xFF);
     }
 
-    litepcie_writel(fd, CSR_SPIFLASH_CORE_MASTER_CS_ADDR, 0UL);
+    litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].MASTER_CS, 0UL);
 }
 
-static uint32_t spiflash_read_id_register(file_t fd)
+static uint32_t spiflash_read_id_register(spiflash_dev_t* dev)
 {
     uint8_t buf[4];
     w_buf[0] = SPI_FLASH_JEDEC_READ_ID_CMD;
     w_buf[1] = 0x00;
     w_buf[2] = 0x00;
     w_buf[3] = 0x00;
-    transfer_cmd(fd, w_buf, buf, 4);
+    transfer_cmd(dev, w_buf, buf, 4);
 
     LOG_DEBUG("[ID: %02x %02x %02x %02x]", buf[0], buf[1], buf[2], buf[3]);
 
@@ -181,30 +252,30 @@ static uint32_t spiflash_read_id_register(file_t fd)
     return flash_id;
 }
 
-static uint32_t spiflash_read_status_register(file_t fd)
+static uint32_t spiflash_read_status_register(spiflash_dev_t* dev)
 {
     uint8_t buf[2];
     w_buf[0] = SPI_FLASH_JEDEC_READ_STATUS_REG_1_CMD;
     w_buf[1] = 0x00;
-    transfer_cmd(fd, w_buf, buf, 2);
+    transfer_cmd(dev, w_buf, buf, 2);
 
     LOG_DEBUG("[SR: %02x %02x]", buf[0], buf[1]);
 
     return buf[1];
 }
 
-static void spiflash_write_enable(file_t fd)
+static void spiflash_write_enable(spiflash_dev_t* dev)
 {
     uint8_t buf[1];
     w_buf[0] = SPI_FLASH_WRITE_ENABLE_CMD;
-    transfer_cmd(fd, w_buf, buf, 1);
+    transfer_cmd(dev, w_buf, buf, 1);
 }
 
-static void spiflash_write_disable(file_t fd)
+static void spiflash_write_disable(spiflash_dev_t* dev)
 {
     uint8_t buf[1];
     w_buf[0] = SPI_FLASH_WRITE_DISABLE_CMD;
-    transfer_cmd(fd, w_buf, buf, 1);
+    transfer_cmd(dev, w_buf, buf, 1);
 }
 
 static void page_program(spiflash_dev_t* dev, uint32_t addr, uint8_t *data, int len)
@@ -219,7 +290,7 @@ static void page_program(spiflash_dev_t* dev, uint32_t addr, uint8_t *data, int 
     w_buf[cmd_idx++] = addr>>8;
     w_buf[cmd_idx++] = addr>>0;
     memcpy((void *)(&w_buf[cmd_idx]), (void *)data, len);
-    transfer_cmd(dev->fd, w_buf, r_buf, len+cmd_idx);
+    transfer_cmd(dev, w_buf, r_buf, len+cmd_idx);
 }
 
 static void spiflash_sector_erase(spiflash_dev_t* dev, uint32_t addr)
@@ -233,7 +304,7 @@ static void spiflash_sector_erase(spiflash_dev_t* dev, uint32_t addr)
     w_buf[cmd_idx++] = addr>>16;
     w_buf[cmd_idx++] = addr>>8;
     w_buf[cmd_idx++] = addr>>0;
-    transfer_cmd(dev->fd, w_buf, r_buf, cmd_idx);
+    transfer_cmd(dev, w_buf, r_buf, cmd_idx);
 }
 
 int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
@@ -249,17 +320,17 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
 
     for (i=0; i<len; i+=SPI_FLASH_ERASE_SIZE) {
         LOG_DEBUG("Erase SPI Flash @0x%08lx", ((uint32_t)addr+i));
-        spiflash_write_enable(dev->fd);
+        spiflash_write_enable(dev);
         spiflash_sector_erase(dev, addr+i);
 
-        while (spiflash_read_status_register(dev->fd) & 1) {
-            NS_DELAY(250000000);
+        while (spiflash_read_status_register(dev) & 1) {
+            NS_DELAY(10000000);
         }
 
         /* check if region was really erased */
         for (j = 0; j < SPI_FLASH_ERASE_SIZE; j+=4) {
             uint32_t flash_word;
-            get_flash_data(dev->fd, (addr+i+j), (uint8_t*)&flash_word, sizeof(uint32_t));
+            get_flash_data(dev, (addr+i+j), (uint8_t*)&flash_word, sizeof(uint32_t));
             if (flash_word != 0xffffffff) {
                 LOG_ERROR("Error: location 0x%08x not erased (0x%08x)", addr+i+j, flash_word);
                 return TS_STATUS_ERROR;
@@ -272,7 +343,7 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
             dev->op_progress(dev->op_progress_ctx, SPI_FLASH_ERASE_SIZE, len);
         }
     }
-    spiflash_write_disable(dev->fd);
+    spiflash_write_disable(dev);
 
     return TS_STATUS_OK;
 }
@@ -287,18 +358,18 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
     LOG_DEBUG("Write SPI Flash @0x%08lx", ((uint32_t)addr));
 
     while(w_len) {
-        spiflash_write_enable(dev->fd);
+        spiflash_write_enable(dev);
         page_program(dev, addr+offset, (uint8_t*)pData+offset, w_len);
 
-        while(spiflash_read_status_register(dev->fd) & 1) {
+        while(spiflash_read_status_register(dev) & 1) {
             NS_DELAY(10000);
         }
 
-        get_flash_data(dev->fd, addr+offset, (uint8_t*)r_buf, w_len);
+        get_flash_data(dev, addr+offset, (uint8_t*)r_buf, w_len);
         for (j = 0; j < w_len; j++) {
             if (r_buf[j] != pData[offset+j]) {
                 LOG_ERROR("Error: verify failed at 0x%08x (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);
-                spiflash_write_disable(dev->fd);
+                spiflash_write_disable(dev);
                 return TS_STATUS_ERROR;
             }
         }
@@ -313,7 +384,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
         w_len = min(len-offset, SPI_FLASH_PROG_SIZE);
         res = offset;
     }
-    spiflash_write_disable(dev->fd);
+    spiflash_write_disable(dev);
 
     return res;
 }
@@ -322,18 +393,28 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
 {
     uint32_t flash_id = 0;
     uint32_t divisor = SPI_FLASH_CLK_DIV_DEFAULT;
+    uint32_t ip_version = 0;
 
     dev->fd = fd;
 
-#ifdef CSR_SPIFLASH_CORE_MMAP_DUMMY_BITS_ADDR
-    spiflash_dummy_bits_setup(fd, 8);
-#endif
+    // Get IP Version
+    ip_version = litepcie_readl(fd, CSR_DEV_STATUS_GW_REV_ADDR);
+    if(ip_version >= 0x0300)
+    {
+        dev->ip_rev = 1;
+    }
+    else
+    {
+        dev->ip_rev = 0;
+    }
+
+    spiflash_dummy_bits_setup(dev, 8);
 
     while(divisor <= SPI_FLASH_CLK_DIV_MAX)
     {
-        litepcie_writel(fd, CSR_SPIFLASH_PHY_CLK_DIVISOR_ADDR, divisor);
-        flash_id = spiflash_read_id_register(dev->fd); //First ID read returns garbage?
-        flash_id = spiflash_read_id_register(dev->fd);
+        litepcie_writel(dev->fd, spiflash_regs[dev->ip_rev].PHY_CLK_DIV, divisor);
+        flash_id = spiflash_read_id_register(dev); //First ID read returns garbage?
+        flash_id = spiflash_read_id_register(dev);
         
         if((flash_id == 0x010219) ||
             (flash_id == 0xC22017) ||
@@ -405,7 +486,7 @@ int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32
     
     if(addr % 4 != 0)
     {
-        read_len = get_flash_data(dev->fd, tempAddr, flashBytes, 4);
+        read_len = get_flash_data(dev, tempAddr, flashBytes, 4);
         if( 4 != read_len )
         {
             LOG_ERROR("Failed to read with length 0");
@@ -418,7 +499,7 @@ int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32
         remaining -= read_len;
     }
 
-    read_len = get_flash_data(dev->fd, addr, pData, (remaining/4)*4);
+    read_len = get_flash_data(dev, addr, pData, (remaining/4)*4);
     addr += read_len;
     pData += read_len;
     remaining -= read_len;
@@ -430,7 +511,7 @@ int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32
     else if(0 != remaining)
     {
         //Should only be 1-3 bytes left
-        if( 4 != get_flash_data(dev->fd, addr, flashBytes, 4))
+        if( 4 != get_flash_data(dev, addr, flashBytes, 4))
         {
             LOG_ERROR("Failed to read end of data (%d / %d)", read_len, len);
             return TS_STATUS_ERROR;

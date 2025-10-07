@@ -35,6 +35,7 @@ cdef extern from "thunderscope.h":
     cdef struct tsDeviceInfo_s:
         uint32_t device_id
         uint32_t hw_id
+        uint32_t gw_id
         char device_path[256]
         char identity[256]
         char serial_number[256]

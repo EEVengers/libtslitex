@@ -224,6 +224,7 @@ int main(int argc, char** argv)
     {
         printf("HW Rev Beta\n");
     }
+    printf("Gateware Rev 0x%08X\n", infos.gw_id);
 
     if(0 == strcmp(arg, "factory_restore"))
     {

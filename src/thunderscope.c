@@ -57,6 +57,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
     {
         info->device_id = devIndex;
         info->hw_id = litepcie_readl(testDev, CSR_DEV_STATUS_HW_ID_ADDR);
+        info->gw_id = litepcie_readl(testDev, CSR_DEV_STATUS_GW_REV_ADDR);
         //Copy device identifier
         for (uint32_t i = 0; i < TS_IDENT_STR_LEN; i++)
         {
