@@ -16,11 +16,17 @@
 #include "ts_calibration.h"
 
 
+#define TS_ADC_DATA_FRAMING_8BIT    (0)
+#define TS_ADC_DATA_FRAMING_12BIT   (1 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
+
 typedef enum adc_shuffle_e
 {
-    ADC_SHUFFLE_1CH = 0,
-    ADC_SHUFFLE_2CH = 1,
-    ADC_SHUFFLE_4CH = 2,
+    ADC_8B_SHUFFLE_1CH  = 0,
+    ADC_8B_SHUFFLE_2CH  = 1,
+    ADC_8B_SHUFFLE_4CH  = 2,
+    ADC_12B_SHUFFLE_1CH = 3,
+    ADC_12B_SHUFFLE_2CH = 4,
+    ADC_12B_SHUFFLE_4CH = 5,
 } adc_shuffle_t;
 
 
@@ -106,12 +112,23 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse)
 
 int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
 {
+    if(adc == NULL || channel >= TS_NUM_CHANNELS)
+    {
+        return TS_STATUS_ERROR;
+    }
+    else
+    {
+        adc->tsChannels[channel].active = enable;
+        return ts_adc_update_channels(adc);
+    }
+}
+
+int32_t ts_adc_update_channels(ts_adc_t* adc)
+{
     int32_t retVal;
     uint8_t activeCount = 0;
     uint8_t inactiveCount = 0;
-    adc_shuffle_t shuffleMode = ADC_SHUFFLE_1CH;
-
-    adc->tsChannels[channel].active = enable;
+    adc_shuffle_t shuffleMode = ADC_8B_SHUFFLE_1CH;
 
     for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
     {
@@ -143,22 +160,24 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         if(activeCount == 1)
         {
             adc->adcDev.mode = HMCAD15_SINGLE_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_1CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_1CH : ADC_12B_SHUFFLE_1CH);
         }
         else if(activeCount == 2)
         {
             adc->adcDev.mode = HMCAD15_DUAL_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_2CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_2CH : ADC_12B_SHUFFLE_2CH);
         }
         else
         {
             adc->adcDev.mode = HMCAD15_QUAD_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_4CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_4CH : ADC_12B_SHUFFLE_4CH);
         }
-        retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-        
+
         litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
-        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DATA_CHANNELS_ADDR, shuffleMode << CSR_ADC_HMCAD1520_DATA_CHANNELS_SHUFFLE_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DATA_CHANNELS_ADDR, 
+            shuffleMode << CSR_ADC_HMCAD1520_DATA_CHANNELS_SHUFFLE_OFFSET);
+            
+        retVal = hmcad15xx_set_channel_config(&adc->adcDev);
     }
 
     return retVal;
@@ -200,16 +219,24 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
         return TS_STATUS_ERROR;
     }
     hmcad15xxDataWidth_t data_mode = HMCAD15_8_BIT;
+    uint32_t sample_bits = TS_ADC_DATA_FRAMING_8BIT;
     if(resolution == 4096)
     {
         data_mode = HMCAD15_12_BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_12BIT;
     }
-    //else support 14-bit precise mode?
+    else if(resolution == 16384)
+    {
+        data_mode = HMCAD15_14_BIT;
+        //Precision mode uses Dual-8 LVDS
+        sample_bits = TS_ADC_DATA_FRAMING_8BIT;
+    }
 
     if(TS_STATUS_OK == hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate, data_mode))
     {
-        hmcad15xx_set_channel_config(&adc->adcDev);
-        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_SAMPLE_BITS_ADDR, sample_bits);
+
+        ts_adc_update_channels(adc);
         return TS_STATUS_OK;
     }
     else

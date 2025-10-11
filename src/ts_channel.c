@@ -536,34 +536,43 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     }
     ts_channel_t* ts =  (ts_channel_t*)tsChannels;
     uint64_t actual_rate = 0;
+    uint64_t max_rate = 0;
 
-    //TODO - Support valid rate/resolution combinations
-    if((rate < TS_MIN_SAMPLE_RATE) || (rate > TS_MAX_SAMPLE_RATE)
-         || (resolution != 256))
+    if(resolution == 256)
+    {
+        max_rate = TS_MAX_8BIT_SAMPLE_RATE;
+    }
+    else if(resolution == 4096)
+    {
+        max_rate = TS_MAX_12BIT_SAMPLE_RATE;
+    }
+    else
     {
         return TS_INVALID_PARAM;
     }
 
-    //Input validation
+    if((rate < TS_MIN_SAMPLE_RATE) || (rate > max_rate))
+    {
+        return TS_INVALID_PARAM;
+    }
+
     if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
     {
         actual_rate = rate;
     }
     else if(ts->adc.adcDev.mode == HMCAD15_DUAL_CHANNEL)
     {
-        //Limit upper rate
-        if(rate > TS_MAX_DUAL_CH_RATE)
+        if(rate > (max_rate/2))
         {
-            rate = TS_MAX_DUAL_CH_RATE;
+            rate = (max_rate/2);
         }
         actual_rate = rate * 2;
     }
     else
     {
-        //Limit upper rate
-        if(rate > TS_MAX_QUAD_CH_RATE)
+        if(rate > (max_rate/4))
         {
-            rate = TS_MAX_QUAD_CH_RATE;
+            rate = (max_rate/4);
         }
         actual_rate = rate * 4;
     }

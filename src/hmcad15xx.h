@@ -63,6 +63,8 @@ extern "C" {
 
 #define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x0F)
 
+#define HMCAD15_SAMPLE_MODE_PREC    (1 << 3)
+
 #define HMCAD15_CLK_DIV_SET(x)      (((x) & 0x03) << 8)
 #define HMCAD15_CLK_DIV_1           (0)
 #define HMCAD15_CLK_DIV_2           (1)
@@ -108,6 +110,11 @@ extern "C" {
 #define HMCAD15_LVDS_DS_FRAME(x)    (((x) & 0x07) << 4)
 #define HMCAD15_LVDS_DS_DATA(x)     (((x) & 0x07) << 8)
 
+#define HMCAD15_LVDS_TERM_LCLK(x)   ((x) & 0x07)
+#define HMCAD15_LVDS_TERM_FRAME(x)  (((x) & 0x07) << 4)
+#define HMCAD15_LVDS_TERM_DATA(x)   (((x) & 0x07) << 8)
+#define HMCAD15_LVDS_TERM_EN_MASK   (1 << 14)
+
 #define HMCAD15_DATA_WIDTH(x)       ((x) & 0x07)
 #define HMCAD15_LOW_CLK(x)          (((x) & 0x01) << 3)
 
@@ -147,6 +154,14 @@ extern "C" {
 #define HMCAD15_LVDS_DS_55          (6)
 #define HMCAD15_LVDS_DS_45          (7)
 
+#define HMCAD15_LVDS_TERM_DEFAULT   (0)
+#define HMCAD15_LVDS_TERM_260       (1)
+#define HMCAD15_LVDS_TERM_150       (2)
+#define HMCAD15_LVDS_TERM_94        (3)
+#define HMCAD15_LVDS_TERM_125       (4)
+#define HMCAD15_LVDS_TERM_80        (5)
+#define HMCAD15_LVDS_TERM_66        (6)
+#define HMCAD15_LVDS_TERM_55        (7)
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
 #define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
@@ -166,9 +181,9 @@ typedef enum hmcad15xxMode_e
 
 typedef enum hmcad15xxDataWidth_e
 {
-    HMCAD15_8_BIT,
-    HMCAD15_12_BIT,
-    HMCAD15_14_BIT
+    HMCAD15_8_BIT = 0,
+    HMCAD15_12_BIT = 1,
+    HMCAD15_14_BIT = 4
 } hmcad15xxDataWidth_t;
 
 typedef enum hmcad15xxPower_e
@@ -214,6 +229,7 @@ typedef struct hmcad15xxADC_s
     uint8_t clockDiv;
     uint8_t lvdsPhase;
     uint8_t drive;
+    uint8_t lvdsTerm;
     uint8_t low_clk;
 } hmcad15xxADC_t;
 

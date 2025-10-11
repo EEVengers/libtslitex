@@ -42,6 +42,7 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     adc->clockDiv = HMCAD15_CLK_DIV_1;
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
+    adc->lvdsTerm = HMCAD15_LVDS_TERM_94;
     adc->lvdsPhase = HMCAD15_LVDS_PHASE_DEFAULT;
     adc->low_clk = 0;
 
@@ -262,7 +263,8 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmc
     
     if(((adc->mode == HMCAD15_SINGLE_CHANNEL) && (sample_rate < HMCAD15_SINGLE_LOW_CLK_THRESHOLD)) ||
         ((adc->mode == HMCAD15_DUAL_CHANNEL) && (sample_rate < HMCAD15_DUAL_LOW_CLK_THRESHOLD)) ||
-        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)))
+        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)) ||
+        ((adc->mode == HMCAD15_14BIT_QUAD_CHANNEL) && (sample_rate < HMCAD15_PREC_LOW_CLK_THRESHOLD)))
     {
         adc->low_clk = 1;
     }
@@ -296,6 +298,14 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
             HMCAD15_LVDS_DS_DATA(adc->drive));
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_CURRENT, data);
 
+    // Set LVDS Termination
+    data = adc->lvdsTerm == 0 ? 0 :
+            (HMCAD15_LVDS_DS_LCLK(adc->lvdsTerm)  |
+             HMCAD15_LVDS_DS_FRAME(adc->lvdsTerm) |
+             HMCAD15_LVDS_DS_DATA(adc->lvdsTerm)  |
+             HMCAD15_LVDS_TERM_EN_MASK);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_TERM, data);
+
     // Set LVDS Data Width (bits per sample)
     data = (HMCAD15_DATA_WIDTH(adc->width) |
             HMCAD15_LOW_CLK(adc->low_clk));
@@ -326,10 +336,15 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
         case HMCAD15_QUAD_CHANNEL:
-        case HMCAD15_14BIT_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_4;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
-                    HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            break;
+        case HMCAD15_14BIT_QUAD_CHANNEL:
+            adc->clockDiv = HMCAD15_CLK_DIV_1;
+            data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
+            HMCAD15_SAMPLE_MODE_PREC |
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
     }
     hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_MODE, data);

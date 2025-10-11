@@ -69,6 +69,14 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse);
 int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable);
 
 /**
+ * @brief Update the ADC configuration with the current active channels
+ * 
+ * @param adc Pointer to a ADC instance
+ * @return int32_t TS_STATUS_OK if the channels were updated successfully
+ */
+int32_t ts_adc_update_channels(ts_adc_t* adc);
+
+/**
  * @brief Shutdown the Thunderscope ADC
  * 
  * @param adc Pointer to a ADC instance

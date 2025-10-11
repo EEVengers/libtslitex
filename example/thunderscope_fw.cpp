@@ -27,7 +27,14 @@
 
 static void user_write(tsHandle_t ts, const char* file_path, uint32_t offset)
 {
-    auto file_size = std::filesystem::file_size(file_path);
+    std::error_code err;
+    auto file_size = std::filesystem::file_size(file_path, err);
+    if(err)
+    {
+        std::cout << "Error opening \"" << file_path << "\" : " << err.message() << "\r\n";
+        return;
+    }
+
     int32_t status;
     // Open data file
     std::ifstream file(file_path, std::ios::binary);
@@ -83,7 +90,14 @@ static void user_read(tsHandle_t ts, const char* file_path)
 
 static void fw_upgrade(tsHandle_t ts, const char* file_path)
 {
-    auto file_size = std::filesystem::file_size(file_path);
+    std::error_code err;
+    auto file_size = std::filesystem::file_size(file_path, err);
+    if(err)
+    {
+        std::cout << "Error opening \"" << file_path << "\" : " << err.message() << "\r\n";
+        return;
+    }
+
     // Open Bitstream File
     std::ifstream file(file_path, std::ios::binary);
     if(file)
