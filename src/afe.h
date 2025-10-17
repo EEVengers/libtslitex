@@ -37,6 +37,7 @@ typedef struct ts_afe_s
     gpio_t attenuatorPin;
     bool isAttenuated;
     gpio_t couplingPin;
+    bool couplingInverted;
     tsChannelCoupling_t coupling;
     tsChannelCalibration_t cal;
 }ts_afe_t;

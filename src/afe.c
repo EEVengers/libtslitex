@@ -44,13 +44,18 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->trimDacCh = dacCh;
     afe->trimPot = trimPot;
     afe->trimPotCh = potCh;
-    if(isBetaDevice(trimDac.fd))
+    if(isBetaDevice(trimPot.fd))
     {
         afe->trimPotBits = MCP4432_NUM_BITS;
     }
     else
     {
         afe->trimPotBits = MCP4452_NUM_BITS;
+
+        if(litepcie_readl(coupling.fd, CSR_DEV_STATUS_HW_ID_ADDR) & TS_HW_ID_REV_MASK > 0)
+        {
+            afe->couplingInverted = true;
+        }
     }
     afe->termPin = termination;
     afe->attenuatorPin = attenuator;
@@ -383,13 +388,20 @@ int32_t ts_afe_coupling_control(ts_afe_t* afe, tsChannelCoupling_t coupled)
     case TS_COUPLE_DC:
     {
         LOG_DEBUG("Clear Coupling %x", afe->couplingPin.bit_mask);
-        gpio_clear(afe->couplingPin);
+        if(afe->couplingInverted)
+            gpio_set(afe->couplingPin);
+        else
+            gpio_clear(afe->couplingPin);
+
         break;
     }
     case TS_COUPLE_AC:
     {
         LOG_DEBUG("Set Coupling %x", afe->couplingPin.bit_mask);
-        gpio_set(afe->couplingPin);
+        if(afe->couplingInverted)
+            gpio_clear(afe->couplingPin);
+        else
+            gpio_set(afe->couplingPin);
         break;
     }
     default:
