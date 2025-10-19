@@ -42,7 +42,7 @@ static void getDeviceName(PWCHAR devName, DWORD maxLen, DWORD devIdx)
     HDEVINFO hwDevInfo = SetupDiGetClassDevs(&GUID_DEVINTERFACE_litepciedrv, NULL, NULL, DIGCF_DEVICEINTERFACE | DIGCF_PRESENT);
 
     devData.cbSize = sizeof(devData);
-    if (!SetupDiEnumDeviceInterfaces(hwDevInfo, NULL, &GUID_DEVINTERFACE_litepciedrv, 0, &devData))
+    if (!SetupDiEnumDeviceInterfaces(hwDevInfo, NULL, &GUID_DEVINTERFACE_litepciedrv, devIdx, &devData))
     {
         //Print Error
         fprintf(stderr, "No Devices Found\n");

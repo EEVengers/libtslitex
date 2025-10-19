@@ -34,6 +34,11 @@ extern "C" {
 #define TS_HW_ID_VARIANT_MASK       (1 << 8)
 #define TS_HW_ID_VALID_MASK         (1 << 9)
 
+#define TS_GW_VERSION(major, minor, patch)  ((((major) & 0xFFFF) << 16) + \
+                                             (((minor) & 0xFF)   << 8) + \
+                                             (((patch) & 0x3F)   << 1))
+
+#define LITEX_VERSION(major, minor)  ((((major) & 0xFFFF) << 16) + ((minor) & 0xFFFF))
 /**
  * @brief Opaque Handle to a Thunderscope device instance
  *  
@@ -57,7 +62,8 @@ typedef struct tsDeviceInfo_s
 {
     uint32_t device_id;
     uint32_t hw_id;   /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
-    uint32_t gw_id;  // 32-bit version ID
+    uint32_t gw_id;  /**< 32-bit version ID: gw_id[31:16] - Major, gw_id[15:8] - Minor, gw_id[7:1] - Patch, gw_id[0] - next */
+    uint32_t litex; /**< 32-bit LiteX version: litex[31:16] - Year, litex[15:0] - Month */
     char device_path[TS_IDENT_STR_LEN];
     char identity[TS_IDENT_STR_LEN];
     char serial_number[TS_IDENT_STR_LEN];
@@ -94,6 +100,7 @@ typedef struct tsScopeState_s
         uint32_t flags;
         struct {
             uint8_t adc_state:1;
+            uint8_t adc_sync:1;
             uint8_t power_state:1;
             uint8_t pll_state:1;
             uint8_t afe_state:1;

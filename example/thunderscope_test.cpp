@@ -761,6 +761,9 @@ int main(int argc, char** argv)
     }
     printf("Gateware Rev:     0x%08X\n",
         litepcie_readl(fd, CSR_DEV_STATUS_GW_REV_ADDR));
+    printf("LiteX Release:    0x%08X\n",
+        litepcie_readl(fd, CSR_DEV_STATUS_LITEX_REL_ADDR));
+        
 #ifdef CSR_DNA_BASE
     printf("FPGA DNA:         0x%08x%08x\n",
         litepcie_readl(fd, CSR_DNA_ID_ADDR + 4 * 0),
