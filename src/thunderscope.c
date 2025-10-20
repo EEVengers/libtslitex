@@ -101,6 +101,8 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
     //Get Device Info
     pInst->identity.device_id = devIdx;
     pInst->identity.hw_id = litepcie_readl(pInst->ctrl, CSR_DEV_STATUS_HW_ID_ADDR);
+    pInst->identity.gw_id = litepcie_readl(pInst->ctrl, CSR_DEV_STATUS_GW_REV_ADDR);
+    pInst->identity.litex = litepcie_readl(pInst->ctrl, CSR_DEV_STATUS_LITEX_REL_ADDR);
     //Copy device identifier
     for (uint32_t i = 0; i < TS_IDENT_STR_LEN; i++)
     {

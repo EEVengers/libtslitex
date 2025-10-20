@@ -72,7 +72,6 @@ static void getDeviceName(PWCHAR devName, DWORD maxLen, DWORD devIdx)
     if (SetupDiGetDeviceInterfaceDetail(hwDevInfo, &devData, pDetail, detailLen, NULL, NULL))
     {
         wcsncpy_s(devName, maxLen, pDetail->DevicePath, _TRUNCATE);
-        fwprintf(stdout, L"Found device: %s\n", pDetail->DevicePath);
     }
     else
     {
