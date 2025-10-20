@@ -33,6 +33,7 @@ typedef struct spiflash_ops_s {
 
 typedef struct spiflash_dev_s {
     file_t fd;
+    uint32_t ip_rev;
     uint8_t mfg_code;
     uint16_t part_id;
     spiflash_ops_t ops;

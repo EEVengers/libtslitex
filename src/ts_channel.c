@@ -521,9 +521,12 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
         tsScopeState_t state = {0};
         return state;
     }
+    ts_channel_t* pTsHdl = (ts_channel_t*)tsChannels;
+
+    pTsHdl->status.adc_sync = (litepcie_readl(pTsHdl->ctrl_handle, CSR_ADC_STATUS_ADDR) & (1 << CSR_ADC_STATUS_FRAME_SYNC_OFFSET)) ? 1 : 0;
 
     //Update XADC values
-    ts_channel_health_update((ts_channel_t*)tsChannels);
+    ts_channel_health_update(pTsHdl);
 
     return ((ts_channel_t*)tsChannels)->status;
 }

@@ -199,6 +199,28 @@ int main(int argc, char** argv)
         exit(0);
     }
 
+    if(0 == strcmp(arg, "list"))
+    {
+        uint32_t i = 0;
+        while(TS_STATUS_OK == thunderscopeListDevices(i, &infos))
+        {
+            if(i==0)
+            {
+                printf("Found ThunderScope(s):\n");
+            }
+            printf("\t%3d | Serial Number: %s\n", i, infos.serial_number);
+            printf("\t    | HW Rev:    0x%x\n", infos.hw_id);
+            printf("\t    | GW Rev:    0x%x\n", infos.gw_id);
+            printf("\t    | LiteX Rev: 0x%x\n", infos.litex);
+            i++;
+        }
+        if(i == 0)
+        {
+            printf("No devices present\n");
+        }
+        exit(EXIT_SUCCESS);
+    }
+
     result = thunderscopeListDevices(idx, &infos);
     if(result == TS_STATUS_ERROR)
     {
@@ -224,6 +246,8 @@ int main(int argc, char** argv)
     {
         printf("HW Rev Beta\n");
     }
+    printf("Gateware Rev  0x%08X\n", infos.gw_id);
+    printf("LiteX Release 0x%08X\n", infos.litex);
 
     if(0 == strcmp(arg, "factory_restore"))
     {
