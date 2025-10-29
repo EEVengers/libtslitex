@@ -82,7 +82,7 @@ typedef struct tsScopeCalibration_s
  * @param channel Channel number
  * @param cal Channel Calibration data
  * @return int32_t TS_STATUS_OK if the calibration was accepted
-*/
+ */
 int32_t thunderscopeChanCalibrationSet(tsHandle_t ts, uint32_t channel, tsChannelCalibration_t *cal);
 
 /**
@@ -132,6 +132,51 @@ int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsCha
  * @return int32_t TS_STATUS_OK if the parameters were applied
  */
 int32_t thunderscopeCalibrationAdcTest(tsHandle_t ts, tsCalAdcTest_t test_mode, uint32_t test_pattern);
+
+/******************************************************************************
+ * Factory Provisioning API
+ * WARNING: May cause data corruption
+ ******************************************************************************/
+/**
+ * @brief Erase the entire Factory data partition
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param dna Device DNA value for confirmation
+ * @return int32_t TS_STATUS_OK if the partition is erased successfully
+ */
+int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna);
+
+/**
+ * @brief Append an arbitrary data item to the Factory data partition
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param tag 32-bit Tag to identify the data item
+ * @param length Length of the content string
+ * @param content ASCII string containing a JSON object
+ * @return int32_t TS_STATUS_OK if the FCAL object was written successfully
+ */
+int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content);
+
+/**
+ * @brief Test the Factory data items are valid
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @return int32_t TS_STATUS_OK if all data item checks pass
+ */
+int32_t thunderscopeFactoryProvisionVerify(tsHandle_t ts);
+
+/**
+ * @brief Retrieve an item from the Factory data partition.  If a NULL buffer is provided, only
+ * return the length of the item.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param tag 32-bit Tag value to lookup
+ * @param content_buffer Pointer for a buffer to store the read value string
+ * @param item_max_len Maximum size of value string that the provided buffer can hold
+ * @return int32_t Length of the item value or a negative error code if the Item could not be read
+ */
+int32_t thunderscopeFactoryReadItem(tsHandle_t ts, const uint32_t tag, char* content_buffer, uint32_t item_max_len);
+
 #ifdef __cplusplus
 }
 #endif

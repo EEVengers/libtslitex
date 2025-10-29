@@ -23,7 +23,7 @@
 #include "litepcie.h"
 
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
 #else
 #define FILE_FLAGS  (O_RDWR)
@@ -397,6 +397,58 @@ int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
     if(pInst)
     {
         return ts_fw_manager_get_progress(&pInst->fw, progress);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_erase(&pInst->fw, dna);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_append(&pInst->fw, tag, length, content);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryProvisionVerify(tsHandle_t ts)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_verify(&pInst->fw);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryReadItem(tsHandle_t ts, const uint32_t tag, char* content_buffer, uint32_t item_max_len)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_retreive(&pInst->fw, tag, content_buffer, item_max_len);
     }
     else
     {

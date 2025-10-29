@@ -89,6 +89,59 @@ int32_t ts_fw_manager_user_data_read(ts_fw_manager_t* mngr, char* buffer, uint32
  */
 int32_t ts_fw_manager_factory_reset(ts_fw_manager_t* mngr, bool reset_config, bool reset_bitstream);
 
+/**
+ * @brief Erase the Factory Data partition
+ * 
+ * @param mngr Pointer to a manager instance
+ * @param dna Unit PORT_DNA value
+ * 
+ * @return int32_t TS_STATUS_SUCCESS if the factory partition is erased.
+ */
+int32_t ts_fw_manager_factory_data_erase(ts_fw_manager_t* mngr, uint64_t dna);
+
+/**
+ * @brief Append a TLV to the Factory data
+ * 
+ * @param mngr Pointer to a manager instance
+ * @param tag 32-bit Tag
+ * @param length Length of the value data
+ * @param content Pointer to the TLV value data array
+ * 
+ * @return
+ */
+int32_t ts_fw_manager_factory_data_append(ts_fw_manager_t* mngr, uint32_t tag, uint32_t length, const uint8_t *content);
+
+
+/**
+ * @brief Retrieve the length of a specific Tag from the Factory data partition
+ * 
+ * @param mngr Pointer to a manager instance
+ * @param tag Tag to retrieve the length of
+ *
+ * @return Length of the item if successful, zero if the item is not found, else TS_STATUS_ERROR
+ */
+int32_t ts_fw_manager_factory_data_get_length(ts_fw_manager_t* mngr, uint32_t tag);
+
+/**
+ * @brief Read every item and confirm good checksum for each value
+ * 
+ * @param mngr Pointer to a manager instance
+ * 
+ * @return TS_STATUS_OK if every item has a good checksum
+ */
+int32_t ts_fw_manager_factory_data_verify(ts_fw_manager_t* mngr);
+
+/**
+ * @brief Read a specific Tag from the Factory data partition
+ * 
+ * @param mngr Pointer to a manager instance
+ * @param tag Tag to retrieve
+ * @param content Pointer to a buffer to store the TLV value
+ * @param max_len Not-to-exceed length of the content buffer
+ * 
+ * @return Length of the content retrieved if successful, else TS_STATUS_ERROR
+ */
+int32_t ts_fw_manager_factory_data_retreive(ts_fw_manager_t* mngr, uint32_t tag, uint8_t* content, uint32_t max_len);
 
 #ifdef __cplusplus
 }

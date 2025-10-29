@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.22...4.1)
 
 project(libtslitex)
 
@@ -18,6 +18,37 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON) # error if compiler doesn't support c++17
 set(CMAKE_CXX_EXTENSIONS ON)
+
+################################
+# Project Dependencies
+################################
+include(FetchContent)
+
+# json-c Library
+FetchContent_Declare(
+    json_c
+    GIT_REPOSITORY  https://github.com/json-c/json-c
+    GIT_TAG         2372e9518e6ba95b48d37ec162bc7d93b297b52f
+    FIND_PACKAGE_ARGS NAMES json-c
+)
+
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_MakeAvailable(json_c)
+
+# zlib Library
+FetchContent_Declare(
+    zlib
+    GIT_REPOSITORY  https://github.com/madler/zlib.git
+    GIT_TAG         v1.3.1
+    FIND_PACKAGE_ARGS NAMES zlib
+)
+
+set(ZLIB_BUILD_TESTING OFF)
+set(ZLIB_BUILD_SHARED  OFF)
+set(ZLIB_INSTALL       OFF)
+FetchContent_MakeAvailable(zlib)
+
+
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
@@ -92,7 +123,8 @@ set_target_properties(tslitex PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
 
-target_link_libraries(tslitex litepcie)
+target_link_libraries(tslitex PUBLIC litepcie)
+target_link_libraries(tslitex PRIVATE json-c-static zlibstatic)
 
 if(APPLE)
     target_link_libraries(tslitex "-framework IOKit")
@@ -112,12 +144,11 @@ set_target_properties(tslitex_static PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
-            
-#target_compile_definitions(tslitex_static tslitex_static_STATIC)
+
 set_target_properties(tslitex_static PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
-
-target_link_libraries(tslitex_static litepcie)
+target_link_libraries(tslitex_static PUBLIC litepcie)
+target_link_libraries(tslitex_static PRIVATE json-c-static zlibstatic)
 target_include_directories(tslitex_static PUBLIC include)
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
