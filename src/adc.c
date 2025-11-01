@@ -173,11 +173,11 @@ int32_t ts_adc_update_channels(ts_adc_t* adc)
             shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_4CH : ADC_12B_SHUFFLE_4CH);
         }
 
-        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
         litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DATA_CHANNELS_ADDR, 
             shuffleMode << CSR_ADC_HMCAD1520_DATA_CHANNELS_SHUFFLE_OFFSET);
             
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal;
