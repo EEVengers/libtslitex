@@ -11,7 +11,7 @@ set(CMAKE_C_STANDARD_REQUIRED ON) # error if compiler doesn't support c17
 set(CMAKE_C_EXTENSIONS ON)
 
 if(MSVC)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c++17 /experimental:c11atomics")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /std:c17 /experimental:c11atomics")
 endif(MSVC)
 
 enable_language(CXX)
