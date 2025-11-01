@@ -156,7 +156,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
             }
             else
             {
-                NS_DELAY(10000); //10us
+                usleep(5000); //5ms
             }
             #else
             size_t readLen = bufferLen - retVal;
