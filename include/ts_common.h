@@ -61,12 +61,17 @@ typedef enum tsChannelTerm_e
 typedef struct tsDeviceInfo_s
 {
     uint32_t device_id;
-    uint32_t hw_id;   /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
-    uint32_t gw_id;  /**< 32-bit version ID: gw_id[31:16] - Major, gw_id[15:8] - Minor, gw_id[7:1] - Patch, gw_id[0] - next */
-    uint32_t litex; /**< 32-bit LiteX version: litex[31:16] - Year, litex[15:0] - Month */
-    char device_path[TS_IDENT_STR_LEN];
-    char identity[TS_IDENT_STR_LEN];
-    char serial_number[TS_IDENT_STR_LEN];
+    uint32_t hw_id;     /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
+    uint32_t gw_id;     /**< 32-bit version ID: gw_id[31:16] - Major, gw_id[15:8] - Minor, gw_id[7:1] - Patch, gw_id[0] - next */
+    uint32_t litex;     /**< 32-bit LiteX version: litex[31:16] - Year, litex[15:0] - Month */
+    uint32_t board_rev; /**< 32-bit Board revision counter. */
+    char device_path[TS_IDENT_STR_LEN];     /**< Device Path where the instance is opened */
+    char identity[TS_IDENT_STR_LEN];        /**< Device Identity String */
+    char serial_number[TS_IDENT_STR_LEN];   /**< Serial Number */
+    char build_config[TS_IDENT_STR_LEN];    /**< Build Configuration description */
+    char build_date[TS_IDENT_STR_LEN];      /**< Date of Manufacture */
+    char mfg_signature[TS_IDENT_STR_LEN];   /**< Device Unique Manufacturing Signature */
+
 } tsDeviceInfo_t;
 
 typedef struct tsChannelParam_s

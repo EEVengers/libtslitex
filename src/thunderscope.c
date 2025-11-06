@@ -47,6 +47,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
 {
     int32_t retVal = TS_STATUS_ERROR;
     char testPath[TS_IDENT_STR_LEN];
+    ts_fw_manager_t fwmngr;
     
     // Find device path by index
     snprintf(testPath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), devIndex);
@@ -64,9 +65,11 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
         {
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
-        //TODO Implement Serial Number
-        snprintf(info->serial_number, TS_IDENT_STR_LEN, "TS00##");
         strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
+        // Get Factory Build Info
+        ts_fw_manager_init(testDev, &fwmngr);
+        ts_data_factory_id_get(&fwmngr, info);
+
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
     }
@@ -108,8 +111,8 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
     {
         pInst->identity.identity[i] = (char)litepcie_readl(pInst->ctrl, CSR_IDENTIFIER_MEM_BASE + 4 * i);
     }
-    //TODO Implement Serial Number
-    snprintf(pInst->identity.serial_number, TS_IDENT_STR_LEN, "TS00##");
+    
+    
     strncpy(pInst->identity.device_path, devName, TS_IDENT_STR_LEN);
 
     if(!skip_init)
@@ -142,6 +145,9 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         free(pInst);
         return NULL;
     }
+
+    // Get Factory Build Info
+    ts_data_factory_id_get(&pInst->fw, &pInst->identity);
 
     pInst->status_leds.fd = pInst->ctrl;
     pInst->status_leds.reg = TS_STATUS_LED_ADDR;
@@ -404,6 +410,7 @@ int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
     }
 }
 
+#if defined(FACTORY_PROVISIONING_API)
 int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
@@ -429,6 +436,19 @@ int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag,
         return TS_STATUS_ERROR;
     }
 }
+#else
+int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna)
+{
+    LOG_ERROR("Factory API Not Enabled");
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content)
+{
+    LOG_ERROR("Factory API Not Enabled");
+    return TS_STATUS_ERROR;
+}
+#endif
 
 int32_t thunderscopeFactoryProvisionVerify(tsHandle_t ts)
 {

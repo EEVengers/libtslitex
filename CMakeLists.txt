@@ -53,9 +53,15 @@ FetchContent_MakeAvailable(zlib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/artifacts/libtslitex")
 
-add_definitions(-DUNICODE -D_UNICODE)
+option(ENABLE_FACTORY_PROVISIONING "Include Factory Provisioning Functions" OFF)
 
-add_definitions(-DEN_LOGGING)
+if(ENABLE_FACTORY_PROVISIONING)
+    add_compile_definitions(FACTORY_PROVISIONING_API)
+endif()
+
+add_compile_definitions(UNICODE _UNICODE)
+
+add_compile_definitions(EN_LOGGING)
 
 add_compile_definitions("$<$<CONFIG:Debug>:EN_LOGGING_DEBUG>")
 
@@ -80,6 +86,7 @@ set(TS_SOURCES
     src/samples.c
     src/spiflash.c
     src/ts_channel.c
+    src/ts_data.c
     src/ts_fw_manager.c
     src/thunderscope.c
     )
@@ -100,6 +107,7 @@ set(TS_HEADERS
     src/samples.h
     src/spiflash.h
     src/ts_channel.h
+    src/ts_data.h
     src/ts_fw_manager.h
     src/util.h
     )

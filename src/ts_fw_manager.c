@@ -15,7 +15,6 @@
 #include <arpa/inet.h>
 #endif
 
-#include <json.h>
 #include <zlib.h>
 
 #include "ts_fw_manager.h"
@@ -474,16 +473,6 @@ int32_t ts_fw_manager_user_data_write(ts_fw_manager_t* mngr, const char* buffer,
     return TS_STATUS_OK;
 }
 
-int32_t ts_fw_manager_factory_cal_get(ts_fw_manager_t* mngr, const char* file_stream, uint32_t len)
-{
-    // Read File from SPI Flash
-    // struct json_object * fcal = json_object_new_object();
-
-    // json_object_object_del(fcal,"root");
-
-    return TS_STATUS_OK;
-}
-
 static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_total)
 {
     ts_fw_manager_t* mngr = (ts_fw_manager_t*)ctx;
@@ -495,7 +484,8 @@ static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_t
 
 int32_t ts_fw_manager_factory_data_erase(ts_fw_manager_t* mngr, uint64_t dna)
 {
-    uint64_t dna_actual= litepcie_readl(mngr->flash_dev.fd, CSR_DNA_ID_ADDR);
+    uint64_t dna_actual= (uint64_t)litepcie_readl(mngr->flash_dev.fd, CSR_DNA_ID_ADDR) << 32;
+    dna_actual |= litepcie_readl(mngr->flash_dev.fd, CSR_DNA_ID_ADDR + 4);
 
     if(dna == dna_actual)
     {
@@ -573,6 +563,7 @@ int32_t ts_fw_manager_factory_data_append(ts_fw_manager_t* mngr, uint32_t tag, u
                 LOG_ERROR("Failed to write CRC32 for tag %08X at offset 0x%x", tag, offset);
                 break;
             }
+            retVal = TS_STATUS_OK;
             break;
         }
         

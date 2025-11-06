@@ -153,7 +153,7 @@ int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna);
  * @param tag 32-bit Tag to identify the data item
  * @param length Length of the content string
  * @param content ASCII string containing a JSON object
- * @return int32_t TS_STATUS_OK if the FCAL object was written successfully
+ * @return int32_t TS_STATUS_OK if the object was written successfully
  */
 int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content);
 
