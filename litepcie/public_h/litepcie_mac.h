@@ -24,6 +24,7 @@ struct litepcie_ioctl_dma {
 
 struct litepcie_ioctl_dma_writer {
 	uint32_t enable;
+	uint32_t interrupt_count;
 	uint32_t channel;
 	int64_t hw_count;
 	int64_t sw_count;
@@ -32,6 +33,7 @@ struct litepcie_ioctl_dma_writer {
 
 struct litepcie_ioctl_dma_reader {
 	uint32_t enable;
+	uint32_t interrupt_count;
 	uint32_t channel;
 	int64_t hw_count;
 	int64_t sw_count;

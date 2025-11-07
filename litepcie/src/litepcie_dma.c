@@ -42,6 +42,7 @@ void litepcie_dma_set_loopback(struct litepcie_dma_ctrl *dma, uint8_t loopback_e
 void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_writer m;
     m.enable = enable;
+    m.interrupt_count = DMA_BUFFER_PER_IRQ;
 #if defined(__APPLE__)
     size_t outlen = sizeof(m);
     m.channel = dma->channel;
@@ -58,6 +59,7 @@ void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t 
 void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_reader m;
     m.enable = enable;
+    m.interrupt_count = DMA_BUFFER_PER_IRQ;
 #if defined(__APPLE__)
     size_t outlen = sizeof(m);
     m.channel = dma->channel;
