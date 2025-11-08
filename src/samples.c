@@ -101,6 +101,7 @@ int32_t samples_enable_set(sampleStream_t* inst, uint8_t en)
 
     //Start/Stop DMA
     litepcie_dma_writer(&inst->dma, en,
+                        inst->interrupt_rate,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
@@ -139,6 +140,7 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
         {
             #if defined (APPLE_MMAP_DMA) //POLLING
             litepcie_dma_writer(&inst->dma, inst->active,
+                        inst->interrupt_rate,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
@@ -201,6 +203,7 @@ int32_t samples_update_status(sampleStream_t* inst)
     }
 
     litepcie_dma_writer(&inst->dma, inst->active,
+                        inst->interrupt_rate,
                         &inst->dma_buffer_count,
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
@@ -218,7 +221,7 @@ int32_t samples_teardown(sampleStream_t* inst)
     else
     {
         inst->active = 0;
-        litepcie_dma_writer(&inst->dma, 0, 
+        litepcie_dma_writer(&inst->dma, 0, 0,
                             &inst->dma_buffer_count,
                             &inst->driver_buffer_count,
                             &inst->dropped_buffer_count);

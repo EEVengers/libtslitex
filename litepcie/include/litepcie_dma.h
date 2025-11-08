@@ -42,8 +42,8 @@ struct litepcie_dma_ctrl {
 };
 
 void litepcie_dma_set_loopback(struct litepcie_dma_ctrl *dma, uint8_t loopback_enable);
-void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
-void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
+void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, uint32_t intr_count, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
+void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, uint32_t intr_count, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count);
 
 uint8_t litepcie_request_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer);
 void litepcie_release_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer);

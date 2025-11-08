@@ -29,6 +29,8 @@
 #define FILE_FLAGS  (O_RDWR)
 #endif
 
+#define DEFAULT_DATA_INTR_RATE   (100)
+
 typedef struct ts_inst_s
 {
     file_t ctrl;
@@ -39,6 +41,7 @@ typedef struct ts_inst_s
     const led_signals_t *signals;
     bool initialized;
     ts_fw_manager_t fw;
+    uint32_t interrupt_rate;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -117,6 +120,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
 
     if(!skip_init)
     {
+        pInst->interrupt_rate = DEFAULT_DATA_INTR_RATE;
         if(TS_STATUS_OK != ts_channel_init(&pInst->pChannel, pInst->ctrl))
         {
             LOG_ERROR("Failed to initialize channels");
@@ -232,7 +236,36 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
 
     if(pInst && pInst->initialized)
     {
-        return ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
+        int32_t status = ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
+        if(status == TS_STATUS_OK)
+        {
+            //Target 100Hz interrupt rate
+            pInst->samples.interrupt_rate  = 1 + ((((resolution == 256) ? rate : 2*rate) / 
+                                                (DMA_BUFFER_SIZE)) / pInst->interrupt_rate);
+
+            LOG_DEBUG("DMA Interrupt Rate is 1/%d MB", pInst->samples.interrupt_rate);
+        }
+        return status;
+    }
+
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate)
+{
+     ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized)
+    {
+        if(interrupt_rate == 0)
+        {
+            interrupt_rate = DEFAULT_DATA_INTR_RATE;
+        }
+        pInst->interrupt_rate = interrupt_rate;
+        
+        LOG_DEBUG("Targeting Interrupt frequency of %d Hz", pInst->interrupt_rate);
+        
+        return TS_STATUS_OK;
     }
 
     return TS_STATUS_ERROR;

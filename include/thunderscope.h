@@ -87,6 +87,20 @@ int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf);
 int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution);
 
 /**
+ * @brief Set the approximate rate at which interrupts will fire
+ * 
+ * This method sets the target frequency for interrupts in the driver.  A higher value will trigger
+ * more often, zero is invalid.  The default update rate is 100Hz, or every 10ms.  The driver
+ * configuration will be updated as the sample mode is changed.  This setting will take affect the
+ * next time the ADC is enabled.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param rate Sample Interrupt Rate (interrupts per second)
+ * @return int32_t TS_STATUS_OK if the Thunderscope was configured
+ */
+int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate);
+
+/**
  * @brief Enable or Disable 
  * 
  * @param ts Handle to the Thunderscope device
