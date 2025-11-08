@@ -145,9 +145,9 @@ int32_t samples_get_buffers(sampleStream_t* inst, uint8_t* sampleBuffer, uint32_
                         &inst->driver_buffer_count,
                         &inst->dropped_buffer_count);
             int64_t buff_available = inst->dma_buffer_count - inst->driver_buffer_count;
-            if(buff_available > (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ))
+            if(buff_available > (DMA_BUFFER_COUNT - inst->interrupt_rate))
             {
-                inst->driver_buffer_count = inst->dma_buffer_count - (DMA_BUFFER_COUNT - DMA_BUFFER_PER_IRQ);
+                inst->driver_buffer_count = inst->dma_buffer_count - (DMA_BUFFER_COUNT - inst->interrupt_rate);
                 inst->dropped_buffer_count++;
             }
             if(buff_available > 0)

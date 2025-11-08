@@ -53,7 +53,7 @@ static void user_write(tsHandle_t ts, const char* file_path, uint32_t offset)
 
         // Close File
         file.close();
-        delete bitstream;
+        delete[] bitstream;
     }
     else
     {
@@ -81,7 +81,7 @@ static void user_read(tsHandle_t ts, const char* file_path)
         // Close File
         file.flush();
         file.close();
-        delete data_buffer;
+        delete[] data_buffer;
     }
     else
     {
@@ -115,7 +115,7 @@ static void fw_upgrade(tsHandle_t ts, const char* file_path)
 
         // Close File
         file.close();
-        delete bitstream;
+        delete[] bitstream;
     }
     else
     {

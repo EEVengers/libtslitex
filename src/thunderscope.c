@@ -18,6 +18,7 @@
 #include "samples.h"
 #include "gpio.h"
 #include "ts_fw_manager.h"
+#include "ts_data.h"
 #include "util.h"
 
 #include "litepcie.h"

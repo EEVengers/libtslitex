@@ -135,7 +135,7 @@ target_link_libraries(tslitex PUBLIC litepcie)
 target_link_libraries(tslitex PRIVATE json-c-static zlibstatic)
 
 if(APPLE)
-    target_link_libraries(tslitex "-framework IOKit")
+    target_link_libraries(tslitex PRIVATE "-framework IOKit")
 endif()
 
 target_include_directories(tslitex PUBLIC include)
