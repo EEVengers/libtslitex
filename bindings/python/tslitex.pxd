@@ -97,6 +97,8 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution)
 
+    int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate)
+
     int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 
     int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len) nogil

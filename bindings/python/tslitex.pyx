@@ -253,10 +253,21 @@ cdef class Thunderscope:
 
     @SampleResolution.setter
     def SampleResolution(self, resolution: int):
-        assert resolution is 256, f"Support for 8-bit mode only"
+        assert resolution in [256, 4096], f"Unsupported Resolution"
         self._sample_resolution = resolution
         retval = <int32_t> tslitex.thunderscopeSampleModeSet(<tslitex.tsHandle_t>self._tsHandle,
                                                             <uint32_t>self._sample_rate, <uint32_t>self._sample_resolution)
+
+    @property 
+    def UpdateRate(self):
+        return self._interrupt_rate
+        
+    @UpdateRate.setter
+    def UpdateRate(self, rate : int):
+        assert rate > 0, f"Invalid Update Rate"
+        self._interrupt_rate = rate
+        retval = <int32_t> tslitex.thunderscopeSampleInterruptRate(<tslitex.tsHandle_t>self._tsHandle,
+                                                                    <uint32_t> rate)
 
     def Enable(self, enable: bool):
         cdef int32_t retVal = tslitex.thunderscopeDataEnable(self._tsHandle, <uint8_t>enable)
