@@ -8,6 +8,15 @@
 
 #include <string.h>
 
+#if defined(_WIN32)
+#include <winsock2.h>
+#pragma comment(lib, "Ws2_32.lib")
+#else
+#include <arpa/inet.h>
+#endif
+
+#include <zlib.h>
+
 #include "ts_fw_manager.h"
 #include "platform.h"
 #include "spiflash.h"
@@ -24,6 +33,8 @@
 #define IDCODE_MASK     (0x0FFFFFFF)
 
 #define ICAP_REG_IDCODE (0x0C)
+
+#define INVALID_TAG     (0xFFFFFFFF)
 
 static const struct {
     uint32_t code;
@@ -462,13 +473,6 @@ int32_t ts_fw_manager_user_data_write(ts_fw_manager_t* mngr, const char* buffer,
     return TS_STATUS_OK;
 }
 
-int32_t ts_fw_manager_factory_cal_get(ts_fw_manager_t* mngr, const char* file_stream, uint32_t len)
-{
-    // Read File from SPI Flash
-
-    return TS_STATUS_OK;
-}
-
 static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_total)
 {
     ts_fw_manager_t* mngr = (ts_fw_manager_t*)ctx;
@@ -476,4 +480,376 @@ static void ts_fw_progress_update(void* ctx, uint32_t work_done, uint32_t work_t
     {
         atomic_fetch_add(&mngr->fw_progress, work_done);
     }
+}
+
+int32_t ts_fw_manager_factory_data_erase(ts_fw_manager_t* mngr, uint64_t dna)
+{
+    uint64_t dna_actual= (uint64_t)litepcie_readl(mngr->flash_dev.fd, CSR_DNA_ID_ADDR) << 32;
+    dna_actual |= litepcie_readl(mngr->flash_dev.fd, CSR_DNA_ID_ADDR + 4);
+
+    if(dna == dna_actual)
+    {
+        return spiflash_erase(&mngr->flash_dev, mngr->partition_table->factory_config_start,
+            (mngr->partition_table->factory_config_end - mngr->partition_table->factory_config_start));
+    }
+    return TS_STATUS_ERROR;
+}
+
+int32_t ts_fw_manager_factory_data_append(ts_fw_manager_t* mngr, uint32_t tag, uint32_t length, const uint8_t *content)
+{
+    int32_t retVal =  TS_STATUS_ERROR;
+    uint32_t offset = 0;
+    uint32_t current_tag = INVALID_TAG;
+    uint32_t next_len = 0;
+    uint32_t tlv_crc = crc32(0, Z_NULL, 0);
+
+    // Append the new TLV
+    while (offset < mngr->partition_table->factory_config_end)
+    {
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset),
+                                (uint8_t*)&current_tag, sizeof(current_tag));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag at offset 0x%x", offset);
+            break;
+        }
+
+        if(tag == htonl(current_tag))
+        {
+            LOG_ERROR("ERROR: Duplicate TAG %08X", tag);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+
+        // Check if empty
+        if(current_tag == INVALID_TAG)
+        {
+            //Test for length
+            if((mngr->partition_table->factory_bitstream_start + offset + sizeof(uint32_t)*3 + length) > 
+                mngr->partition_table->factory_config_end)
+            {
+                LOG_ERROR("Not enough space in Factory Partition to store object of %dB",length);
+                retVal = TS_STATUS_ERROR;
+                break;
+            }
+
+            //Write Tag, and Length
+            uint64_t tl = ((uint64_t)htonl(length) << 32) + htonl(tag);
+            retVal = spiflash_write(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset), (uint8_t*)&tl, sizeof(uint64_t));
+            if(retVal < 0)
+            {
+                LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+                break;
+            }
+
+            offset += sizeof(uint64_t);
+
+            //Write Value
+            retVal = spiflash_write(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset), content, length);
+            if(retVal < 0)
+            {
+                LOG_ERROR("Failed to write value for tag %08x at offset 0x%x", tag, offset);
+                break;
+            }
+            offset += length;
+
+            //Write CRC
+            tlv_crc = crc32(tlv_crc, content, length);
+            LOG_DEBUG("Completing TLV with CRC %08X", tlv_crc);
+            tlv_crc = htonl(tlv_crc);
+            retVal = spiflash_write(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset), (uint8_t*)&tlv_crc, sizeof(uint32_t));
+            if(retVal < 0)
+            {
+                LOG_ERROR("Failed to write CRC32 for tag %08X at offset 0x%x", tag, offset);
+                break;
+            }
+            retVal = TS_STATUS_OK;
+            break;
+        }
+        
+        //Read Len and increment for next tag
+        offset += sizeof(uint32_t);
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset), (uint8_t*)&next_len, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag at offset 0x%x", offset);
+            break;
+        }
+
+        // Increment size of Length, Value, and CRC
+        offset += sizeof(uint32_t)*2 + ntohl(next_len);
+    }
+    return retVal;
+}
+
+int32_t ts_fw_manager_factory_data_verify(ts_fw_manager_t* mngr)
+{
+    int32_t retVal =  TS_STATUS_OK;
+    uint32_t offset = 0;
+    uint32_t tag = INVALID_TAG;
+    uint32_t next_len = 0;
+    uint8_t val_buffer[4096];
+    uint32_t stored_crc;
+    uint32_t new_crc = crc32(0, Z_NULL, 0);
+    uint32_t element_count = 0;
+
+    // Read and Verify each TLV CRC32
+    while (offset < mngr->partition_table->factory_config_end)
+    {
+        //Read the TAG
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset),
+                                (uint8_t*)&tag, sizeof(tag));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag at offset 0x%x", offset);
+            break;
+        }
+
+        offset += sizeof(tag);
+        
+        // Check if empty, no more tags to verify
+        if(tag == INVALID_TAG)
+        {
+            LOG_DEBUG("Factory data partition verified");
+            retVal = TS_STATUS_OK;
+            break;
+        }
+
+        //Read the Length
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset),
+                                (uint8_t*)&next_len, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            break;
+        }
+        offset += sizeof(uint32_t);
+
+        if((mngr->partition_table->factory_config_start + offset + ntohl(next_len) + sizeof(uint32_t)) >
+            mngr->partition_table->factory_config_end)
+        {
+            LOG_ERROR("Tag %08X Exceeds Length (%d)", tag, next_len);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+        
+        //Read the CRC
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset + ntohl(next_len)),
+                                (uint8_t*)&stored_crc, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            break;
+        }
+
+        //Read Value and Compute CRC
+        while(next_len > 0)
+        {
+            uint32_t segment_len = next_len > sizeof(val_buffer) ? sizeof(val_buffer) : next_len;
+            next_len -= segment_len;
+            retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset),
+                                    val_buffer, segment_len);
+            if(retVal < 0)
+            {
+                LOG_ERROR("Failed to write value for tag %08x at offset 0x%x", tag, offset);
+                break;
+            }
+            offset += segment_len;
+            
+            //Calculate the CRC
+            new_crc = crc32(new_crc, val_buffer, segment_len);
+        }
+
+        if(ntohl(stored_crc) != new_crc)
+        {
+            LOG_ERROR();
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+
+        // Increment size of CRC
+        offset += sizeof(uint32_t);
+        element_count++;
+    }
+    return retVal;
+}
+
+int32_t ts_fw_manager_factory_data_get_length(ts_fw_manager_t* mngr, uint32_t tag)
+{
+    int32_t retVal =  TS_STATUS_OK;
+    uint32_t offset = 0;
+    uint32_t read_tag = INVALID_TAG;
+    uint32_t next_len = 0;
+
+    // Search for a specific Tag and copy it to the provided Content buffer
+    while (offset < mngr->partition_table->factory_config_end)
+    {
+        //Read the TAG
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset), (uint8_t*)&read_tag, sizeof(read_tag));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag at offset 0x%x", offset);
+            break;
+        }
+
+        offset += sizeof(read_tag);
+        
+        // Check if empty, no more tags to try
+        if(read_tag == INVALID_TAG)
+        {
+            LOG_DEBUG("Tag 0x%08X not found in Factory data partition", tag);
+            retVal = 0;
+            break;
+        }
+
+        //Read the Length
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset), (uint8_t*)&next_len, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            break;
+        }
+        next_len = ntohl(next_len);
+        offset += sizeof(uint32_t);
+
+        if((mngr->partition_table->factory_config_start + offset + next_len + sizeof(uint32_t)) >
+            mngr->partition_table->factory_config_end)
+        {
+            LOG_ERROR("Tag %08X Bad Length (%d)", tag, next_len);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+
+        //Tag matches, return length
+        if(ntohl(read_tag) == tag)
+        {
+            retVal = next_len;
+            break;
+        }
+        else
+        {
+            offset += (sizeof(uint32_t) + next_len);
+        }
+    }
+    return retVal;
+}
+
+int32_t ts_fw_manager_factory_data_retreive(ts_fw_manager_t* mngr, uint32_t tag, uint8_t* content, uint32_t max_len)
+{
+    int32_t retVal =  TS_STATUS_OK;
+    uint32_t offset = 0;
+    uint32_t check_offset = 0;
+    uint32_t read_tag = INVALID_TAG;
+    uint32_t next_len = 0;
+    uint32_t val_len = 0;
+    uint8_t val_buffer[4096];
+    uint32_t stored_crc;
+    uint32_t new_crc = crc32(0, Z_NULL, 0);
+
+    // Search for a specific Tag and copy it to the provided Content buffer
+    while (offset < mngr->partition_table->factory_config_end)
+    {
+        //Read the TAG
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset), (uint8_t*)&read_tag, sizeof(read_tag));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag at offset 0x%x", offset);
+            break;
+        }
+
+        offset += sizeof(read_tag);
+        
+        // Check if empty, no more tags to try
+        if(tag == INVALID_TAG)
+        {
+            LOG_DEBUG("Tag 0x%08X not found in Factory data partition", tag);
+            retVal = TS_STATUS_OK;
+            break;
+        }
+
+        //Read the Length
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset), (uint8_t*)&next_len, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read tag %08x length at offset 0x%x", ntohl(read_tag), offset);
+            break;
+        }
+        next_len = ntohl(next_len);
+        offset += sizeof(uint32_t);
+
+        if((mngr->partition_table->factory_config_start + offset + next_len + sizeof(uint32_t)) >
+            mngr->partition_table->factory_config_end)
+        {
+            LOG_ERROR("Tag %08X Bad Length (%d)", ntohl(read_tag), next_len);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+
+        //Find next if tag doesn't match
+        if(ntohl(read_tag) != tag)
+        {
+            offset +=  (sizeof(uint32_t) + next_len);
+            continue;
+        }
+        
+        //Read the CRC
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset + next_len), (uint8_t*)&stored_crc, sizeof(uint32_t));
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            break;
+        }
+
+        //Read Value and Compute CRC
+        val_len = next_len;
+        check_offset = offset;
+        while(next_len > 0)
+        {
+            uint32_t segment_len = next_len > sizeof(val_buffer) ? sizeof(val_buffer) : next_len;
+            next_len -= segment_len;
+            retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start + check_offset), val_buffer, segment_len);
+            if(retVal < 0)
+            {
+                LOG_ERROR("Failed to read value for tag %08x at offset 0x%x : %d", tag, offset, retVal);
+                break;
+            }
+            check_offset += segment_len;
+            
+            //Calculate the CRC
+            new_crc = crc32(new_crc, val_buffer, segment_len);
+        }
+
+        if(ntohl(stored_crc) != new_crc)
+        {
+            LOG_ERROR("Failed to read Tag %08X, bad CRC (expected %08X, calculated %08X)", tag,
+                        ntohl(stored_crc), new_crc);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
+        
+        //CRC Passes, read to user buffer
+        new_crc = crc32(0, Z_NULL, 0);
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset), content, val_len);
+        if(retVal < 0)
+        {
+            LOG_ERROR("Failed to read value for tag %08x at offset 0x%x : %d", tag, offset, retVal);
+            break;
+        }
+        
+        //Calculate the CRC one last time
+        new_crc = crc32(new_crc, content, val_len);
+
+        if(ntohl(stored_crc) == new_crc)
+        {
+            retVal = val_len;
+        }
+        else
+        {
+            LOG_ERROR("Failed CRC check for tag %08X (expected 0x%08X, calculated 0x%08X)",
+                        tag, ntohl(stored_crc), new_crc);
+            retVal = TS_STATUS_ERROR;
+        }
+        break;
+    }
+    return retVal;
 }

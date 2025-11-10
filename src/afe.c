@@ -52,7 +52,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     {
         afe->trimPotBits = MCP4452_NUM_BITS;
 
-        if(litepcie_readl(coupling.fd, CSR_DEV_STATUS_HW_ID_ADDR) & TS_HW_ID_REV_MASK > 0)
+        if((litepcie_readl(coupling.fd, CSR_DEV_STATUS_HW_ID_ADDR) & TS_HW_ID_REV_MASK) > 0)
         {
             afe->couplingInverted = true;
         }

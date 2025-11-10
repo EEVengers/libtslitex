@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.22...4.1)
 
 find_package(
     Python
@@ -19,6 +19,9 @@ add_custom_command(
     OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/lib/include/thunderscope.h
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "$<TARGET_FILE_DIR:tslitex_static>"
+    "$<TARGET_FILE_DIR:litepcie>"
+    "$<TARGET_FILE_DIR:json-c-static>"
+    "$<TARGET_FILE_DIR:zlibstatic>"
     "${CMAKE_CURRENT_BINARY_DIR}/lib"
     DEPENDS tslitex_static
 )
@@ -29,9 +32,11 @@ add_custom_target(pydeps
     tslitex_static
 )
 
-set(PY_BIND_LIBS tslitex_static litepcie)
+set(PY_BIND_LIBS tslitex_static)
+
 if(WIN32)
     list(APPEND PY_BIND_LIBS setupapi)
+    list(APPEND PY_BIND_LIBS litepcie json-c-static zlibstatic)
 endif()
 list(JOIN PY_BIND_LIBS "\", \"" PY_EXT_LIBS)
 
@@ -47,7 +52,7 @@ add_custom_target(PyBindings
         COMMAND Python::Interpreter -m pipx run build --wheel .
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Building python whl"
-        DEPENDS pydeps tslitex_static
+        DEPENDS pydeps
         )
 
 if (NOT DEFINED PY_PLATFORM)
@@ -61,7 +66,7 @@ add_custom_target(PyWheels
         COMMAND Python::Interpreter -m cibuildwheel --platform ${PY_PLATFORM} --archs ${PY_ARCH} --config-file pyproject.toml
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Building all Python wheels"
-        DEPENDS pydeps tslitex_static
+        DEPENDS pydeps
         )
 else()
 message(STATUS "Python bindings not available: Python not found")

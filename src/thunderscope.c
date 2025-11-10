@@ -18,16 +18,19 @@
 #include "samples.h"
 #include "gpio.h"
 #include "ts_fw_manager.h"
+#include "ts_data.h"
 #include "util.h"
 
 #include "litepcie.h"
 
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define FILE_FLAGS  (FILE_ATTRIBUTE_NORMAL)
 #else
 #define FILE_FLAGS  (O_RDWR)
 #endif
+
+#define DEFAULT_DATA_INTR_RATE   (100)
 
 typedef struct ts_inst_s
 {
@@ -39,6 +42,7 @@ typedef struct ts_inst_s
     const led_signals_t *signals;
     bool initialized;
     ts_fw_manager_t fw;
+    uint32_t interrupt_rate;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -47,6 +51,7 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
 {
     int32_t retVal = TS_STATUS_ERROR;
     char testPath[TS_IDENT_STR_LEN];
+    ts_fw_manager_t fwmngr;
     
     // Find device path by index
     snprintf(testPath, TS_IDENT_STR_LEN, LITEPCIE_CTRL_NAME(%d), devIndex);
@@ -64,9 +69,11 @@ int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t *info)
         {
             info->identity[i] = (char)litepcie_readl(testDev, CSR_IDENTIFIER_MEM_BASE + 4 * i);
         }
-        //TODO Implement Serial Number
-        snprintf(info->serial_number, TS_IDENT_STR_LEN, "TS00##");
         strncpy(info->device_path, testPath, TS_IDENT_STR_LEN);
+        // Get Factory Build Info
+        ts_fw_manager_init(testDev, &fwmngr);
+        ts_data_factory_id_get(&fwmngr, info);
+
         litepcie_close(testDev);
         retVal = TS_STATUS_OK;
     }
@@ -108,12 +115,13 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
     {
         pInst->identity.identity[i] = (char)litepcie_readl(pInst->ctrl, CSR_IDENTIFIER_MEM_BASE + 4 * i);
     }
-    //TODO Implement Serial Number
-    snprintf(pInst->identity.serial_number, TS_IDENT_STR_LEN, "TS00##");
+    
+    
     strncpy(pInst->identity.device_path, devName, TS_IDENT_STR_LEN);
 
     if(!skip_init)
     {
+        pInst->interrupt_rate = DEFAULT_DATA_INTR_RATE;
         if(TS_STATUS_OK != ts_channel_init(&pInst->pChannel, pInst->ctrl))
         {
             LOG_ERROR("Failed to initialize channels");
@@ -142,6 +150,9 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         free(pInst);
         return NULL;
     }
+
+    // Get Factory Build Info
+    ts_data_factory_id_get(&pInst->fw, &pInst->identity);
 
     pInst->status_leds.fd = pInst->ctrl;
     pInst->status_leds.reg = TS_STATUS_LED_ADDR;
@@ -226,7 +237,36 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolut
 
     if(pInst && pInst->initialized)
     {
-        return ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
+        int32_t status = ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
+        if(status == TS_STATUS_OK)
+        {
+            //Target 100Hz interrupt rate
+            pInst->samples.interrupt_rate  = 1 + ((((resolution == 256) ? rate : 2*rate) / 
+                                                (DMA_BUFFER_SIZE)) / pInst->interrupt_rate);
+
+            LOG_DEBUG("DMA Interrupt Rate is 1/%d MB", pInst->samples.interrupt_rate);
+        }
+        return status;
+    }
+
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate)
+{
+     ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized)
+    {
+        if(interrupt_rate == 0)
+        {
+            interrupt_rate = DEFAULT_DATA_INTR_RATE;
+        }
+        pInst->interrupt_rate = interrupt_rate;
+        
+        LOG_DEBUG("Targeting Interrupt frequency of %d Hz", pInst->interrupt_rate);
+        
+        return TS_STATUS_OK;
     }
 
     return TS_STATUS_ERROR;
@@ -397,6 +437,72 @@ int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)
     if(pInst)
     {
         return ts_fw_manager_get_progress(&pInst->fw, progress);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+#if defined(FACTORY_PROVISIONING_API)
+int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_erase(&pInst->fw, dna);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_append(&pInst->fw, tag, length, content);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+#else
+int32_t thunderscopeFactoryProvisionPrepare(tsHandle_t ts, uint64_t dna)
+{
+    LOG_ERROR("Factory API Not Enabled");
+    return TS_STATUS_ERROR;
+}
+
+int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag, uint32_t length, const char* content)
+{
+    LOG_ERROR("Factory API Not Enabled");
+    return TS_STATUS_ERROR;
+}
+#endif
+
+int32_t thunderscopeFactoryProvisionVerify(tsHandle_t ts)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_verify(&pInst->fw);
+    }
+    else
+    {
+        return TS_STATUS_ERROR;
+    }
+}
+
+int32_t thunderscopeFactoryReadItem(tsHandle_t ts, const uint32_t tag, char* content_buffer, uint32_t item_max_len)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    if(pInst)
+    {
+        return ts_fw_manager_factory_data_retreive(&pInst->fw, tag, content_buffer, item_max_len);
     }
     else
     {

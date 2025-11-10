@@ -37,9 +37,13 @@ cdef extern from "thunderscope.h":
         uint32_t hw_id
         uint32_t gw_id
         uint32_t litex
+        uint32_t board_rev
         char device_path[256]
         char identity[256]
         char serial_number[256]
+        char build_config[256]
+        char build_date[256]
+        char mfg_signature[256]
 
     ctypedef tsDeviceInfo_s tsDeviceInfo_t
 
@@ -92,6 +96,8 @@ cdef extern from "thunderscope.h":
     int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf)
 
     int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution)
+
+    int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate)
 
     int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 

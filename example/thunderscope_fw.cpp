@@ -22,6 +22,7 @@
 #include "optparse.h"
 
 #include <thunderscope.h>
+#include <ts_calibration.h>
 
 #define MAX_USER_DATA_SIZE  (0x500000)
 
@@ -52,7 +53,7 @@ static void user_write(tsHandle_t ts, const char* file_path, uint32_t offset)
 
         // Close File
         file.close();
-        delete bitstream;
+        delete[] bitstream;
     }
     else
     {
@@ -80,7 +81,7 @@ static void user_read(tsHandle_t ts, const char* file_path)
         // Close File
         file.flush();
         file.close();
-        delete data_buffer;
+        delete[] data_buffer;
     }
     else
     {
@@ -114,7 +115,7 @@ static void fw_upgrade(tsHandle_t ts, const char* file_path)
 
         // Close File
         file.close();
-        delete bitstream;
+        delete[] bitstream;
     }
     else
     {
@@ -142,6 +143,13 @@ static void print_help(void)
     printf("\thelp - Print this help message\r\n");
     printf("\tCommon Options:\r\n");
     printf("\t\t-d <device>      Device Index\r\n");
+#if defined(FACTORY_PROVISIONING_API)
+    printf("--FACTORY USAGE ONLY--\r\n");
+    printf("\tfactory_prepare [dna] - Erase the Factory Data Partition\r\n");
+    printf("\t\t[dna] - Device DNA value to confirm erase\r\n");
+    printf("\tfactory_load [tag] [file] - Load a JSON file with Factory Data\r\n");
+    printf("\t\t[tag] - Tag identifier for the data item\r\n");
+#endif
 }
 
 int main(int argc, char** argv)
@@ -258,6 +266,85 @@ int main(int argc, char** argv)
         //Nothing else to do
         ;;
     }
+#if defined(FACTORY_PROVISIONING_API)
+    else if(0 == strcmp(arg, "factory_prepare"))
+    {
+        if(argc != 3)
+        {
+            printf("Error: Missing args\r\n");
+            print_help();
+        }
+        else
+        {
+            uint64_t op_dna = 0;
+            if(!sscanf(argv[2], "%llx", &op_dna))
+            {
+                printf("Error: Invalid DNA\r\n");
+                print_help();
+            }
+            else if(TS_STATUS_OK == thunderscopeFactoryProvisionPrepare(ts, op_dna))
+            {
+                printf("Factory Data Partition Erased \r\n");
+            }
+            else
+            {
+                printf("Failed to prepare Factory Data Partition\r\n");
+            }
+        }
+    }
+    else if(0 == strcmp(arg, "factory_load"))
+    {
+        char tag[5];
+        if(argc != 4)
+        {
+            printf("Error: Missing args\r\n");
+            print_help();
+        }
+        else if(!sscanf(argv[2], "%4s", tag))
+        {
+            printf("Error: Invalid TAG arg\r\n");
+            print_help();
+        }
+        else
+        {
+            file_path = argv[3];
+            std::error_code err;
+            auto file_size = std::filesystem::file_size(file_path, err);
+            if(err)
+            {
+                std::cout << "Error opening \"" << file_path << "\" : " << err.message() << "\r\n";
+                thunderscopeClose(ts);
+                return -1;
+            }
+
+            // Open Data File
+            std::ifstream file(file_path, std::ios::binary);
+            if(file)
+            {
+                char* data_content = new char[file_size];
+                file.read(data_content, file_size);
+
+                if(TS_STATUS_OK == thunderscopeFactoryProvisionAppendTLV(ts, (uint32_t)(tag[0] + (tag[1] << 8) + (tag[2] << 16) + (tag[3] << 24)),
+                                                        file_size, (const char*)data_content))
+                {
+                    printf("Finished writing the %s item\r\n",  tag);
+                }
+                else
+                {
+                    printf("Failed to write factory data item\r\n");
+                }
+
+                // Close File
+                file.close();
+                delete data_content;
+            }
+            else
+            {
+                printf("ERROR Factory TLV: Failed to open file %s\r\n", file_path);
+            }
+        }
+    }
+#endif
     else if(argCount == argc)
     {
         printf("**Missing File path argument**\r\n");
