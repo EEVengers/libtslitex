@@ -176,7 +176,7 @@ typedef enum hmcad15xxMode_e
     HMCAD15_SINGLE_CHANNEL = 1,
     HMCAD15_DUAL_CHANNEL = 2,
     HMCAD15_QUAD_CHANNEL = 4,
-    HMCAD15_14BIT_QUAD_CHANNEL = 8
+    HMCAD15_PREC_QUAD_CHANNEL = 8
 } hmcad15xxMode_t;
 
 typedef enum hmcad15xxDataWidth_e

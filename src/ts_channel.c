@@ -50,6 +50,7 @@ typedef struct ts_channel_s {
     gpio_t afe_power;
     gpio_t acq_power;
     file_t ctrl_handle;
+    tsSampleFormat_t sampleMode;
     tsScopeState_t status;
 } ts_channel_t;
 
@@ -495,7 +496,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         }
 
         //Update Sample Rate
-        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->status.adc_sample_resolution);
+        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->sampleMode);
     }
 
     return retVal;
@@ -550,7 +551,7 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
     return pTsHdl->status;
 }
 
-int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution)
+int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsSampleFormat_t mode)
 {
     if(tsChannels == NULL)
     {
@@ -560,16 +561,34 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     uint64_t actual_rate = 0;
     uint64_t max_rate = 0;
 
-    if(resolution == 256)
+
+    switch(mode)
+    {
+    case TS_8_BIT:
     {
         max_rate = TS_MAX_8BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 256;
+        break;
     }
-    else if(resolution == 4096)
+    case TS_12_BIT_LSB:
     {
         max_rate = TS_MAX_12BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 4096;
+        break;
     }
-    else
+    case TS_12_BIT_MSB:
     {
+        max_rate = TS_MAX_12BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 65536;
+        break;
+    }
+    case TS_14_BIT:
+    {
+        max_rate = TS_MAX_14BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 65536;
+        break;
+    }
+    default:
         return TS_INVALID_PARAM;
     }
 
@@ -578,7 +597,10 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
         return TS_INVALID_PARAM;
     }
 
-    if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
+    ts->sampleMode = mode;
+
+    // Use 1:1 rate for precision mode (14_bit)
+    if((ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL) || (ts->sampleMode == TS_14_BIT))
     {
         actual_rate = rate;
     }
@@ -625,10 +647,9 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     }
 
     ts->status.adc_sample_rate = rate;
-    ts->status.adc_sample_resolution = resolution;
-    ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
+    ts->status.adc_sample_bits = (mode == TS_8_BIT) ? 8 : 16;
 
-    ts_adc_set_sample_mode(&ts->adc, rate, resolution);
+    ts_adc_set_sample_mode(&ts->adc, rate, mode);
     ts_adc_run(&ts->adc, ts->status.adc_state);
 
     return  TS_STATUS_OK;

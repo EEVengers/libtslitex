@@ -326,7 +326,8 @@ static void test_io(file_t fd, bool isBeta)
 }
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip, bool is12bit, bool inRefClk, bool outRefClk, uint32_t refclkFreq)
+    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip,
+    bool is12bit, bool is14bit, bool inRefClk, bool outRefClk, uint32_t refclkFreq)
 {
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
@@ -375,11 +376,16 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     if(is12bit)
     {
         sampleRate = 660000000;
-        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, 4096);
+        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, TS_12_BIT_MSB);
+    }
+    else if(is14bit)
+    {
+        sampleRate = 125000000;
+        thunderscopeSampleModeSet(tsHdl, sampleRate, TS_14_BIT);
     }
     else
     {
-        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, 256);
+        thunderscopeSampleModeSet(tsHdl, sampleRate/numChan, TS_8_BIT);
     }
 
     printf("- Checking HMCAD1520 Sample Rate...");
@@ -706,7 +712,7 @@ int main(int argc, char** argv)
     uint8_t ac_couple = 0;
     uint8_t term = 0;
     bool bitslip = false;
-    bool mode12bit = false;
+    bool mode12bit = false, mode14bit = false;
     bool refInClk = false;
     bool refOutClk = false;
     uint32_t refclkFreq = 0;
@@ -780,6 +786,10 @@ int main(int argc, char** argv)
             break;
         case 'm':
             mode12bit = true;
+            argCount++;
+            break;
+        case 'p':
+            mode14bit = true;
             argCount++;
             break;
         case '?':
@@ -918,7 +928,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit, refInClk, refOutClk, refclkFreq);
+        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit, mode14bit, refInClk, refOutClk, refclkFreq);
     }
     // Flash test
     else if(0 == strcmp(arg, "flash"))

@@ -16,8 +16,9 @@
 #include "ts_calibration.h"
 
 
-#define TS_ADC_DATA_FRAMING_8BIT    (0)
-#define TS_ADC_DATA_FRAMING_12BIT   (1 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
+#define TS_ADC_DATA_FRAMING_8BIT        (0)
+#define TS_ADC_DATA_FRAMING_12BIT_MSB   (1 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
+#define TS_ADC_DATA_FRAMING_12BIT_LSB   (2 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
 
 typedef enum adc_shuffle_e
 {
@@ -27,6 +28,7 @@ typedef enum adc_shuffle_e
     ADC_12B_SHUFFLE_1CH = 3,
     ADC_12B_SHUFFLE_2CH = 4,
     ADC_12B_SHUFFLE_4CH = 5,
+    ADC_DUAL_8B_SHUFFLE_4CH = 6,
 } adc_shuffle_t;
 
 
@@ -156,8 +158,13 @@ int32_t ts_adc_update_channels(ts_adc_t* adc)
     }
     else 
     {
-
-        if(activeCount == 1)
+        if(adc->adcDev.width == HMCAD15_14_BIT)
+        {
+            //Set Quad Channel, Dual-8
+            adc->adcDev.mode = HMCAD15_PREC_QUAD_CHANNEL;
+            shuffleMode = ADC_DUAL_8B_SHUFFLE_4CH;
+        }
+        else if(activeCount == 1)
         {
             adc->adcDev.mode = HMCAD15_SINGLE_CHANNEL;
             shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_1CH : ADC_12B_SHUFFLE_1CH);
@@ -212,7 +219,7 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
     return TS_STATUS_OK;
 }
 
-int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t resolution)
+int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleFormat_t mode)
 {
     if(!adc)
     {
@@ -220,15 +227,20 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
     }
     hmcad15xxDataWidth_t data_mode = HMCAD15_8_BIT;
     uint32_t sample_bits = TS_ADC_DATA_FRAMING_8BIT;
-    if(resolution == 4096)
+    if(mode == TS_12_BIT_LSB)
     {
         data_mode = HMCAD15_12_BIT;
-        sample_bits = TS_ADC_DATA_FRAMING_12BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_12BIT_LSB;
     }
-    else if(resolution == 16384)
+    else if(mode == TS_12_BIT_MSB)
     {
-        data_mode = HMCAD15_14_BIT;
+        data_mode = HMCAD15_12_BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_12BIT_MSB;
+    }
+    else if(mode == TS_14_BIT)
+    {
         //Precision mode uses Dual-8 LVDS
+        data_mode = HMCAD15_14_BIT;
         sample_bits = TS_ADC_DATA_FRAMING_8BIT;
     }
 
@@ -241,7 +253,7 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t res
     }
     else
     {
-        LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, resolution);
+        LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, mode);
         return TS_STATUS_ERROR;
     }
 }
