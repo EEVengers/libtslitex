@@ -37,9 +37,8 @@ typedef io_connect_t file_t;
 #define checked_ioctl(...) _check_ioctl((int)IOConnectCallStructMethod(__VA_ARGS__), __FILE__, __LINE__)
 void _check_ioctl(int status, const char* file, int line);
 
-//TODO: Add support for multiple TS
-#define LITEPCIE_CTRL_NAME(ID)  "litepcie"
-#define LITEPCIE_DMA_NAME(ID, CHAN)  "litepcie"
+#define LITEPCIE_CTRL_NAME(ID)  "thunderscope" #ID
+#define LITEPCIE_DMA_NAME(ID, CHAN)  "thunderscope" #ID
 #else
 #include <sys/ioctl.h>
 typedef int file_t;

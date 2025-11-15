@@ -14,6 +14,7 @@
 #include <SetupAPI.h>
 #include <INITGUID.H>
 #elif defined(__APPLE__)
+#include <CoreFoundation/CoreFoundation.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/IOReturn.h>
 #include <sys/ioctl.h>
@@ -183,40 +184,45 @@ file_t litepcie_open(const char* name, int32_t flags)
     fd = CreateFile(devName, (GENERIC_READ | GENERIC_WRITE), 0, NULL,
         OPEN_EXISTING, flags, NULL);
 #elif defined(__APPLE__)
+    uint32_t idx;
     kern_return_t ret = kIOReturnSuccess;
     io_iterator_t iterator = IO_OBJECT_NULL;
     io_service_t service = IO_OBJECT_NULL;
     io_connect_t connection = IO_OBJECT_NULL;
+    CFStringRef matchServ = CFSTR("IOUserServerName");
+    CFStringRef matchVal = CFSTR("eevengers.thunderscope");
     fd = IO_OBJECT_NULL;
 
-    /// - Tag: ClientApp_Connect
-    ret = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceNameMatching(name), &iterator);
-    if (ret != kIOReturnSuccess) {
-        printf("Unable to find service for identifier with error: 0x%08x.\n", ret);
-        _print_kerr_details(ret);
-    }
-    else
+    if(1 == sscanf(name, LITEPCIE_CTRL_NAME(%u), &idx))
     {
-        printf("Searching for dext service...\n");
-        while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
-            // Open a connection to this user client as a server to that client, and store the instance in "service"
-            ret = IOServiceOpen(service, mach_task_self_, kIOHIDServerConnectType, &connection);
-
-            if (ret == kIOReturnSuccess) {
-                printf("\tOpened service.\n");
-                fd = connection;
-                break;
-            } else {
-                printf("\tFailed opening service with error: 0x%08x.\n", ret);
-            }
-
-            IOObjectRelease(service);
+        CFMutableDictionaryRef matchingDict = IOServiceNameMatching("litepcie");
+        CFDictionaryAddValue(matchingDict, matchServ, matchVal);
+        ret = IOServiceGetMatchingServices(kIOMainPortDefault, matchingDict, &iterator);
+        if (ret != kIOReturnSuccess) {
+            fprintf(stderr, "Unable to find service for identifier with error: 0x%08x.\n", ret);
+            _print_kerr_details(ret);
         }
-    }
-    IOObjectRelease(iterator);
+        else
+        {
+            while ((service = IOIteratorNext(iterator)) != IO_OBJECT_NULL) {
+                if(idx-- > 0)
+                {
+                    continue;
+                }
+                // Open a connection to this user client as a server to that client, and store the instance in "service"
+                ret = IOServiceOpen(service, mach_task_self_, kIOHIDServerConnectType, &connection);
 
-    if (service == IO_OBJECT_NULL) {
-        printf("Failed to match to device.\n");
+                if (ret == kIOReturnSuccess) {
+                    fd = connection;
+                    break;
+                } else {
+                    fprintf(stderr, "\tFailed opening service with error: 0x%08x.\n", ret);
+                }
+
+                IOObjectRelease(service);
+            }
+        }
+        IOObjectRelease(iterator);
     }
 #else
     fd = open(name, flags);

@@ -37,9 +37,9 @@
 #define TS_DMA_OS_FLAGS     (FILE_ATTRIBUTE_NORMAL | \
                              FILE_FLAG_NO_BUFFERING)
 #elif defined(__APPLE__)
-#define TS_DMA_NAME         "%s"
-#define TS_DMA_NAME_LEN     (16)
-#define TS_DMA_NAME_ARGS(chan, dev)     "litepcie"
+#define TS_DMA_NAME         "thunderscope%u"
+#define TS_DMA_NAME_LEN     (24)
+#define TS_DMA_NAME_ARGS(chan, dev)     (dev)
 #define TS_DMA_OS_FLAGS     (O_CLOEXEC)
 #define APPLE_MMAP_DMA
 #elif defined(__linux__)
