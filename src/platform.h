@@ -99,17 +99,17 @@ extern const uint32_t ZL30260_CONF_SIZE;
 #define TS_PLL_CONF             ZL30250_CONF
 #define TS_PLL_CONF_SIZE        ZL30250_CONF_SIZE
 #else
-#define TS_PLL_BUS_BETA         CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR
-#define TS_PLL_BUS_DEV          CSR_I2CBUS_I2C1_PHY_SPEED_MODE_ADDR
-#define TS_PLL_I2C_ADDR         ZL30260_I2C_ADDR
-#define TS_PLL_CONF             ZL30260_CONF
-#define TS_PLL_CONF_SIZE        ZL30260_CONF_SIZE
-#define TS_PLL_INPUT_IDX        (1)
-#define TS_PLL_INPUT_RATE       (10000000)
-#define TS_PLL_INPUT_SEL        (ZL3026X_INPUT_IC2)
+#define TS_PLL_BUS_BETA             CSR_I2CBUS_I2C0_PHY_SPEED_MODE_ADDR
+#define TS_PLL_BUS_DEV              CSR_I2CBUS_I2C1_PHY_SPEED_MODE_ADDR
+#define TS_PLL_I2C_ADDR             ZL30260_I2C_ADDR
+#define TS_PLL_CONF                 ZL30260_CONF
+#define TS_PLL_CONF_SIZE            ZL30260_CONF_SIZE
+#define TS_PLL_LOCAL_OSC_IDX        (1)
+#define TS_PLL_LOCAL_OSC_RATE       (10000000)
+#define TS_PLL_LOCAL_OSC_SEL        (ZL3026X_INPUT_IC2)
 
-#define TS_PLL_REFIN_IDX        (0)
-#define TS_PLL_REFIN_SEL        (ZL3026X_INPUT_IC1)
+#define TS_PLL_REFIN_IDX            (0)
+#define TS_PLL_REFIN_SEL            (ZL3026X_INPUT_IC1)
 
 #define TS_PLL_REFOUT_CLK_IDX       (0)
 #define TS_PLL_REFOUT_RATE_DEFAULT  (10000000)

@@ -87,6 +87,16 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels);
 int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution);
 
 /**
+ * @brief Configure the Clock Generator Reference Clock In/Out
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param mode Set the Clock IN/OUT mode
+ * @param refclk_freq Set the input clock frequency if in IN mode, or output frequency if in OUT mode
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t mode, uint32_t refclk_freq);
+
+/**
  * @brief Set the calibration parameters for a channel
  * 
  * @param tsChannels Thunderscope Channel handle

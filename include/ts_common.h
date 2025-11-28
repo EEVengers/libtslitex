@@ -34,11 +34,14 @@ extern "C" {
 #define TS_HW_ID_VARIANT_MASK       (1 << 8)
 #define TS_HW_ID_VALID_MASK         (1 << 9)
 
+#define TS_DEFUALT_CLKOUT_FREQ     (10000000) //10 MHz
+
 #define TS_GW_VERSION(major, minor, patch)  ((((major) & 0xFFFF) << 16) + \
                                              (((minor) & 0xFF)   << 8) + \
                                              (((patch) & 0x3F)   << 1))
 
 #define LITEX_VERSION(major, minor)  ((((major) & 0xFFFF) << 16) + ((minor) & 0xFFFF))
+
 /**
  * @brief Opaque Handle to a Thunderscope device instance
  *  
@@ -57,6 +60,13 @@ typedef enum tsChannelTerm_e
     TS_TERM_1M = 0,
     TS_TERM_50 = 1,
 } tsChannelTerm_t;
+
+typedef enum tsRefClockMode_e
+{
+    TS_REFCLK_NONE = 0,
+    TS_REFCLK_OUT = 1,
+    TS_REFCLK_IN = 2
+} tsRefClockMode_t;
 
 typedef struct tsDeviceInfo_s
 {

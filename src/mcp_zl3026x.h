@@ -27,6 +27,10 @@ extern "C" {
 
 #define ZL3026X_OUT_MDIV_MIN_CLK    (375000000)
 
+#define ZL3026X_INPUT_CLK_MIN   (9720000)
+#define ZL3026X_INPUT_CLK_MAX   (156250000)
+
+
 typedef enum zl3026x_input_e {
     ZL3026X_INPUT_IC1,
     ZL3026X_INPUT_IC2,

@@ -187,9 +187,11 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     //Set I2C Clock
     i2c_rate_set(pChan->pll.clkGen, TS_I2C_CLK_RATE);
 
-    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].enable = 1;
-    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].input_freq = TS_PLL_INPUT_RATE;
-    pChan->pll.clkConf.input_select = TS_PLL_INPUT_SEL;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_freq = TS_PLL_LOCAL_OSC_RATE;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_divider = 1;
+    pChan->pll.clkConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+    pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = TS_PLL_REFOUT_RATE_DEFAULT;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_mode = TS_PLL_REFOUT_CLK_MODE;
@@ -615,6 +617,108 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     return  TS_STATUS_OK;
 }
 
+int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t mode, uint32_t refclk_freq)
+{
+    if(tsChannels == NULL)
+    {
+        return TS_STATUS_ERROR;
+    }
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    zl3026x_clk_config_t newConf = ts->pll.clkConf;
+    bool clkout_en = (mode == TS_REFCLK_OUT);
+    bool clkin_en = (mode == TS_REFCLK_IN);
+    uint8_t clkin_divider = 1;
+    uint32_t input_freq = TS_PLL_LOCAL_OSC_RATE;
+
+    //Validate Settings
+    if (clkout_en && refclk_freq == 0)
+    {
+        LOG_ERROR("Invalid Clock Out Frequency, cannot be 0");
+        return TS_INVALID_PARAM;
+    }
+    else if(clkin_en && refclk_freq < ZL3026X_INPUT_CLK_MIN)
+    {
+        LOG_ERROR("Invalid Clock Input Frequency %d Hz.  Must be a minimum of %d Hz", refclk_freq, ZL3026X_INPUT_CLK_MIN);
+        return TS_INVALID_PARAM;
+    }
+
+    if(clkin_en)
+    {
+        //Divide Input Clock Frequency if needed
+        while((refclk_freq / (1 << clkin_divider)) > ZL3026X_INPUT_CLK_MAX)
+        {
+            clkin_divider++;
+            if(clkin_divider > ZL3026X_IN_DIV_8)
+            {
+                LOG_ERROR("Unable to configure external clock input frequency %d Hz", refclk_freq);
+                return TS_INVALID_PARAM;
+            }
+        }
+
+        //Set Input Clock Configuration
+        newConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 0;
+        newConf.in_clks[TS_PLL_REFIN_IDX].enable = 1;
+        newConf.in_clks[TS_PLL_REFIN_IDX].input_freq = refclk_freq / (1 << clkin_divider);
+        newConf.in_clks[TS_PLL_REFIN_IDX].input_divider = (zl3026x_input_div_t)clkin_divider;
+        newConf.input_select = TS_PLL_REFIN_SEL;
+
+        //Input frequency on bypass path
+        input_freq = newConf.in_clks[TS_PLL_REFIN_IDX].input_freq;
+    }
+    else
+    {
+        //Use Internal Reference Clock
+        newConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
+        newConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
+        newConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+
+    }
+
+    //Set Output Clock Configuration
+    if(clkout_en)
+    {
+        //Validate Output Clock Frequency
+        if(refclk_freq > ZL3026X_MAX_PLL_OUT)
+        {
+            LOG_ERROR("Invalid Clock Output Frequency %d Hz.  Must be a maximum of %d Hz", refclk_freq, ZL3026X_MAX_PLL_OUT);
+            return TS_INVALID_PARAM;
+        }
+
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = refclk_freq;
+        if(refclk_freq > input_freq)
+        {
+            newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_pll_select = ZL3026X_PLL_INT_DIV;
+        }
+        else
+        {
+            newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_pll_select = ZL3026X_PLL_BYPASS;
+        }
+    }
+    else
+    {
+        //Disable Output Ref Clock
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 0;
+    }
+
+    mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
+    int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
+    if(clk_len > 0)
+    {
+        if(TS_STATUS_OK != mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len))
+        {
+            return TS_STATUS_ERROR;
+        }
+        ts->pll.clkConf = newConf;
+    }
+    else
+    {
+        LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
+        return clk_len;
+    }
+
+    return TS_STATUS_OK;
+}
 
 int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal)
 {
