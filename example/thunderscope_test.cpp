@@ -322,7 +322,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         printf("Setting Ref In Clock @ %u Hz\n", refclkFreq);
         printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_IN, refclkFreq));
     }
-    else if(outRefClk);
+    else if(outRefClk)
     {
         printf("Setting Ref Out Clock @ %u Hz\n", refclkFreq);
         printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_OUT, refclkFreq));

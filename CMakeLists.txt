@@ -29,7 +29,6 @@ FetchContent_Declare(
     json_c
     GIT_REPOSITORY  https://github.com/json-c/json-c
     GIT_TAG         2372e9518e6ba95b48d37ec162bc7d93b297b52f
-    FIND_PACKAGE_ARGS NAMES json-c
 )
 
 set(BUILD_SHARED_LIBS OFF)
@@ -40,7 +39,6 @@ FetchContent_Declare(
     zlib
     GIT_REPOSITORY  https://github.com/madler/zlib.git
     GIT_TAG         v1.3.1
-    FIND_PACKAGE_ARGS NAMES zlib
 )
 
 set(ZLIB_BUILD_TESTING OFF)

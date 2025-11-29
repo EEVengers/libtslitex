@@ -82,6 +82,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         {
             if(conf.in_clks[ch].enable)
             {
+                LOG_DEBUG("Input Clock %d: Freq %u Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
                 MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider);
                 calLen++;
                 in_ch_bitmap |= (1 << ch);
