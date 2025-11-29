@@ -386,13 +386,20 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
             uint8_t out_div, out_div_med = 1;
             out_div = 0x80; //Phase align output
 
-            if(((conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV) && 
-                (conf.out_clks[ch].output_freq != pll_out)) || 
-                ((conf.out_clks[ch].output_pll_select == ZL3026X_PLL_BYPASS) &&
-                (conf.out_clks[ch].output_freq != scaled_in_freq)))
+            uint32_t clksrc_freq = 0;
+            if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV)
             {
-                out_divide = pll_out / conf.out_clks[ch].output_freq;
-                // Note: output_freq = pll_out / (div_med * div_low)
+                clksrc_freq = pll_out;
+            }
+            else if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_BYPASS)
+            {
+                clksrc_freq = scaled_in_freq;
+            }
+
+            if(conf.out_clks[ch].output_freq != clksrc_freq)
+            {
+                out_divide = clksrc_freq / conf.out_clks[ch].output_freq;
+                // Note: output_freq = clksrc_freq / (div_med * div_low)
                 while(out_divide >= (1 << 7))
                 {
                     if(out_divide & 0x1)
