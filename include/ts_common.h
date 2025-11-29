@@ -119,6 +119,12 @@ typedef struct tsScopeState_s
             uint8_t power_state:1;
             uint8_t pll_state:1;
             uint8_t afe_state:1;
+            uint8_t local_osc_clk:1;
+            uint8_t ref_in_clk:1;
+            uint8_t pll_lock:1;
+            uint8_t pll_low:1;
+            uint8_t pll_high:1;
+            uint8_t pll_alt:1;
         };
     };
     sysHealth_t sys_health;

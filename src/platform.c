@@ -52,6 +52,19 @@ const mcp_clkgen_conf_t ZL30260_CONF[] = {
 
 const uint32_t ZL30260_CONF_SIZE = sizeof(ZL30260_CONF)/sizeof(ZL30260_CONF[0]);
 
+const mcp_clkgen_status_t ZL30260_STATUS[] = {
+    {.addr=0x004C, .mask=0x02},  //XA.XAV Status
+    {.addr=0x004D, .mask=0x02},  //IC1.ICV Status
+    {.addr=0x004E, .mask=0x02},  //IC2.ICV Status
+    {.addr=0x004F, .mask=0x02},  //IC3.ICV Status
+    {.addr=0x0048, .mask=0x04},  //APLL.ALK Status
+    {.addr=0x0048, .mask=0x40},  //APLL.AIFL Status
+    {.addr=0x0048, .mask=0x10},  //APLL.AIFH Status
+    {.addr=0x0048, .mask=0x01},  //APLL.SELREF Status
+};
+
+const uint32_t ZL30260_STATUS_SIZE = sizeof(ZL30260_STATUS)/sizeof(ZL30260_STATUS[0]);
+
 const mcp_clkgen_conf_t ZL30250_CONF[] = {
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0009, .value=0x02},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0621, .value=0x08},

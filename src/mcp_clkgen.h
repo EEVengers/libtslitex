@@ -33,6 +33,11 @@ typedef struct mcp_clkgen_conf_s {
     };
 }mcp_clkgen_conf_t;
 
+typedef struct mcp_clkgen_status_s {
+    uint16_t addr;
+    uint8_t mask;
+} mcp_clkgen_status_t;
+
 /**
  * @brief Configure the PLL with a list of registers.
  * 
@@ -42,6 +47,15 @@ typedef struct mcp_clkgen_conf_s {
  * @return int32_t TS_STATUS_OK if the configuration was applied, else TS_STATUS_ERROR
  */
 int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen);
+
+/**
+ * @brief Get a set of status flags for the PLL
+ * @param device I2C device for the zl30260/zl30250
+ * @param statusData Array of status registers to read
+ * @param statusLen Length of the status array
+ * @return int32_t Bitfield of status flags, or TS_STATUS_ERROR on error
+ */
+int32_t mcp_clkgen_status(i2c_t device, const mcp_clkgen_status_t* statusData, uint32_t statusLen);
 
 /**
  * @brief Debug function to print all register values and compare them to written values

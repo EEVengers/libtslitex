@@ -191,6 +191,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_freq = TS_PLL_LOCAL_OSC_RATE;
     pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_divider = 0;
     pChan->pll.clkConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+    pChan->pll.clkConf.alternate_select = TS_PLL_INPUT_NONE_SEL;
     pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = TS_PLL_REFOUT_RATE_DEFAULT;
@@ -530,7 +531,22 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
     //Update XADC values
     ts_channel_health_update(pTsHdl);
 
-    return ((ts_channel_t*)tsChannels)->status;
+    //Update Clock Status
+    int32_t clock_status =  mcp_clkgen_status(pTsHdl->pll.clkGen, TS_PLL_STATUS, TS_PLL_STATUS_LEN);
+    if(clock_status < 0)
+    {
+        LOG_ERROR("Failed to read PLL Clock Status %d", clock_status);
+    }
+    else
+    {
+        pTsHdl->status.local_osc_clk = (clock_status & (1 << TS_PLL_LOCAL_OSC_IDX)) ? 1:0;
+        pTsHdl->status.ref_in_clk = (clock_status & (1 << TS_PLL_REFIN_IDX)) ? 1:0;
+        pTsHdl->status.pll_lock = (clock_status & (1 << TS_PLL_STATUS_APLL_LOCK)) ? 1:0;
+        pTsHdl->status.pll_low = (clock_status & (1 << TS_PLL_STATUS_APLL_LOW)) ? 1:0;
+        pTsHdl->status.pll_high = (clock_status & (1 << TS_PLL_STATUS_APLL_HIGH)) ? 1:0;
+        pTsHdl->status.pll_alt = (clock_status & (1 << TS_PLL_STATUS_APLL_ALT)) ? 1:0;
+    }
+    return pTsHdl->status;
 }
 
 int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution)
@@ -656,11 +672,11 @@ int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t 
         }
 
         //Set Input Clock Configuration
-        newConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 0;
         newConf.in_clks[TS_PLL_REFIN_IDX].enable = 1;
         newConf.in_clks[TS_PLL_REFIN_IDX].input_freq = refclk_freq / (1 << clkin_divider);
         newConf.in_clks[TS_PLL_REFIN_IDX].input_divider = (zl3026x_input_div_t)clkin_divider;
         newConf.input_select = TS_PLL_REFIN_SEL;
+        newConf.alternate_select = TS_PLL_LOCAL_OSC_SEL;
 
         //Input frequency on bypass path
         input_freq = newConf.in_clks[TS_PLL_REFIN_IDX].input_freq;
@@ -668,9 +684,9 @@ int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t 
     else
     {
         //Use Internal Reference Clock
-        newConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
         newConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
         newConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+        newConf.alternate_select = TS_PLL_INPUT_NONE_SEL;
     }
 
     //Set Output Clock Configuration

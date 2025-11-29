@@ -264,7 +264,8 @@ def create_status_tab(notebook, delegate):
         "adc_sample_rate", "adc_sample_bits", "adc_sample_resolution", "adc_lost_buffer_count",
         "flags", "adc_state", "power_state", "pll_state", "afe_state",
         "sys_health.temp_c", "sys_health.vcc_int", "sys_health.vcc_aux",
-        "sys_health.vcc_bram", "sys_health.frontend_power_good", "sys_health.acq_power_good"
+        "sys_health.vcc_bram", "sys_health.frontend_power_good", "sys_health.acq_power_good",
+        "local_osc_clk", "ref_in_clk", "pll_lock", "pll_low", "pll_high", "pll_alt"
     ]
 
     # Create labels and fields for each key

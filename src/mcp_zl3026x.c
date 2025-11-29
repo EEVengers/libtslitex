@@ -83,7 +83,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
             if(conf.in_clks[ch].enable)
             {
                 LOG_DEBUG("Input Clock %d: Freq %u Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
-                MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider);
+                MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider | ZL3026X_VALTIME_DEFAULT);
                 calLen++;
                 in_ch_bitmap |= (1 << ch);
                 scaled_in_freq = conf.in_clks[ch].input_freq / (1 << conf.in_clks[ch].input_divider);
@@ -240,7 +240,12 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     MCP_ADD_REG_WRITE(&confData[calLen], 0x0101, pll_int_div & 0x0F); //PLL Output Integer Divide
     calLen++;
 
-    MCP_ADD_REG_WRITE(&confData[calLen], 0x0102, (conf.input_select & 0x7)); //PLL Input
+    uint8_t apll_cr3 = (conf.input_select & 0x7); //PLL Input
+    if(conf.alternate_select != ZL3026X_INPUT_NONE)
+    {
+        apll_cr3 |= 0x80 | ((conf.alternate_select & 0x07) << 3); //Enable Input Monitoring and Alternate PLL Input
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0102, apll_cr3); //PLL Input
     calLen++;
 
     //PLL AFBDIV

@@ -59,6 +59,35 @@ int32_t mcp_clkgen_config(i2c_t device, const mcp_clkgen_conf_t* confData, uint3
     return TS_STATUS_OK;
 }
 
+int32_t mcp_clkgen_status(i2c_t device, const mcp_clkgen_status_t* statusData, uint32_t statusLen)
+{
+    int32_t status = 0;
+    
+    if(NULL == statusData)
+    {
+        //Error
+        return TS_STATUS_ERROR;
+    }
+    LOG_DEBUG("Status Regs:");
+
+    for(uint32_t i = 0; i < statusLen; i++)
+    {
+        uint8_t data[1] = {0};
+        if(!i2c_read(device, (uint32_t)ZL302XX_READ_REG(statusData[i].addr),
+                        data, 1, ZL302XX_ADDR_LEN))
+        {
+            LOG_DEBUG("\t%06X (NACK!)", (uint32_t)ZL302XX_READ_REG(statusData[i].addr));
+            return TS_STATUS_ERROR;
+        }
+        LOG_DEBUG("\t%06X : %02X", (uint32_t)ZL302XX_WRITE_REG(statusData[i].addr), data[0]);
+
+        status |= (data[0] & statusData[i].mask) ? (1 << i) : 0;
+    }
+
+    return status;
+}
+
+
 void mcp_clkgen_regdump(i2c_t device, const mcp_clkgen_conf_t* confData, uint32_t confLen)
 {
     
