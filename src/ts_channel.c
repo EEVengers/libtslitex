@@ -539,8 +539,8 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
     }
     else
     {
-        pTsHdl->status.local_osc_clk = (clock_status & (1 << TS_PLL_LOCAL_OSC_IDX)) ? 1:0;
-        pTsHdl->status.ref_in_clk = (clock_status & (1 << TS_PLL_REFIN_IDX)) ? 1:0;
+        pTsHdl->status.local_osc_clk = (clock_status & (1 << TS_PLL_STATUS_IC2_VALID)) ? 1:0;
+        pTsHdl->status.ref_in_clk = (clock_status & (1 << TS_PLL_STATUS_IC1_VALID)) ? 1:0;
         pTsHdl->status.pll_lock = (clock_status & (1 << TS_PLL_STATUS_APLL_LOCK)) ? 1:0;
         pTsHdl->status.pll_low = (clock_status & (1 << TS_PLL_STATUS_APLL_LOW)) ? 1:0;
         pTsHdl->status.pll_high = (clock_status & (1 << TS_PLL_STATUS_APLL_HIGH)) ? 1:0;
