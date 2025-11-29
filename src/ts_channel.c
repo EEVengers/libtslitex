@@ -189,7 +189,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
     pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
     pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_freq = TS_PLL_LOCAL_OSC_RATE;
-    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_divider = 1;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_divider = 0;
     pChan->pll.clkConf.input_select = TS_PLL_LOCAL_OSC_SEL;
     pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
@@ -627,7 +627,7 @@ int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t 
     zl3026x_clk_config_t newConf = ts->pll.clkConf;
     bool clkout_en = (mode == TS_REFCLK_OUT);
     bool clkin_en = (mode == TS_REFCLK_IN);
-    uint8_t clkin_divider = 1;
+    uint8_t clkin_divider = 0;
     uint32_t input_freq = TS_PLL_LOCAL_OSC_RATE;
 
     //Validate Settings
@@ -645,7 +645,7 @@ int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t 
     if(clkin_en)
     {
         //Divide Input Clock Frequency if needed
-        while((refclk_freq / (1 << clkin_divider)) > ZL3026X_INPUT_CLK_MAX)
+        while((refclk_freq / (1UL << clkin_divider)) > ZL3026X_INPUT_CLK_MAX)
         {
             clkin_divider++;
             if(clkin_divider > ZL3026X_IN_DIV_8)
@@ -671,7 +671,6 @@ int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t 
         newConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
         newConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
         newConf.input_select = TS_PLL_LOCAL_OSC_SEL;
-
     }
 
     //Set Output Clock Configuration

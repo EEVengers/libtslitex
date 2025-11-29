@@ -306,7 +306,7 @@ static void test_io(file_t fd, bool isBeta)
 }
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
-    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip, bool is12bit)
+    uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip, bool is12bit, bool inRefClk, bool outRefClk, uint32_t refclkFreq)
 {
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
@@ -316,6 +316,17 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     uint8_t* sampleBuffer = (uint8_t*)calloc(TS_SAMPLE_BUFFER_SIZE, 0x1000);
     uint64_t sampleLen = 0;
     uint32_t sampleRate = 1000000000;
+
+    if(inRefClk)
+    {
+        printf("Setting Ref In Clock @ %u Hz\n", refclkFreq);
+        printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_IN, refclkFreq));
+    }
+    else if(outRefClk);
+    {
+        printf("Setting Ref Out Clock @ %u Hz\n", refclkFreq);
+        printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_OUT, refclkFreq));
+    }
 
     //Setup and Enable Channels
     tsChannelParam_t chConfig = {0};
@@ -615,6 +626,9 @@ int main(int argc, char** argv)
     uint8_t term = 0;
     bool bitslip = false;
     bool mode12bit = false;
+    bool refInClk = false;
+    bool refOutClk = false;
+    uint32_t refclkFreq = 0;
 
     struct optparse_long argList[] = {
         {"dev",      'd', OPTPARSE_REQUIRED},
@@ -622,6 +636,8 @@ int main(int argc, char** argv)
         {"bw",       'b', OPTPARSE_REQUIRED},
         {"voltsuv",  'v', OPTPARSE_REQUIRED},
         {"offsetuv", 'o', OPTPARSE_REQUIRED},
+        {"refinclk", 'i', OPTPARSE_REQUIRED},
+        {"refoutclk",'r', OPTPARSE_REQUIRED},
         {"ac",       'a', OPTPARSE_NONE},
         {"term",     't', OPTPARSE_NONE},
         {"bits",     's', OPTPARSE_NONE},
@@ -657,6 +673,16 @@ int main(int argc, char** argv)
             break;
         case 'o':
             offset_uV = strtol(options.optarg, NULL, 0);
+            argCount+=2;
+            break;
+        case 'i':
+            refInClk = true;
+            refclkFreq = strtol(options.optarg, NULL, 0);
+            argCount+=2;
+            break;
+        case 'r':
+            refOutClk = true;
+            refclkFreq = strtol(options.optarg, NULL, 0);
             argCount+=2;
             break;
         case 'a':
@@ -788,7 +814,7 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit);
+        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit, refInClk, refOutClk, refclkFreq);
     }
     // Flash test
     else if(0 == strcmp(arg, "flash"))

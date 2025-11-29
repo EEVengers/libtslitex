@@ -217,7 +217,7 @@ int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelP
     return TS_STATUS_ERROR;
 }
 
-int32_t thunderscopeChannelRefClockSet(tsHandle_t ts, tsRefClockMode_t mode, uint32_t refclk_freq)
+int32_t thunderscopeRefClockSet(tsHandle_t ts, tsRefClockMode_t mode, uint32_t refclk_freq)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
