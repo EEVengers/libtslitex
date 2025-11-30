@@ -27,6 +27,8 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#else
+#include <csignal>
 #endif
 
 #define OPTPARSE_IMPLEMENTATION
@@ -95,9 +97,27 @@ uint32_t _SPI_CONTROL_START = (1 << 0);
 uint32_t _SPI_CONTROL_LENGTH = (1 << 8);
 uint32_t _SPI_STATUS_DONE = (1 << 0);
 
+static volatile bool g_program_loop = true;
 
 /* Main */
 /*------*/
+
+#ifdef _WIN32
+BOOL WINAPI SigHandler(DWORD ctrlType)
+{
+    if(ctrlType == CTRL_C_EVENT)
+    {
+        g_program_loop = false;
+        return TRUE;
+    }
+    return FALSE;
+}
+#else
+extern "C" void SigHandler(int s)
+{
+    g_program_loop = false;
+}
+#endif
 
 void configure_frontend_ldo(file_t fd, uint32_t enable) {
     uint32_t control_value = litepcie_readl(fd, CSR_FRONTEND_CONTROL_ADDR);
@@ -389,7 +409,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         auto startTime = std::chrono::steady_clock::now();
         if(sampleBuffer != NULL)
         {
-            for(uint32_t loop=0; loop < 8; loop++)
+            for(uint32_t loop=0; loop < 150; loop++)
             {
                 uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x100);
                 //Collect Samples
@@ -407,12 +427,15 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 
                 if(watch_bitslip)
                 {
+                    tsScopeState_t scopeState = {0};
                     bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
                     printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_FRAME_DEBUG_ADDR);
                     printf("FRAME Debug: 0x%08x\r\n", dbg_monitor);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
                     printf("RANGE: 0x%08x\r\n", dbg_monitor);
+                    thunderscopeStatusGet(tsHdl, &scopeState);
+                    printf("Scope State Flags: 0x%08x\r\n", scopeState.flags);
                 }
             }
         }
@@ -587,6 +610,61 @@ static void flash_test(char* arg, file_t fd)
     }
 }
 
+static void test_clock(uint32_t idx, bool refoutclk, bool refinclk, uint32_t refclkfreq)
+{
+    tsHandle_t tsHdl = thunderscopeOpen(idx, false);
+    bool firstStatus = false;
+
+    if(tsHdl)
+    {
+#ifdef _WIN32
+        SetConsoleCtrlHandler(SigHandler, TRUE);
+#else
+        struct sigaction signalHandler;
+        signalHandler.sa_handler = SigHandler;
+        sigemptyset(&signalHandler.sa_mask);
+        signalHandler.sa_flags = 0;
+        sigaction(SIGINT, &signalHandler, NULL);
+#endif
+        if(refinclk)
+        {
+            printf("Setting Ref In Clock @ %u Hz\n", refclkfreq);
+            printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_IN, refclkfreq));
+        }
+        else if(refoutclk)
+        {
+            printf("Setting Ref Out Clock @ %u Hz\n", refclkfreq);
+            printf("\t Result: %i\n", thunderscopeRefClockSet(tsHdl, TS_REFCLK_OUT, refclkfreq));
+        }
+
+        while (g_program_loop)
+        {
+            tsScopeState_t state = {0};
+            thunderscopeStatusGet(tsHdl, &state);
+            // if(!firstStatus)
+            // {
+            //     printf("\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A\x1b[A");
+            //     firstStatus = true;
+            // }
+            printf("-------\r\n");
+            printf("PLL Status:\r\n");
+            printf("\tPLL LOCK - %01x\r\n", state.pll_lock);
+            printf("\tPLL HIGH - %01x\r\n", state.pll_high);
+            printf("\tPLL LOW  - %01x\r\n", state.pll_low);
+            printf("\tPLL ALT  - %01x\r\n", state.pll_alt);
+            printf("INPUT Clock Status:\r\n");
+            printf("\tLocal Valid  - %01x\r\n", state.local_osc_clk);
+            printf("\tREF IN Valid - %01x\r\n", state.ref_in_clk);
+            printf("\r\n-- PRESS CTRL+C TO STOP --\r\n");
+            
+            std::cout.flush();
+            std::this_thread::sleep_until(awake_time());
+        }
+
+        thunderscopeClose(tsHdl);
+    }
+}
+
 static void print_help(void)
 {
     printf("TS Test Util Usage:\r\n");
@@ -603,6 +681,9 @@ static void print_help(void)
     printf("\t\t -o <uvolts>      Channel Offset [microvolt]\r\n");
     printf("\t\t -a               AC Couple\r\n");
     printf("\t\t -t               50 Ohm termination\r\n");
+    printf("\t refclk - run the PLL source with different clock configurations\r\n");
+    printf("\t\t -i <hz>          Set the Ref IN Clock frequency\r\n");
+    printf("\t\t -r <hz>          Set the Ref OUT Clock frequency\r\n");
 }
 
 /* Main */
@@ -715,6 +796,29 @@ int main(int argc, char** argv)
         exit(EXIT_FAILURE);
     }
 
+    if(0 == strcmp(arg, "list"))
+    {
+        uint32_t i = 0;
+        tsDeviceInfo_t infos;
+        while(TS_STATUS_OK == thunderscopeListDevices(i, &infos))
+        {
+            if(i==0)
+            {
+                printf("Found ThunderScope(s):\n");
+            }
+            printf("\t%3d | Serial Number: %s\n", i, infos.serial_number);
+            printf("\t    | HW Rev:    0x%x\n", infos.hw_id);
+            printf("\t    | GW Rev:    0x%x\n", infos.gw_id);
+            printf("\t    | LiteX Rev: 0x%x\n", infos.litex);
+            i++;
+        }
+        if(i == 0)
+        {
+            printf("No devices present\n");
+        }
+        exit(EXIT_SUCCESS);
+    }
+
     if(0 == strcmp(arg, "clk"))
     {
         mcp_clkgen_conf_t test_conf[1024];
@@ -820,6 +924,11 @@ int main(int argc, char** argv)
     else if(0 == strcmp(arg, "flash"))
     {
         flash_test(argv[argCount+1], fd);
+    }
+    // Test REF Clock Modes
+    else if(0 == strcmp(arg, "clock"))
+    {
+        test_clock(idx, refOutClk, refInClk, refclkFreq);
     }
     //Print Help
     else

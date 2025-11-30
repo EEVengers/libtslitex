@@ -32,7 +32,6 @@ static uint64_t mcp_zl3026x_selected_input_freq(zl3026x_clk_config_t *conf);
 int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl3026x_clk_config_t conf)
 {
     int32_t calLen = 0;
-    uint32_t scaled_in_freq = 0;
     // Reference App Note ZLAN-590
     // https://ww1.microchip.com/downloads/aemDocuments/documents/TCG/ApplicationNotes/ApplicationNotes/ConfigurationSequenceZLAN-590.pdf
 
@@ -82,12 +81,10 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         {
             if(conf.in_clks[ch].enable)
             {
-                LOG_DEBUG("Input Clock %d: Freq %u Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
+                LOG_DEBUG("Input Clock %d: Freq %llu Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
                 MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider | ZL3026X_VALTIME_DEFAULT);
                 calLen++;
                 in_ch_bitmap |= (1 << ch);
-                scaled_in_freq = conf.in_clks[ch].input_freq / (1 << conf.in_clks[ch].input_divider);
-                break;
             }
         }
         if(in_ch_bitmap == 0)
@@ -399,7 +396,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
             }
             else if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_BYPASS)
             {
-                clksrc_freq = scaled_in_freq;
+                clksrc_freq = mcp_zl3026x_selected_input_freq(&conf);
             }
 
             if(conf.out_clks[ch].output_freq != clksrc_freq)

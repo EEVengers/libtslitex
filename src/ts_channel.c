@@ -193,6 +193,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     pChan->pll.clkConf.input_select = TS_PLL_LOCAL_OSC_SEL;
     pChan->pll.clkConf.alternate_select = TS_PLL_INPUT_NONE_SEL;
     pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
+    pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].input_divider = 0;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = TS_PLL_REFOUT_RATE_DEFAULT;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_mode = TS_PLL_REFOUT_CLK_MODE;
