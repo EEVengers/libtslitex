@@ -27,11 +27,11 @@ include(FetchContent)
 # json-c Library
 FetchContent_Declare(
     json_c
-    GIT_REPOSITORY  https://github.com/json-c/json-c
+    GIT_REPOSITORY  https://github.com/json-c/json-c.git
     GIT_TAG         2372e9518e6ba95b48d37ec162bc7d93b297b52f
 )
-
-set(BUILD_SHARED_LIBS OFF)
+set(JSON_C_BUILD_APPS OFF)
+set(JSON_C_BUILD_SHARED_LIBS OFF)
 FetchContent_MakeAvailable(json_c)
 
 # zlib Library
@@ -129,11 +129,16 @@ set_target_properties(tslitex PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/$<0:>
     ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_ARCHIVE_OUTPUT_DIRECTORY}/$<0:>)
 
-target_link_libraries(tslitex PUBLIC litepcie)
-target_link_libraries(tslitex PRIVATE json-c-static zlibstatic)
+target_link_libraries(tslitex 
+    PUBLIC 
+        "$<LINK_LIBRARY:WHOLE_ARCHIVE,litepcie>"
+    PRIVATE
+        json-c-static
+        zlibstatic
+)
 
 if(APPLE)
-    target_link_libraries(tslitex PRIVATE "-framework IOKit")
+    target_link_libraries(tslitex PRIVATE "$<LINK_LIBRARY:FRAMEWORK,IOKit>")
 endif()
 
 target_include_directories(tslitex PUBLIC include)
@@ -153,9 +158,19 @@ set_target_properties(tslitex_static PROPERTIES
 
 set_target_properties(tslitex_static PROPERTIES POSITION_INDEPENDENT_CODE 1)
 
-target_link_libraries(tslitex_static PUBLIC litepcie)
-target_link_libraries(tslitex_static PRIVATE json-c-static zlibstatic)
+target_link_libraries(tslitex_static 
+    PUBLIC
+        "$<LINK_LIBRARY:WHOLE_ARCHIVE,litepcie>"
+    PRIVATE
+        json-c-static
+        zlibstatic
+)
+
 target_include_directories(tslitex_static PUBLIC include)
+
+if(APPLE)
+    target_link_libraries(tslitex_static PRIVATE "$<LINK_LIBRARY:FRAMEWORK,IOKit>")
+endif()
 
 file(COPY ${TS_LIB_HEADERS} DESTINATION ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/include)
 

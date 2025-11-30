@@ -203,7 +203,7 @@ class ChannelCtrl(ttk.Frame):
 # Create the main application window
 root = tk.Tk()
 root.title("Thunderscope Channel Tester")
-root.geometry("600x450")  # Set the window size
+root.geometry("650x650")  # Set the window size
 
 # Create an instance of TsDelegate
 delegate = TsDelegate(root)

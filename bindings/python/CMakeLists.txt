@@ -27,16 +27,19 @@ add_custom_command(
 )
 
 add_custom_target(pydeps
-    DEPENDS tslitex/tslitex.c
-    ${CMAKE_CURRENT_BINARY_DIR}/lib/include/thunderscope.h
-    tslitex_static
+    DEPENDS 
+        tslitex/tslitex.c
+        ${CMAKE_CURRENT_BINARY_DIR}/lib/include/thunderscope.h
+        tslitex_static
 )
 
 set(PY_BIND_LIBS tslitex_static)
 
 if(WIN32)
-    list(APPEND PY_BIND_LIBS setupapi)
-    list(APPEND PY_BIND_LIBS litepcie json-c-static zlibstatic)
+list(APPEND PY_BIND_LIBS setupapi)
+list(APPEND PY_BIND_LIBS litepcie json-c-static zlibstatic)
+else()
+list(APPEND PY_BIND_LIBS litepcie json-c z)
 endif()
 list(JOIN PY_BIND_LIBS "\", \"" PY_EXT_LIBS)
 
