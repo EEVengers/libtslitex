@@ -68,6 +68,16 @@ int32_t thunderscopeChannelConfigGet(tsHandle_t ts, uint32_t channel, tsChannelP
 int32_t thunderscopeChannelConfigSet(tsHandle_t ts, uint32_t channel, tsChannelParam_t* conf);
 
 /**
+ * @brief Set the mode and frequency for the external Reference Clock
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param mode Set the Clock IN/OUT mode
+ * @param refclk_freq Set the input clock frequency if in IN mode, or output frequency if in OUT mode
+ * @return int32_t TS_STATUS_OK if the reference clock was configured
+ */
+int32_t thunderscopeRefClockSet(tsHandle_t ts, tsRefClockMode_t mode, uint32_t refclk_freq);
+
+/**
  * @brief Get the status for the Thunderscope device
  * 
  * @param ts Handle to the Thunderscope device

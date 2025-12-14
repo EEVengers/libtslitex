@@ -32,7 +32,6 @@ static uint64_t mcp_zl3026x_selected_input_freq(zl3026x_clk_config_t *conf);
 int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl3026x_clk_config_t conf)
 {
     int32_t calLen = 0;
-
     // Reference App Note ZLAN-590
     // https://ww1.microchip.com/downloads/aemDocuments/documents/TCG/ApplicationNotes/ApplicationNotes/ConfigurationSequenceZLAN-590.pdf
 
@@ -82,10 +81,10 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         {
             if(conf.in_clks[ch].enable)
             {
-                MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider);
+                LOG_DEBUG("Input Clock %d: Freq %llu Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
+                MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider | ZL3026X_VALTIME_DEFAULT);
                 calLen++;
                 in_ch_bitmap |= (1 << ch);
-                break;
             }
         }
         if(in_ch_bitmap == 0)
@@ -197,6 +196,8 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         }
     }
 
+    LOG_DEBUG("Calculated APLL Output Freq: %llu Hz", pll_out);
+
     uint64_t pll_vco = 4200000000;
     uint32_t pll_int_div = pll_vco/pll_out;
     //validate pll_int_div 4-15
@@ -236,7 +237,12 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     MCP_ADD_REG_WRITE(&confData[calLen], 0x0101, pll_int_div & 0x0F); //PLL Output Integer Divide
     calLen++;
 
-    MCP_ADD_REG_WRITE(&confData[calLen], 0x0102, (conf.input_select & 0x7)); //PLL Input
+    uint8_t apll_cr3 = (conf.input_select & 0x7); //PLL Input
+    if(conf.alternate_select != ZL3026X_INPUT_NONE)
+    {
+        apll_cr3 |= 0x80 | ((conf.alternate_select & 0x07) << 3); //Enable Input Monitoring and Alternate PLL Input
+    }
+    MCP_ADD_REG_WRITE(&confData[calLen], 0x0102, apll_cr3); //PLL Input
     calLen++;
 
     //PLL AFBDIV
@@ -369,6 +375,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     {
         if(conf.out_clks[ch].enable)
         {
+            LOG_DEBUG("Setting Output CLK %d to %llu Hz", ch, conf.out_clks[ch].output_freq);
             /**
              * The frequency of the clock from the medium-speed divider is divided by LSDIV+1.
              *
@@ -382,32 +389,42 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
             uint8_t out_div, out_div_med = 1;
             out_div = 0x80; //Phase align output
 
+            uint32_t clksrc_freq = 0;
             if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_INT_DIV)
             {
-                if(conf.out_clks[ch].output_freq != pll_out)
-                {
-                    out_divide = pll_out / conf.out_clks[ch].output_freq;
-                    // Note: output_freq = pll_out / (div_med * div_low)
-                    while(out_divide >= (1 << 7))
-                    {
-                        if(out_divide & 0x1)
-                        {
-                            LOG_ERROR("======== TODO: FIX OUTPUT DIVIDE =======");
-                            return TS_STATUS_ERROR;
-                        }
-                        out_divide >>= 1;
-                        out_div_low <<= 1;
-                    }
-
-                    out_div_med = out_divide;
-                    
-                    out_div |= (out_div_med-1) & 0x7F;
-                }
+                clksrc_freq = pll_out;
+            }
+            else if(conf.out_clks[ch].output_pll_select == ZL3026X_PLL_BYPASS)
+            {
+                clksrc_freq = mcp_zl3026x_selected_input_freq(&conf);
             }
 
+            if(conf.out_clks[ch].output_freq != clksrc_freq)
+            {
+                out_divide = clksrc_freq / conf.out_clks[ch].output_freq;
+                // Note: output_freq = clksrc_freq / (div_med * div_low)
+                while(out_divide >= (1 << 7))
+                {
+                    if(out_divide & 0x1)
+                    {
+                        LOG_ERROR("======== TODO: FIX OUTPUT DIVIDE =======");
+                        return TS_STATUS_ERROR;
+                    }
+                    out_divide >>= 1;
+                    out_div_low <<= 1;
+                }
+
+                out_div_med = out_divide;
+                
+                out_div |= (out_div_med-1) & 0x7F;
+            }
+            LOG_DEBUG("Setting Output CLK %d LDIV to %02X", ch, out_div_low);
+
+            LOG_DEBUG("Setting Output CLK %d CR1 to %02X", ch, out_div);
             MCP_ADD_REG_WRITE(&confData[calLen], 0x0200+(ch*0x10), out_div);
             calLen++;
             
+            LOG_DEBUG("Setting Output CLK %d mode to %02X", ch, conf.out_clks[ch].output_mode);
             MCP_ADD_REG_WRITE(&confData[calLen], 0x0201+(ch*0x10), conf.out_clks[ch].output_mode);
             calLen++;
 

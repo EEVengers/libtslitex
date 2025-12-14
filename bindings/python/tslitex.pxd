@@ -79,6 +79,12 @@ cdef extern from "thunderscope.h":
         uint8_t power_state
         uint8_t pll_state
         uint8_t afe_state
+        uint8_t local_osc_clk
+        uint8_t ref_in_clk
+        uint8_t pll_lock
+        uint8_t pll_low
+        uint8_t pll_high
+        uint8_t pll_alt
         sysHealth_t sys_health
 
     ctypedef tsScopeState_s tsScopeState_t

@@ -27,12 +27,19 @@ extern "C" {
 
 #define ZL3026X_OUT_MDIV_MIN_CLK    (375000000)
 
+#define ZL3026X_INPUT_CLK_MIN   (9720000)
+#define ZL3026X_INPUT_CLK_MAX   (156250000)
+
+#define ZL3026X_VALTIME_DEFAULT     (0x0C)
+
+
 typedef enum zl3026x_input_e {
     ZL3026X_INPUT_IC1,
     ZL3026X_INPUT_IC2,
     ZL3026X_INPUT_IC3,
     ZL3026X_INPUT_XO,
-    ZL3026X_INPUT_XO_DBL
+    ZL3026X_INPUT_XO_DBL,
+    ZL3026X_INPUT_NONE
 } zl3026x_input_t;
 
 typedef enum zl3026x_input_div_e {
@@ -85,6 +92,7 @@ typedef struct zl3026x_clk_config_s {
     zl3026x_input_clk_t in_clks[ZL3026X_NUM_INPUT_CLK];
     zl3026x_output_clk_t out_clks[ZL3026X_NUM_OUTPUT_CLK];
     zl3026x_input_t input_select;
+    zl3026x_input_t alternate_select;
     //TODO Add GPIO Config
 } zl3026x_clk_config_t;
 
