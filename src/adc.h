@@ -98,10 +98,10 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en);
  * 
  * @param adc Pointer to a ADC instance
  * @param sample_rate Rate of the ADC Sample clock (Hz)
- * @param resolution Resolution mode setting for the ADC.
+ * @param mode Resolution mode setting for the ADC.
  * @return int32_t TS_STATUS_OK if the mode was applied successfully
  */
-int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t resolution);
+int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleFormat_t mode);
 
 /**
  * @brief Set the calibration on the ADC

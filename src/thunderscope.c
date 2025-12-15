@@ -243,17 +243,17 @@ int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* state)
     return TS_STATUS_OK;
 }
 
-int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution)
+int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, tsSampleFormat_t mode)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
 
     if(pInst && pInst->initialized)
     {
-        int32_t status = ts_channel_sample_rate_set(pInst->pChannel, rate, resolution);
+        int32_t status = ts_channel_sample_rate_set(pInst->pChannel, rate, mode);
         if(status == TS_STATUS_OK)
         {
             //Target 100Hz interrupt rate
-            pInst->samples.interrupt_rate  = 1 + ((((resolution == 256) ? rate : 2*rate) / 
+            pInst->samples.interrupt_rate  = 1 + ((((mode == TS_8_BIT) ? rate : 2*rate) / 
                                                 (DMA_BUFFER_SIZE)) / pInst->interrupt_rate);
 
             LOG_DEBUG("DMA Interrupt Rate is 1/%d MB", pInst->samples.interrupt_rate);

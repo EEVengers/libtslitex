@@ -61,6 +61,14 @@ typedef enum tsChannelTerm_e
     TS_TERM_50 = 1,
 } tsChannelTerm_t;
 
+typedef enum tsSampleFormat_e
+{
+    TS_8_BIT = 0,
+    TS_12_BIT_LSB,
+    TS_12_BIT_MSB,
+    TS_14_BIT
+}tsSampleFormat_t;
+
 typedef enum tsRefClockMode_e
 {
     TS_REFCLK_NONE = 0,

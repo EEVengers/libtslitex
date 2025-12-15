@@ -91,10 +91,10 @@ int32_t thunderscopeStatusGet(tsHandle_t ts, tsScopeState_t* conf);
  * 
  * @param ts Handle to the Thunderscope device
  * @param rate Sample Rate to collect (samples per second)
- * @param resolution Resolution to sample at. 256 or 4096
+ * @param mode Sample Capture Mode
  * @return int32_t TS_STATUS_OK if the Thunderscope was configured
 */
-int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution);
+int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, tsSampleFormat_t mode);
 
 /**
  * @brief Set the approximate rate at which interrupts will fire

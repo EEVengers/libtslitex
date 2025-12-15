@@ -107,6 +107,7 @@ int32_t hmcad15xx_power_mode(hmcad15xxADC_t* adc, hmcad15xxPower_t power)
                                 HMCAD15_DUAL_CH_1_SLP : 0;
                     break;
                 case HMCAD15_QUAD_CHANNEL:
+                case HMCAD15_PREC_QUAD_CHANNEL:
                     data |= adc->channelCfg[0].active == 0 ? 
                                 HMCAD15_QUAD_CH_0_SLP : 0;
                     data |= adc->channelCfg[1].active == 0 ? 
@@ -264,7 +265,7 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmc
     if(((adc->mode == HMCAD15_SINGLE_CHANNEL) && (sample_rate < HMCAD15_SINGLE_LOW_CLK_THRESHOLD)) ||
         ((adc->mode == HMCAD15_DUAL_CHANNEL) && (sample_rate < HMCAD15_DUAL_LOW_CLK_THRESHOLD)) ||
         ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)) ||
-        ((adc->mode == HMCAD15_14BIT_QUAD_CHANNEL) && (sample_rate < HMCAD15_PREC_LOW_CLK_THRESHOLD)))
+        ((adc->mode == HMCAD15_PREC_QUAD_CHANNEL) && (sample_rate < HMCAD15_PREC_LOW_CLK_THRESHOLD)))
     {
         adc->low_clk = 1;
     }
@@ -340,7 +341,7 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
             HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
-        case HMCAD15_14BIT_QUAD_CHANNEL:
+        case HMCAD15_PREC_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_1;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
             HMCAD15_SAMPLE_MODE_PREC |
@@ -372,6 +373,7 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
                     HMCAD15_CH_INVERT_D2(adc->channelCfg[1].invert);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_PREC_QUAD_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
             in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
             in34 = HMCAD15_SEL_CH_3(adc->channelCfg[2].input);
@@ -407,6 +409,7 @@ static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc)
             hmcad15xxRegWrite(adc, HMCAD15_REG_COARSE_GAIN_2, cgain);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_PREC_QUAD_CHANNEL:
             cgain = HMCAD15_CGAIN_Q1(adc->channelCfg[0].coarse);
             cgain |= HMCAD15_CGAIN_Q2(adc->channelCfg[1].coarse);
             cgain |= HMCAD15_CGAIN_Q3(adc->channelCfg[2].coarse);
