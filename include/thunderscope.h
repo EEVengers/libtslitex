@@ -130,6 +130,45 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable);
 int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len);
 
 /**
+ * @brief Read data into a buffer and retrieve sample count
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param buffer Pointer to a buffer to store data samples in
+ * @param len Length of the data buffer available
+ * @param count Pointer to store the sample count number of the first sample in the buffer
+ * @return int32_t Length of the data read into the buffer, or a negative error code
+ */
+int32_t thunderscopeReadCount(tsHandle_t ts, uint8_t* buffer, uint32_t len, uint64_t* count);
+
+/**
+ * @brief Configure External Sync Interface
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param mode Set the sync interface to in, out, or disabled
+ * @return int32_t TS_STATUS_OK if the mode was set successfully, or a negative error code
+ */
+int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode);
+
+/**
+ * @brief Assert a Sync Event on the External Sync Interface
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @return int32_t TS_STATUS_OK if the sync event was asserted set successfully, or a negative error code
+ */
+int32_t thunderscopeEventSyncAssert(tsHandle_t ts);
+
+/**
+ * @brief Poll for a Event
+ * 
+ * Event struct will be populated with TS_EVT_NONE if there is no event available.
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param evt Pointer to an Event struct to fill
+ * @return int32_t TS_STATUS_OK if polled successfully, or a negative error code
+ */
+int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt);
+
+/**
  * @brief Load a new user firmware onto the Thunderscope
  * 
  * @param ts Handle to the Thunderscope device

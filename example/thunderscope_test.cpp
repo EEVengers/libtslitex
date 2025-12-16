@@ -408,6 +408,8 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     if(rate > 0)
     {
         uint64_t data_sum = 0;
+        uint64_t sample_number = 0;
+        tsEvent_t event;
         //Start Sample capture
         thunderscopeDataEnable(tsHdl, 1);
         litepcie_writel(fd, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_STAT_RST_OFFSET);
@@ -419,7 +421,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
             {
                 uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x100);
                 //Collect Samples
-                int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
+                int32_t readRes = thunderscopeReadCount(tsHdl, sampleBuffer, readReq, &sample_number);
                 if(readRes < 0)
                 {
                     printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
@@ -427,6 +429,11 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 if(readRes != readReq)
                 {
                     printf("WARN: Read returned different number of bytes for loop %" PRIu32 ", %" PRIu32 " / %" PRIu32 "\r\n", loop, readRes, readReq);
+                }
+                thunderscopeEventGet(tsHdl, &event);
+                if(event.ID != TS_EVT_NONE)
+                {
+                    printf("Found EXT Event at sample %lld\r\n", event.event_sample); 
                 }
                 data_sum += readReq;
                 sampleLen = readRes;
