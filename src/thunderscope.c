@@ -16,6 +16,7 @@
 #include "ts_calibration.h"
 #include "ts_channel.h"
 #include "samples.h"
+#include "events.h"
 #include "gpio.h"
 #include "ts_fw_manager.h"
 #include "ts_data.h"
@@ -153,6 +154,8 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         return NULL;
     }
 
+    events_initialize(pInst->ctrl);
+
     // Get Factory Build Info
     ts_data_factory_id_get(&pInst->fw, &pInst->identity);
 
@@ -188,6 +191,7 @@ int32_t thunderscopeClose(tsHandle_t ts)
         ts_channel_destroy(pInst->pChannel);
     }
     
+    thunderscopeExtSyncConfig(pInst->ctrl, TS_SYNC_DISABLED);
     gpio_group_set(pInst->status_leds, pInst->signals->disabled);
     litepcie_close(pInst->ctrl);
     free(pInst);
@@ -447,8 +451,7 @@ int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode)
     int32_t status = TS_STATUS_ERROR;
     if(pInst)
     {
-        //TODO
-        status = TS_STATUS_OK;
+        status = events_set_ext_sync(pInst->ctrl, mode);
     }
 
     return status;
@@ -460,8 +463,7 @@ int32_t thunderscopeEventSyncAssert(tsHandle_t ts)
     int32_t status = TS_STATUS_ERROR;
     if(pInst)
     {
-        //TODO
-        status = TS_STATUS_OK;
+        status = events_set_immediate(pInst->ctrl);
     }
 
     return status;
@@ -473,11 +475,18 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
     int32_t status = TS_STATUS_ERROR;
     if(pInst && evt)
     {
-        //TODO
-        evt->ID = TS_EVT_NONE;
-        evt->event_sample = 0;
-        status = TS_STATUS_OK;
+        if( !events_available(pInst->ctrl) )
+        {
+            evt->ID = TS_EVT_NONE;
+            evt->event_sample = 0;
+            status = TS_STATUS_OK;
+        }
+        else
+        {
+            status = events_get_next(pInst->ctrl, evt);
+        }
 
+        #if 0
         //Debug
         static uint64_t lastBuffer = 0;
         if(pInst->samples.driver_buffer_count > (lastBuffer + 950))
@@ -486,6 +495,7 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
             evt->event_sample = ((pInst->samples.driver_buffer_count * DMA_BUFFER_SIZE)) / pInst->bytes_per_sample + 200;
             lastBuffer = pInst->samples.driver_buffer_count;
         }
+        #endif
     }
 
     return status;
