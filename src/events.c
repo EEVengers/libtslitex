@@ -15,7 +15,7 @@
 #define EVENT_SOURCE_SW         (0)
 #define EVENT_SOURCE_EXT_SYNC   (1)
 
-#define EVENT_OUTPUT_EXT_SYNC   (0)
+#define EVENT_OUTPUT_EXT_SYNC   (16)
 
 #define EXT_SYNC_DISABLED       (0x00)
 #define EXT_SYNC_INPUT          (0x01)
@@ -47,6 +47,7 @@ int32_t events_initialize(file_t handle)
     evt_data = EVENT_SOURCE_ENABLE_DEFAULT;
     // Flush the Event queue
     evt_data |= EVENT_FIFO_FLUSH;
+    LOG_DEBUG("Set Event Control 0x%X", evt_data);
     litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_data);
 
     // Default Ext Pulse Width
@@ -82,9 +83,12 @@ int32_t events_get_next(file_t handle, tsEvent_t *pEvent)
     }
 
     uint32_t evt_data = 0;
+    
+    // Read Sample, then Type
+    pEvent->event_sample = (uint64_t)litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR) << 32;
+    pEvent->event_sample += (uint64_t)litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR + 4);
 
-    // Read Type, then Sample
-    evt_data = litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR);
+    evt_data = litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READSOURCE_ADDR);
     if((evt_data & 0xF) == EVENT_SOURCE_SW)
     {
         pEvent->ID = TS_EVT_HOST_SW;
@@ -98,9 +102,6 @@ int32_t events_get_next(file_t handle, tsEvent_t *pEvent)
         LOG_ERROR("Unknown Event Source: %x", evt_data);
         return TS_STATUS_ERROR;
     }
-
-    pEvent->event_sample = (uint64_t)litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR);
-    pEvent->event_sample += ((uint64_t)litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR + 4) << 32);
 
     return TS_STATUS_OK;
 }
@@ -154,6 +155,7 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
     
     int32_t status = TS_STATUS_ERROR;
     uint32_t evt_ctrl = litepcie_readl(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR);
+    evt_ctrl &= ~(EVENT_FIFO_FLUSH);
 
     switch (mode)
     {
@@ -163,6 +165,7 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
         evt_ctrl &= ~(1UL << EVENT_OUTPUT_EXT_SYNC);
         //Disable Ext Input
         evt_ctrl &= ~(1UL << EVENT_SOURCE_EXT_SYNC);
+        LOG_DEBUG("Set Event Control 0x%X", evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_EXT_SYNC_CONTROL_ADDR, EXT_SYNC_DISABLED);
         status = TS_STATUS_OK;
@@ -172,21 +175,32 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
     {
         //Disable Ext Output
         evt_ctrl &= ~(1UL << EVENT_OUTPUT_EXT_SYNC);
+        litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
+
+        //Set SYNC IN
+        litepcie_writel(handle, CSR_EVENTS_EXT_SYNC_CONTROL_ADDR, EXT_SYNC_INPUT);
+        
         //Enable Ext Input
         evt_ctrl |= (1UL << EVENT_SOURCE_EXT_SYNC);
+        LOG_DEBUG("Set Event Control 0x%X", evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
-        litepcie_writel(handle, CSR_EVENTS_EXT_SYNC_CONTROL_ADDR, EXT_SYNC_INPUT);
         status = TS_STATUS_OK;
         break;
     }
     case TS_SYNC_OUT:
     {
-        //Enable Ext Output
-        evt_ctrl |= (1UL << EVENT_OUTPUT_EXT_SYNC);
         //Disable Ext Input
         evt_ctrl &= ~(1UL << EVENT_SOURCE_EXT_SYNC);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
+        
+        //Set SYNC OUT
         litepcie_writel(handle, CSR_EVENTS_EXT_SYNC_CONTROL_ADDR, EXT_SYNC_OUTPUT);
+        
+        //Enable Ext Output
+        evt_ctrl |= (1UL << EVENT_OUTPUT_EXT_SYNC);
+        LOG_DEBUG("Set Event Control 0x%X", evt_ctrl);
+        litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
+
         status = TS_STATUS_OK;
         break;
     }

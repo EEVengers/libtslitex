@@ -18,6 +18,7 @@ extern "C" {
 #include "ts_common.h"
 #include "liblitepcie.h"
 
+#define TS_BYTES_PER_SAMPLE_COUNT   (128/8) // 128-bit sample bus
 
 /**
  * @brief Set Initial conditions of the Event Controls

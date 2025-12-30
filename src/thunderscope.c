@@ -484,6 +484,16 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
         else
         {
             status = events_get_next(pInst->ctrl, evt);
+
+            if(status == TS_STATUS_OK)
+            {
+                //Adjust Sample Count by Samples/increment
+                evt->event_sample = evt->event_sample * TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample;
+            }
+            else
+            {
+                evt->event_sample = 0;
+            }
         }
 
         #if 0
