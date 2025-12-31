@@ -162,6 +162,7 @@ cdef class Thunderscope:
     cdef uint8_t _enable
     cdef tslitex.tsHandle_t _tsHandle
     cdef public object channel
+    cdef tslitex.tsSyncMode_t _ext_sync
     
     def __cinit__(self, dev_idx: int, skip_init:bool = False):
         self.channel = []
@@ -170,6 +171,7 @@ cdef class Thunderscope:
         self._sample_rate = 1000000000
         self._sample_mode = 256
         self._enable = 0
+        self._ext_sync = tslitex.tsSyncMode_t.TS_SYNC_DISABLED
         self._tsHandle = <tslitex.tsHandle_t> tslitex.thunderscopeOpen(dev_idx, <bint>skip_init)
         if self._tsHandle == NULL:
             raise ValueError(f"Failed to Open Thunderscope Device {dev_idx}", dev_idx)
@@ -269,6 +271,24 @@ cdef class Thunderscope:
         retval = <int32_t> tslitex.thunderscopeSampleInterruptRate(<tslitex.tsHandle_t>self._tsHandle,
                                                                     <uint32_t> rate)
 
+    @property
+    def SyncMode(self):
+        return self._ext_sync
+
+    @SyncMode.setter
+    def SyncMode(self, mode : tslitex.tsSyncMode_t):
+        self._ext_sync = mode
+        tslitex.thunderscopeExtSyncConfig(<tslitex.tsHandle_t>self._tsHandle, mode)
+
+    def Event(self):
+        cdef tslitex.tsEvent_t evt
+        tslitex.thunderscopeEventGet(<tslitex.tsHandle_t>self._tsHandle, &evt)
+        return (evt.ID, evt.event_sample)
+
+    def EventTrigger(self):
+        with nogil:
+            tslitex.thunderscopeEventSyncAssert(<tslitex.tsHandle_t>self._tsHandle)
+
     def Enable(self, enable: bool):
         cdef int32_t retVal = tslitex.thunderscopeDataEnable(self._tsHandle, <uint8_t>enable)
         if retVal != tslitex.TS_STATUS_OK:
@@ -280,3 +300,9 @@ cdef class Thunderscope:
             readLen = tslitex.thunderscopeRead(self._tsHandle, &data[0], dlen)
         return readLen
 
+    def ReadCount(self, uint8_t[:] data not None, dataLen: int):
+        cdef uint32_t dlen = <uint32_t> dataLen
+        cdef uint64_t sample
+        with nogil:
+            readLen = tslitex.thunderscopeReadCount(self._tsHandle, &data[0], dlen, &sample)
+        return readLen, sample
