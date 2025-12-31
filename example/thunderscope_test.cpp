@@ -180,6 +180,134 @@ auto awake_time()
     return now() + 500ms;
 }
 
+void save_8bit_wav(int8_t* sampleBuffer, uint64_t sampleLen, uint8_t numChan, uint32_t sampleRate)
+{    
+    AudioFile<int8_t> outWav;
+    outWav.setBitDepth(8);
+    outWav.setNumChannels(numChan);
+    if(numChan > 2)
+    {
+        outWav.setSampleRate(sampleRate/4);
+    }
+    else
+    {
+        outWav.setSampleRate(sampleRate/numChan);
+    }
+
+    AudioFile<int8_t>::AudioBuffer wavBuffer;
+    wavBuffer.resize(numChan);
+    if(numChan == 1)
+    {
+        wavBuffer[0].resize(sampleLen);
+    }
+    else if(numChan == 2)
+    {
+        wavBuffer[0].resize(sampleLen/numChan);
+        wavBuffer[1].resize(sampleLen/numChan);
+    }
+    else
+    {
+        wavBuffer[0].resize(sampleLen/4);
+        wavBuffer[1].resize(sampleLen/4);
+        wavBuffer[2].resize(sampleLen/4);
+
+        if(numChan == 4)
+        {
+            wavBuffer[3].resize(sampleLen/4);
+        }
+    }
+    uint64_t sample = 0;
+    uint64_t idx = 0;
+    while (idx < sampleLen)
+    {
+        wavBuffer[0][sample] = sampleBuffer[idx++];
+        if(numChan > 1)
+        {
+            wavBuffer[1][sample] = sampleBuffer[idx++];
+            if(numChan > 2)
+            {
+                wavBuffer[2][sample] = sampleBuffer[idx++];
+                if(numChan == 4)
+                {
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    idx++;
+                }
+            }
+        }
+        sample++;
+    }
+    outWav.setAudioBuffer(wavBuffer);
+    outWav.printSummary();
+    outWav.save(TS_TEST_WAV_FILE);
+}
+
+void save_16bit_wav(int16_t* sampleBuffer, uint64_t sampleLen, uint8_t numChan, uint32_t sampleRate)
+{    
+    AudioFile<int16_t> outWav;
+    outWav.setBitDepth(16);
+    outWav.setNumChannels(numChan);
+    if(numChan > 2)
+    {
+        outWav.setSampleRate(sampleRate/4);
+    }
+    else
+    {
+        outWav.setSampleRate(sampleRate/numChan);
+    }
+
+    AudioFile<int16_t>::AudioBuffer wavBuffer;
+    wavBuffer.resize(numChan);
+    if(numChan == 1)
+    {
+        wavBuffer[0].resize(sampleLen);
+    }
+    else if(numChan == 2)
+    {
+        wavBuffer[0].resize(sampleLen/numChan);
+        wavBuffer[1].resize(sampleLen/numChan);
+    }
+    else
+    {
+        wavBuffer[0].resize(sampleLen/4);
+        wavBuffer[1].resize(sampleLen/4);
+        wavBuffer[2].resize(sampleLen/4);
+
+        if(numChan == 4)
+        {
+            wavBuffer[3].resize(sampleLen/4);
+        }
+    }
+    uint64_t sample = 0;
+    uint64_t idx = 0;
+    while (idx < sampleLen)
+    {
+        wavBuffer[0][sample] = sampleBuffer[idx++];
+        if(numChan > 1)
+        {
+            wavBuffer[1][sample] = sampleBuffer[idx++];
+            if(numChan > 2)
+            {
+                wavBuffer[2][sample] = sampleBuffer[idx++];
+                if(numChan == 4)
+                {
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    idx++;
+                }
+            }
+        }
+        sample++;
+    }
+    outWav.setAudioBuffer(wavBuffer);
+    outWav.printSummary();
+    outWav.save(TS_TEST_WAV_FILE);
+}
+
 static void test_io(file_t fd, bool isBeta)
 {
     printf("\x1b[1m[> Scratch register test:\x1b[0m\n");
@@ -524,66 +652,14 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         outFile.flush();
         outFile.close();
         
-        AudioFile<uint8_t> outWav;
-        is12bit ? outWav.setBitDepth(16) : outWav.setBitDepth(8);
-        outWav.setNumChannels(numChan);
-        if(numChan > 2)
+        if(is12bit || is14bit)
         {
-            outWav.setSampleRate(sampleRate/4);
+            save_16bit_wav((int16_t*)sampleBuffer, sampleLen/2, numChan, sampleRate);
         }
         else
         {
-            outWav.setSampleRate(sampleRate/numChan);
+            save_8bit_wav((int8_t*)sampleBuffer, sampleLen, numChan, sampleRate);
         }
-
-        AudioFile<uint8_t>::AudioBuffer wavBuffer;
-        wavBuffer.resize(numChan);
-        if(numChan == 1)
-        {
-            wavBuffer[0].resize(sampleLen);
-        }
-        else if(numChan == 2)
-        {
-            wavBuffer[0].resize(sampleLen/numChan);
-            wavBuffer[1].resize(sampleLen/numChan);
-        }
-        else
-        {
-            wavBuffer[0].resize(sampleLen/4);
-            wavBuffer[1].resize(sampleLen/4);
-            wavBuffer[2].resize(sampleLen/4);
-
-            if(numChan == 4)
-            {
-                wavBuffer[3].resize(sampleLen/4);
-            }
-        }
-        uint64_t sample = 0;
-        uint64_t idx = 0;
-        while (idx < sampleLen)
-        {
-            wavBuffer[0][sample] = sampleBuffer[idx++];
-            if(numChan > 1)
-            {
-                wavBuffer[1][sample] = sampleBuffer[idx++];
-                if(numChan > 2)
-                {
-                    wavBuffer[2][sample] = sampleBuffer[idx++];
-                    if(numChan == 4)
-                    {
-                        wavBuffer[3][sample] = sampleBuffer[idx++];
-                    }
-                    else
-                    {
-                        idx++;
-                    }
-                }
-            }
-            sample++;
-        }
-        outWav.setAudioBuffer(wavBuffer);
-        outWav.printSummary();
-        outWav.save(TS_TEST_WAV_FILE);
     }
     free(sampleBuffer);
 }
@@ -739,6 +815,9 @@ static void print_help(void)
     printf("\t\t -o <uvolts>      Channel Offset [microvolt]\r\n");
     printf("\t\t -a               AC Couple\r\n");
     printf("\t\t -t               50 Ohm termination\r\n");
+    printf("\t\t -m               12-bit mode\r\n");
+    printf("\t\t -e               External Sync Input\r\n");
+    printf("\t\t -y               External Sync Output\r\n");
     printf("\t refclk - run the PLL source with different clock configurations\r\n");
     printf("\t\t -i <hz>          Set the Ref IN Clock frequency\r\n");
     printf("\t\t -r <hz>          Set the Ref OUT Clock frequency\r\n");
