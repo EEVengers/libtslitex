@@ -191,7 +191,7 @@ int32_t thunderscopeClose(tsHandle_t ts)
         ts_channel_destroy(pInst->pChannel);
     }
     
-    thunderscopeExtSyncConfig(pInst->ctrl, TS_SYNC_DISABLED);
+    thunderscopeExtSyncConfig(ts, TS_SYNC_DISABLED);
     gpio_group_set(pInst->status_leds, pInst->signals->disabled);
     litepcie_close(pInst->ctrl);
     free(pInst);
