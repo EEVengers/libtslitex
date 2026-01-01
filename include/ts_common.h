@@ -138,6 +138,25 @@ typedef struct tsScopeState_s
     sysHealth_t sys_health;
 } tsScopeState_t;
 
+typedef enum tsSyncMode_e
+{
+    TS_SYNC_DISABLED,
+    TS_SYNC_OUT,
+    TS_SYNC_IN
+} tsSyncMode_t;
+
+typedef enum tsEventType_e
+{
+    TS_EVT_NONE = 0,
+    TS_EVT_HOST_SW,
+    TS_EVT_EXT_SYNC,
+} tsEventType_t;
+
+typedef struct tsEvent_s
+{
+    tsEventType_t ID;
+    uint64_t event_sample;
+} tsEvent_t;
 
 #ifdef __cplusplus
 }

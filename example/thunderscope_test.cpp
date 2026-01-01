@@ -51,6 +51,7 @@
 #include "../src/ts_channel.h"
 #include "../src/samples.h"
 #include "../src/platform.h"
+#include "../src/events.h"
 
 #include "thunderscope.h"
 
@@ -177,6 +178,134 @@ auto awake_time()
 {
     using std::chrono::operator"" ms;
     return now() + 500ms;
+}
+
+void save_8bit_wav(int8_t* sampleBuffer, uint64_t sampleLen, uint8_t numChan, uint32_t sampleRate)
+{    
+    AudioFile<int8_t> outWav;
+    outWav.setBitDepth(8);
+    outWav.setNumChannels(numChan);
+    if(numChan > 2)
+    {
+        outWav.setSampleRate(sampleRate/4);
+    }
+    else
+    {
+        outWav.setSampleRate(sampleRate/numChan);
+    }
+
+    AudioFile<int8_t>::AudioBuffer wavBuffer;
+    wavBuffer.resize(numChan);
+    if(numChan == 1)
+    {
+        wavBuffer[0].resize(sampleLen);
+    }
+    else if(numChan == 2)
+    {
+        wavBuffer[0].resize(sampleLen/numChan);
+        wavBuffer[1].resize(sampleLen/numChan);
+    }
+    else
+    {
+        wavBuffer[0].resize(sampleLen/4);
+        wavBuffer[1].resize(sampleLen/4);
+        wavBuffer[2].resize(sampleLen/4);
+
+        if(numChan == 4)
+        {
+            wavBuffer[3].resize(sampleLen/4);
+        }
+    }
+    uint64_t sample = 0;
+    uint64_t idx = 0;
+    while (idx < sampleLen)
+    {
+        wavBuffer[0][sample] = sampleBuffer[idx++];
+        if(numChan > 1)
+        {
+            wavBuffer[1][sample] = sampleBuffer[idx++];
+            if(numChan > 2)
+            {
+                wavBuffer[2][sample] = sampleBuffer[idx++];
+                if(numChan == 4)
+                {
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    idx++;
+                }
+            }
+        }
+        sample++;
+    }
+    outWav.setAudioBuffer(wavBuffer);
+    outWav.printSummary();
+    outWav.save(TS_TEST_WAV_FILE);
+}
+
+void save_16bit_wav(int16_t* sampleBuffer, uint64_t sampleLen, uint8_t numChan, uint32_t sampleRate)
+{    
+    AudioFile<int16_t> outWav;
+    outWav.setBitDepth(16);
+    outWav.setNumChannels(numChan);
+    if(numChan > 2)
+    {
+        outWav.setSampleRate(sampleRate/4);
+    }
+    else
+    {
+        outWav.setSampleRate(sampleRate/numChan);
+    }
+
+    AudioFile<int16_t>::AudioBuffer wavBuffer;
+    wavBuffer.resize(numChan);
+    if(numChan == 1)
+    {
+        wavBuffer[0].resize(sampleLen);
+    }
+    else if(numChan == 2)
+    {
+        wavBuffer[0].resize(sampleLen/numChan);
+        wavBuffer[1].resize(sampleLen/numChan);
+    }
+    else
+    {
+        wavBuffer[0].resize(sampleLen/4);
+        wavBuffer[1].resize(sampleLen/4);
+        wavBuffer[2].resize(sampleLen/4);
+
+        if(numChan == 4)
+        {
+            wavBuffer[3].resize(sampleLen/4);
+        }
+    }
+    uint64_t sample = 0;
+    uint64_t idx = 0;
+    while (idx < sampleLen)
+    {
+        wavBuffer[0][sample] = sampleBuffer[idx++];
+        if(numChan > 1)
+        {
+            wavBuffer[1][sample] = sampleBuffer[idx++];
+            if(numChan > 2)
+            {
+                wavBuffer[2][sample] = sampleBuffer[idx++];
+                if(numChan == 4)
+                {
+                    wavBuffer[3][sample] = sampleBuffer[idx++];
+                }
+                else
+                {
+                    idx++;
+                }
+            }
+        }
+        sample++;
+    }
+    outWav.setAudioBuffer(wavBuffer);
+    outWav.printSummary();
+    outWav.save(TS_TEST_WAV_FILE);
 }
 
 static void test_io(file_t fd, bool isBeta)
@@ -327,7 +456,7 @@ static void test_io(file_t fd, bool isBeta)
 
 static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_t bandwidth, 
     uint32_t volt_scale_uV, int32_t offset_uV, uint8_t ac_couple, uint8_t term, bool watch_bitslip,
-    bool is12bit, bool is14bit, bool inRefClk, bool outRefClk, uint32_t refclkFreq)
+    bool is12bit, bool is14bit, bool inRefClk, bool outRefClk, uint32_t refclkFreq, bool wait_for_sync, bool sync_out)
 {
     uint8_t numChan = 0;
     tsHandle_t tsHdl = thunderscopeOpen(idx, false);
@@ -407,7 +536,21 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     //Only start taking samples if the rate is non-zero
     if(rate > 0)
     {
+        if(wait_for_sync)
+        {
+            thunderscopeExtSyncConfig(tsHdl, TS_SYNC_IN);
+        }
+        else if(sync_out)
+        {
+            thunderscopeExtSyncConfig(tsHdl, TS_SYNC_OUT);
+        }
+
+        printf("Capturing data buffers:\r\n");
         uint64_t data_sum = 0;
+        uint64_t sample_number = 0;
+        uint64_t event_sample = 0;
+        tsEvent_t event;
+        bool sync_found = false;
         //Start Sample capture
         thunderscopeDataEnable(tsHdl, 1);
         litepcie_writel(fd, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_STAT_RST_OFFSET);
@@ -415,11 +558,25 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         auto startTime = std::chrono::steady_clock::now();
         if(sampleBuffer != NULL)
         {
-            for(uint32_t loop=0; loop < 150; loop++)
+            uint32_t loop=0;
+            while(!sync_found)
             {
+                ++loop;
+                if(sync_out && loop == 50)
+                {
+                    // events_set_periodic(fd, 1000000);
+                    thunderscopeEventSyncAssert(tsHdl);
+                }
+               
+                //Force Event at 100
+                if(loop == 100)
+                {
+                    sync_found = true;
+                }
+                
                 uint32_t readReq = (TS_SAMPLE_BUFFER_SIZE * 0x100);
                 //Collect Samples
-                int32_t readRes = thunderscopeRead(tsHdl, sampleBuffer, readReq);
+                int32_t readRes = thunderscopeReadCount(tsHdl, sampleBuffer, readReq, &sample_number);
                 if(readRes < 0)
                 {
                     printf("ERROR: Sample Get Buffers failed with %" PRIi32, readRes);
@@ -428,9 +585,26 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 {
                     printf("WARN: Read returned different number of bytes for loop %" PRIu32 ", %" PRIu32 " / %" PRIu32 "\r\n", loop, readRes, readReq);
                 }
+                printf("Buffer %d Starts with Sample %lld\r\n", loop, sample_number);
+                
                 data_sum += readReq;
                 sampleLen = readRes;
                 
+                if(wait_for_sync || sync_out)
+                {
+                    thunderscopeEventGet(tsHdl, &event);
+                    while(event.ID != TS_EVT_NONE)
+                    {
+                        printf("Found EXT Event %d at sample %lld\r\n", event.ID, event.event_sample);
+                        event_sample = event.event_sample;
+                        thunderscopeEventGet(tsHdl, &event);
+                    }
+                    if(event_sample != 0 && event_sample < (sample_number + sampleLen))
+                    {
+                        sync_found = true;
+                    }
+                }
+
                 if(watch_bitslip)
                 {
                     tsScopeState_t scopeState = {0};
@@ -443,6 +617,12 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                     thunderscopeStatusGet(tsHdl, &scopeState);
                     printf("Scope State Flags: 0x%08x\r\n", scopeState.flags);
                 }
+            }
+            
+            if(wait_for_sync || sync_out)
+            {
+                // events_set_periodic(fd, 0);
+                thunderscopeExtSyncConfig(tsHdl, TS_SYNC_DISABLED);
             }
         }
         auto endTime = std::chrono::steady_clock::now();
@@ -472,66 +652,14 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
         outFile.flush();
         outFile.close();
         
-        AudioFile<uint8_t> outWav;
-        is12bit ? outWav.setBitDepth(16) : outWav.setBitDepth(8);
-        outWav.setNumChannels(numChan);
-        if(numChan > 2)
+        if(is12bit || is14bit)
         {
-            outWav.setSampleRate(sampleRate/4);
+            save_16bit_wav((int16_t*)sampleBuffer, sampleLen/2, numChan, sampleRate);
         }
         else
         {
-            outWav.setSampleRate(sampleRate/numChan);
+            save_8bit_wav((int8_t*)sampleBuffer, sampleLen, numChan, sampleRate);
         }
-
-        AudioFile<uint8_t>::AudioBuffer wavBuffer;
-        wavBuffer.resize(numChan);
-        if(numChan == 1)
-        {
-            wavBuffer[0].resize(sampleLen);
-        }
-        else if(numChan == 2)
-        {
-            wavBuffer[0].resize(sampleLen/numChan);
-            wavBuffer[1].resize(sampleLen/numChan);
-        }
-        else
-        {
-            wavBuffer[0].resize(sampleLen/4);
-            wavBuffer[1].resize(sampleLen/4);
-            wavBuffer[2].resize(sampleLen/4);
-
-            if(numChan == 4)
-            {
-                wavBuffer[3].resize(sampleLen/4);
-            }
-        }
-        uint64_t sample = 0;
-        uint64_t idx = 0;
-        while (idx < sampleLen)
-        {
-            wavBuffer[0][sample] = sampleBuffer[idx++];
-            if(numChan > 1)
-            {
-                wavBuffer[1][sample] = sampleBuffer[idx++];
-                if(numChan > 2)
-                {
-                    wavBuffer[2][sample] = sampleBuffer[idx++];
-                    if(numChan == 4)
-                    {
-                        wavBuffer[3][sample] = sampleBuffer[idx++];
-                    }
-                    else
-                    {
-                        idx++;
-                    }
-                }
-            }
-            sample++;
-        }
-        outWav.setAudioBuffer(wavBuffer);
-        outWav.printSummary();
-        outWav.save(TS_TEST_WAV_FILE);
     }
     free(sampleBuffer);
 }
@@ -687,6 +815,9 @@ static void print_help(void)
     printf("\t\t -o <uvolts>      Channel Offset [microvolt]\r\n");
     printf("\t\t -a               AC Couple\r\n");
     printf("\t\t -t               50 Ohm termination\r\n");
+    printf("\t\t -m               12-bit mode\r\n");
+    printf("\t\t -e               External Sync Input\r\n");
+    printf("\t\t -y               External Sync Output\r\n");
     printf("\t refclk - run the PLL source with different clock configurations\r\n");
     printf("\t\t -i <hz>          Set the Ref IN Clock frequency\r\n");
     printf("\t\t -r <hz>          Set the Ref OUT Clock frequency\r\n");
@@ -716,6 +847,8 @@ int main(int argc, char** argv)
     bool refInClk = false;
     bool refOutClk = false;
     uint32_t refclkFreq = 0;
+    bool extTrigger = false;
+    bool syncOut = false;
 
     struct optparse_long argList[] = {
         {"dev",      'd', OPTPARSE_REQUIRED},
@@ -729,6 +862,8 @@ int main(int argc, char** argv)
         {"term",     't', OPTPARSE_NONE},
         {"bits",     's', OPTPARSE_NONE},
         {"12bit",    'm', OPTPARSE_NONE},
+        {"ext",      'e', OPTPARSE_NONE},
+        {"sync",     'y', OPTPARSE_NONE},
         {0}
     };
 
@@ -790,6 +925,14 @@ int main(int argc, char** argv)
             break;
         case 'p':
             mode14bit = true;
+            argCount++;
+            break;
+        case 'e':
+            extTrigger = true;
+            argCount++;
+            break;
+        case 'y':
+            syncOut = true;
             argCount++;
             break;
         case '?':
@@ -928,7 +1071,11 @@ int main(int argc, char** argv)
     // Setup Channel, record samples to buffer, save buffer to file
     else if(0 == strcmp(arg, "capture"))
     {
-        test_capture(fd, idx, channelBitmap, bandwidth, volt_scale_uV, offset_uV, ac_couple, term, bitslip, mode12bit, mode14bit, refInClk, refOutClk, refclkFreq);
+        test_capture(fd, idx, channelBitmap, bandwidth,
+            volt_scale_uV, offset_uV, ac_couple, term,
+            bitslip, mode12bit, mode14bit,
+            refInClk, refOutClk, refclkFreq,
+            extTrigger, syncOut);
     }
     // Flash test
     else if(0 == strcmp(arg, "flash"))

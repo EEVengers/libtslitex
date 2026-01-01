@@ -6,7 +6,7 @@
 #
 # Copyright (C) 2025 / Nate Meyer  / nate.devel@gmail.com
 
-from libc.stdint cimport uint32_t, int32_t, uint8_t
+from libc.stdint cimport uint32_t, int32_t, uint8_t, uint64_t
 
 cdef extern from "thunderscope.h":
 
@@ -89,6 +89,26 @@ cdef extern from "thunderscope.h":
 
     ctypedef tsScopeState_s tsScopeState_t
 
+    cpdef enum tsSyncMode_e:
+        TS_SYNC_DISABLED
+        TS_SYNC_OUT
+        TS_SYNC_IN
+
+    ctypedef tsSyncMode_e tsSyncMode_t
+
+    cpdef enum tsEventType_e:
+        TS_EVT_NONE
+        TS_EVT_HOST_SW
+        TS_EVT_EXT_SYNC
+
+    ctypedef tsEventType_e tsEventType_t
+
+    cdef struct tsEvent_s:
+        tsEventType_t ID
+        uint64_t event_sample
+
+    ctypedef tsEvent_s tsEvent_t
+
     int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t* info)
 
     tsHandle_t thunderscopeOpen(uint32_t devIdx, bint skip_init)
@@ -108,6 +128,14 @@ cdef extern from "thunderscope.h":
     int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 
     int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len) nogil
+
+    int32_t thunderscopeReadCount(tsHandle_t ts, uint8_t* buffer, uint32_t len, uint64_t* count) nogil
+
+    int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode)
+
+    int32_t thunderscopeEventSyncAssert(tsHandle_t ts) nogil
+
+    int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
 
     int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len) nogil
 

@@ -74,6 +74,7 @@ set(TS_SOURCES
     src/spi.c
     src/afe.c
     src/adc.c
+    src/events.c
     src/hmcad15xx.c
     src/lmh6518.c
     src/mcp4728.c
@@ -95,6 +96,7 @@ set(TS_HEADERS
     src/spi.h
     src/adc.h
     src/afe.h
+    src/events.h
     src/mcp_clkgen.h
     src/mcp_zl3026x.h
     src/platform.h

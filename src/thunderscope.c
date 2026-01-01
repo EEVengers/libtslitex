@@ -16,6 +16,7 @@
 #include "ts_calibration.h"
 #include "ts_channel.h"
 #include "samples.h"
+#include "events.h"
 #include "gpio.h"
 #include "ts_fw_manager.h"
 #include "ts_data.h"
@@ -43,6 +44,7 @@ typedef struct ts_inst_s
     bool initialized;
     ts_fw_manager_t fw;
     uint32_t interrupt_rate;
+    uint8_t bytes_per_sample;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -138,6 +140,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
             free(pInst);
             return NULL;
         }
+        pInst->bytes_per_sample = 1;
         pInst->initialized = true;
     }
 
@@ -150,6 +153,8 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         free(pInst);
         return NULL;
     }
+
+    events_initialize(pInst->ctrl);
 
     // Get Factory Build Info
     ts_data_factory_id_get(&pInst->fw, &pInst->identity);
@@ -186,6 +191,7 @@ int32_t thunderscopeClose(tsHandle_t ts)
         ts_channel_destroy(pInst->pChannel);
     }
     
+    thunderscopeExtSyncConfig(ts, TS_SYNC_DISABLED);
     gpio_group_set(pInst->status_leds, pInst->signals->disabled);
     litepcie_close(pInst->ctrl);
     free(pInst);
@@ -377,6 +383,26 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
     if(enable)
     {
         gpio_group_set(pInst->status_leds, pInst->signals->active);
+        //Get current sample increment
+        pInst->bytes_per_sample = ts_channel_scope_status(pInst->pChannel).adc_sample_bits / 8;
+        uint8_t active_channels = 0;
+        for(uint8_t ch=0; ch < TS_NUM_CHANNELS; ch++)
+        {
+            tsChannelParam_t params;
+            ts_channel_params_get(pInst->pChannel, ch, &params);
+            if(params.active)
+            {
+                active_channels++;
+            }
+        }
+        if(active_channels == 2)
+        {
+            pInst->bytes_per_sample *= 2;
+        }
+        else if(active_channels > 2)
+        {
+            pInst->bytes_per_sample *= 4;
+        }
     }
     else
     {
@@ -398,6 +424,92 @@ int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
     }
 }
 
+int32_t thunderscopeReadCount(tsHandle_t ts, uint8_t* buffer, uint32_t len, uint64_t* count)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t sample_result = TS_STATUS_ERROR;
+    if(pInst && pInst->initialized)
+    {
+        sample_result = samples_get_buffers(&pInst->samples, buffer, len);
+        if(sample_result > 0)
+        {
+            samples_update_status(&pInst->samples);
+            *count = ((pInst->samples.driver_buffer_count * DMA_BUFFER_SIZE) - sample_result) / pInst->bytes_per_sample;
+        }
+        else
+        {
+            *count = 0;
+        }
+    }
+
+    return sample_result;
+}
+
+int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst)
+    {
+        status = events_set_ext_sync(pInst->ctrl, mode);
+    }
+
+    return status;
+}
+
+int32_t thunderscopeEventSyncAssert(tsHandle_t ts)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst)
+    {
+        status = events_set_immediate(pInst->ctrl);
+    }
+
+    return status;
+}
+
+int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst && evt)
+    {
+        if( !events_available(pInst->ctrl) )
+        {
+            evt->ID = TS_EVT_NONE;
+            evt->event_sample = 0;
+            status = TS_STATUS_OK;
+        }
+        else
+        {
+            status = events_get_next(pInst->ctrl, evt);
+
+            if(status == TS_STATUS_OK)
+            {
+                //Adjust Sample Count by Samples/increment
+                evt->event_sample = evt->event_sample * TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample;
+            }
+            else
+            {
+                evt->event_sample = 0;
+            }
+        }
+
+        #if 0
+        //Debug
+        static uint64_t lastBuffer = 0;
+        if(pInst->samples.driver_buffer_count > (lastBuffer + 950))
+        {
+            evt->ID = TS_EVT_EXT_SYNC;
+            evt->event_sample = ((pInst->samples.driver_buffer_count * DMA_BUFFER_SIZE)) / pInst->bytes_per_sample + 200;
+            lastBuffer = pInst->samples.driver_buffer_count;
+        }
+        #endif
+    }
+
+    return status;
+}
 
 int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len)
 {
