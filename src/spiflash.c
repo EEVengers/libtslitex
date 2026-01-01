@@ -352,7 +352,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
             NS_DELAY(10000);
         }
 
-        get_flash_data(dev, addr+offset, (uint8_t*)r_buf, w_len);
+        spiflash_read(dev, addr+offset, (uint8_t*)r_buf, w_len);
         for (j = 0; j < w_len; j++) {
             if (r_buf[j] != pData[offset+j]) {
                 LOG_ERROR("Error: verify failed at 0x%08x (0x%02x should be 0x%02x)", (uint32_t)(addr+offset+j), r_buf[j], pData[offset+j]);

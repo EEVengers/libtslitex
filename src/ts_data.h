@@ -18,7 +18,7 @@ extern "C" {
 #include "ts_fw_manager.h"
 
 
-#define TAGSTR(x)   (uint32_t)(x[0] + (x[1] << 8) + (x[2] << 16) + (x[3] << 24))
+#define TAGSTR(x)   (uint32_t)((x[0] << 24) + (x[1] << 16) + (x[2] << 8) + x[3])
 #define TAG_HWID    TAGSTR("HWID")
 #define TAG_FCAL    TAGSTR("FCAL")
 

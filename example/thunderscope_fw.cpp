@@ -324,7 +324,7 @@ int main(int argc, char** argv)
                 char* data_content = new char[file_size];
                 file.read(data_content, file_size);
 
-                if(TS_STATUS_OK == thunderscopeFactoryProvisionAppendTLV(ts, (uint32_t)(tag[0] + (tag[1] << 8) + (tag[2] << 16) + (tag[3] << 24)),
+                if(TS_STATUS_OK == thunderscopeFactoryProvisionAppendTLV(ts, (uint32_t)((tag[0] << 24) + (tag[1] << 16) + (tag[2] << 8) + tag[3]),
                                                         file_size, (const char*)data_content))
                 {
                     printf("Finished writing the %s item\r\n",  tag);

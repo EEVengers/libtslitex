@@ -683,7 +683,7 @@ static void flash_test(char* arg, file_t fd)
         auto outFile = std::fstream(TS_FLASH_DUMP_FILE, std::ios::out | std::ios::binary | std::ios::trunc);
         uint8_t *flash_data = (uint8_t*) malloc(0x40000);
         printf("Dumping Flash to file.\nProgress: ");
-        for(uint32_t address = 0x0000000; address < 0x2000000; address+=0x40000)
+        for(uint32_t address = 0x0000000; address < 0x800000; address+=0x40000)
         {
             spiflash_read(&spiflash, address, flash_data, 0x40000);
             printf("|");
