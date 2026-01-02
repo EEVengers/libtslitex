@@ -14,6 +14,7 @@ extern "C" {
 #endif
 
 #include "ts_common.h"
+#include "ts_calibration.h"
 #include "hmcad15xx.h"
 #include "platform.h"
 #include "spi.h"
@@ -53,10 +54,9 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
  * @param adc Pointer to a ADC instance
  * @param channel Thunderscope Channel number to configure
  * @param gainCoarse Coarse Gain parameter for the ADC Input
- * @param gainFine Fine Gain parameter for the ADC Input
  * @return int32_t TS_STATUS_OK if the gain was set successfully
 */
-int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int32_t gainFine);
+int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse);
 
 /**
  * @brief Enable or Disable a Thunderscope Channel ADC
@@ -67,6 +67,14 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
  * @return int32_t TS_STATUS_OK if the channel was set successfully
 */
 int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable);
+
+/**
+ * @brief Update the ADC configuration with the current active channels
+ * 
+ * @param adc Pointer to a ADC instance
+ * @return int32_t TS_STATUS_OK if the channels were updated successfully
+ */
+int32_t ts_adc_update_channels(ts_adc_t* adc);
 
 /**
  * @brief Shutdown the Thunderscope ADC
@@ -90,10 +98,28 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en);
  * 
  * @param adc Pointer to a ADC instance
  * @param sample_rate Rate of the ADC Sample clock (Hz)
- * @param resolution Resolution mode setting for the ADC.
+ * @param mode Resolution mode setting for the ADC.
  * @return int32_t TS_STATUS_OK if the mode was applied successfully
  */
-int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t resolution);
+int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleFormat_t mode);
+
+/**
+ * @brief Set the calibration on the ADC
+ * 
+ * @param adc Pointer to a ADC instance
+ * @param cal Pointer to a ADC Calibration structure
+ * @return int32_t TS_STATUS_OK if the calibration was applied successfully
+ */
+int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal);
+
+/**
+ * @brief Set the calibration on the ADC
+ * 
+ * @param adc Pointer to a ADC instance
+ * @param cal Pointer to a ADC Calibration structure
+ * @return int32_t TS_STATUS_OK if the calibration was applied successfully
+ */
+int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal);
 
 #ifdef __cplusplus
 }

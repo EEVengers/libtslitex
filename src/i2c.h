@@ -25,6 +25,7 @@ extern "C" {
 typedef struct i2c_s
 {
     file_t fd;
+    uint32_t peripheral_baseaddr;
     uint8_t devAddr;
 } i2c_t;
 

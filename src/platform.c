@@ -52,6 +52,19 @@ const mcp_clkgen_conf_t ZL30260_CONF[] = {
 
 const uint32_t ZL30260_CONF_SIZE = sizeof(ZL30260_CONF)/sizeof(ZL30260_CONF[0]);
 
+const mcp_clkgen_status_t ZL30260_STATUS[] = {
+    {.addr=0x004C, .mask=0x02},  //XA.XAV Status
+    {.addr=0x004D, .mask=0x02},  //IC1.ICV Status
+    {.addr=0x004E, .mask=0x02},  //IC2.ICV Status
+    {.addr=0x004F, .mask=0x02},  //IC3.ICV Status
+    {.addr=0x0048, .mask=0x04},  //APLL.ALK Status
+    {.addr=0x0048, .mask=0x40},  //APLL.AIFL Status
+    {.addr=0x0048, .mask=0x10},  //APLL.AIFH Status
+    {.addr=0x0048, .mask=0x01},  //APLL.SELREF Status
+};
+
+const uint32_t ZL30260_STATUS_SIZE = sizeof(ZL30260_STATUS)/sizeof(ZL30260_STATUS[0]);
+
 const mcp_clkgen_conf_t ZL30250_CONF[] = {
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0009, .value=0x02},
     {.action=MCP_CLKGEN_WRITE_REG, .addr=0x0621, .value=0x08},
@@ -86,6 +99,25 @@ const mcp_clkgen_conf_t ZL30250_CONF[] = {
 
 const uint32_t ZL30250_CONF_SIZE = sizeof(ZL30250_CONF)/sizeof(ZL30250_CONF[0]);
 
+//
+// Bitmasks for LED indicators
+//
+//Beta hardware has a single LED that is active low
+const led_signals_t ts_beta_leds = {
+    .error = 1,
+    .ready = 1,
+    .active = 0,
+    .disabled = 1
+};
+
+//Production hardware has 3 active high LEDs (RGB)
+const led_signals_t ts_dev_leds = {
+    .error = 1,
+    .ready = 2,
+    .active = 4,
+    .disabled = 0
+};
+
 
 // A35T/A50T (0x80_0000):
 
@@ -119,6 +151,7 @@ const flash_layout_t ts_64Mb_layout = {
 // | 0x1000000 - 0x1AFFFFF  | Primary Bitstream         |
 // | 0x1B00000 - 0x1B0FFFF  | Barrier Image B           |
 // | 0x1B10000 - 0x1FFFFFF  | Available for User Data   |
+
 const flash_layout_t ts_256Mb_layout = {
     .factory_bitstream_start = 0x0000000,
     .factory_bitstream_end = 0x0B00000,

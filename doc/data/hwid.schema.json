@@ -1,0 +1,34 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Hardware Identity Description",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "Serial Number": {
+            "type": "string",
+            "maxLength": 256
+        },
+        "Board Revision": {
+            "type": "number"
+        },
+        "Build Config": {
+            "type": "string",
+            "maxLength": 256
+        },
+        "Build Date": {
+            "type": "string",
+            "maxLength": 256
+        },
+        "Mfg Signature": {
+            "type": "string",
+            "maxLength": 256
+        }
+    },
+    "required": [
+        "version",
+        "Serial Number"
+    ]
+}

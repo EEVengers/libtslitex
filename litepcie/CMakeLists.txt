@@ -11,9 +11,13 @@ if(WIN32)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_win.h
     )
-else()
+elseif(LINUX)
 set(litepcie_PLATFORM_HEADERS
     public_h/litepcie_linux.h
+    )
+elseif(APPLE)
+set(litepcie_PLATFORM_HEADERS
+    public_h/litepcie_mac.h
     )
 endif()
 
@@ -44,5 +48,8 @@ set_target_properties(litepcie PROPERTIES POSITION_INDEPENDENT_CODE 1)
 target_include_directories(litepcie PUBLIC public_h include)
 
 if(WIN32)
-    target_link_libraries(litepcie setupapi)
+    target_link_libraries(litepcie PRIVATE setupapi)
+elseif(APPLE)
+    target_link_libraries(litepcie "$<LINK_LIBRARY:FRAMEWORK,IOKit>")
+    target_link_libraries(litepcie "$<LINK_LIBRARY:FRAMEWORK,CoreFoundation>")
 endif()

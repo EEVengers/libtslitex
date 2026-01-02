@@ -3,15 +3,15 @@ requires = ["cython", "numpy", "setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pytslitex"
-version = "0.0.1"
-license = {text = "BSD-2-Clause"}
+name = "tslitex"
+version = "@PY_WHL_VERSION_STRING@"
 authors = [
   {name = "Nate Meyer", email = "nate.devel@gmail.com"},
 ]
+dependencies = ["numpy"]
 
 [tool.setuptools]
 packages = ["tslitex"]
 ext-modules = [
-  { name = "tslitex.tslitex", sources = ["tslitex/tslitex.c"], libraries = ["@PY_EXT_LIBS@"], library-dirs = ["@CMAKE_ARCHIVE_OUTPUT_DIRECTORY@"], include-dirs = ["@CMAKE_LIBRARY_OUTPUT_DIRECTORY@/include"]}
+  { name = "tslitex.tslitex", sources = ["tslitex/tslitex.c"], libraries = ["@PY_EXT_LIBS@"], library-dirs = ["lib"], include-dirs = ["lib/include"]}
 ]

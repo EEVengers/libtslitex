@@ -6,7 +6,7 @@
 #
 # Copyright (C) 2025 / Nate Meyer  / nate.devel@gmail.com
 
-from libc.stdint cimport uint32_t, int32_t, uint8_t
+from libc.stdint cimport uint32_t, int32_t, uint8_t, uint64_t
 
 cdef extern from "thunderscope.h":
 
@@ -34,15 +34,22 @@ cdef extern from "thunderscope.h":
 
     cdef struct tsDeviceInfo_s:
         uint32_t device_id
+        uint32_t hw_id
+        uint32_t gw_id
+        uint32_t litex
+        uint32_t board_rev
         char device_path[256]
         char identity[256]
         char serial_number[256]
+        char build_config[256]
+        char build_date[256]
+        char mfg_signature[256]
 
     ctypedef tsDeviceInfo_s tsDeviceInfo_t
 
     cdef struct tsChannelParam_s:
-        uint32_t volt_scale_mV
-        int32_t volt_offset_mV
+        uint32_t volt_scale_uV
+        int32_t volt_offset_uV
         uint32_t bandwidth
         uint8_t coupling
         uint8_t term
@@ -56,6 +63,8 @@ cdef extern from "thunderscope.h":
         uint32_t vcc_int
         uint32_t vcc_aux
         uint32_t vcc_bram
+        uint8_t frontend_power_good
+        uint8_t acq_power_good
 
     ctypedef sysHealth_s sysHealth_t
 
@@ -66,16 +75,43 @@ cdef extern from "thunderscope.h":
         uint32_t adc_lost_buffer_count
         uint32_t flags
         uint8_t adc_state
+        uint8_t adc_sync
         uint8_t power_state
         uint8_t pll_state
         uint8_t afe_state
+        uint8_t local_osc_clk
+        uint8_t ref_in_clk
+        uint8_t pll_lock
+        uint8_t pll_low
+        uint8_t pll_high
+        uint8_t pll_alt
         sysHealth_t sys_health
 
     ctypedef tsScopeState_s tsScopeState_t
 
+    cpdef enum tsSyncMode_e:
+        TS_SYNC_DISABLED
+        TS_SYNC_OUT
+        TS_SYNC_IN
+
+    ctypedef tsSyncMode_e tsSyncMode_t
+
+    cpdef enum tsEventType_e:
+        TS_EVT_NONE
+        TS_EVT_HOST_SW
+        TS_EVT_EXT_SYNC
+
+    ctypedef tsEventType_e tsEventType_t
+
+    cdef struct tsEvent_s:
+        tsEventType_t ID
+        uint64_t event_sample
+
+    ctypedef tsEvent_s tsEvent_t
+
     int32_t thunderscopeListDevices(uint32_t devIndex, tsDeviceInfo_t* info)
 
-    tsHandle_t thunderscopeOpen(uint32_t devIdx)
+    tsHandle_t thunderscopeOpen(uint32_t devIdx, bint skip_init)
 
     int32_t thunderscopeClose(tsHandle_t ts)
 
@@ -87,8 +123,24 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, uint32_t resolution)
 
+    int32_t thunderscopeSampleInterruptRate(tsHandle_t ts, uint32_t interrupt_rate)
+
     int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 
-    int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
+    int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len) nogil
 
-    int32_t thunderscopeFwUpdate(tsHandle_t ts, char* bitstream, uint32_t len)
+    int32_t thunderscopeReadCount(tsHandle_t ts, uint8_t* buffer, uint32_t len, uint64_t* count) nogil
+
+    int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode)
+
+    int32_t thunderscopeEventSyncAssert(tsHandle_t ts) nogil
+
+    int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
+
+    int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len) nogil
+
+    int32_t thunderscopeUserDataRead(tsHandle_t ts, char* buffer, uint32_t offset, uint32_t readLen) nogil
+    
+    int32_t thunderscopeUserDataWrite(tsHandle_t ts, const char* buffer, uint32_t offset, uint32_t writeLen) nogil
+
+    int32_t thunderscopeGetFwProgress(tsHandle_t ts, uint32_t* progress)

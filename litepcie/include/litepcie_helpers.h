@@ -26,6 +26,19 @@ void _check_ioctl(int status, const char* file, int line);
 
 #define LITEPCIE_CTRL_NAME(ID)  "\\CTRL" #ID
 #define LITEPCIE_DMA_NAME(ID, CHAN)  "\\DMA" #ID #CHAN
+#elif defined(__APPLE__)
+#include <IOKit/IOKitLib.h>
+#include <IOKit/IOReturn.h>
+#include <IOKit/hidsystem/IOHIDShared.h>
+#include <IOKit/usb/USB.h>
+typedef io_connect_t file_t;
+
+#define ioctl_args(fd, op, data) fd, op, &(data), (size_t)sizeof(data), &(data), &outlen
+#define checked_ioctl(...) _check_ioctl((int)IOConnectCallStructMethod(__VA_ARGS__), __FILE__, __LINE__)
+void _check_ioctl(int status, const char* file, int line);
+
+#define LITEPCIE_CTRL_NAME(ID)  "thunderscope" #ID
+#define LITEPCIE_DMA_NAME(ID, CHAN)  "thunderscope" #ID
 #else
 #include <sys/ioctl.h>
 typedef int file_t;

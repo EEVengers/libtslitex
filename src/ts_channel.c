@@ -40,6 +40,7 @@ typedef struct ts_channel_s {
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
+    spi_bus_t adcSpibus;
     spi_bus_t spibus;
     struct {
         i2c_t clkGen;
@@ -49,6 +50,7 @@ typedef struct ts_channel_s {
     gpio_t afe_power;
     gpio_t acq_power;
     file_t ctrl_handle;
+    tsSampleFormat_t sampleMode;
     tsScopeState_t status;
 } ts_channel_t;
 
@@ -109,8 +111,8 @@ const static tsChannelParam_t g_tsParamsDefault = {.active = false,
                                                    .bandwidth = 0,
                                                    .coupling = TS_COUPLE_DC,
                                                    .term = TS_TERM_1M,
-                                                   .volt_offset_mV = 0,
-                                                   .volt_scale_mV = 700};
+                                                   .volt_offset_uV = 0,
+                                                   .volt_scale_uV = 700000};
 
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
@@ -118,6 +120,7 @@ static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 {
     int32_t retVal = TS_STATUS_OK;
+    bool betaDevice = false;
 
     if(pTsChannels == NULL)
     {
@@ -131,6 +134,12 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     {
         retVal = TS_STATUS_ERROR;
         return retVal;
+    }
+
+    uint32_t id = litepcie_readl(ts, CSR_DEV_STATUS_HW_ID_ADDR);
+    if(0 == (id & (1 << CSR_DEV_STATUS_HW_ID_HW_VALID_OFFSET)))
+    {
+        betaDevice = true;
     }
 
     //Initialize Status
@@ -167,13 +176,25 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
 
     pChan->pll.clkGen.fd = ts;
     pChan->pll.clkGen.devAddr = TS_PLL_I2C_ADDR;
+    if(betaDevice)
+    {
+        pChan->pll.clkGen.peripheral_baseaddr = TS_PLL_BUS_BETA;
+    }
+    else
+    {
+        pChan->pll.clkGen.peripheral_baseaddr = TS_PLL_BUS_DEV;
+    }
 
     //Set I2C Clock
     i2c_rate_set(pChan->pll.clkGen, TS_I2C_CLK_RATE);
 
-    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].enable = 1;
-    pChan->pll.clkConf.in_clks[TS_PLL_INPUT_IDX].input_freq = TS_PLL_INPUT_RATE;
-    pChan->pll.clkConf.input_select = TS_PLL_INPUT_SEL;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].enable = 1;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_freq = TS_PLL_LOCAL_OSC_RATE;
+    pChan->pll.clkConf.in_clks[TS_PLL_LOCAL_OSC_IDX].input_divider = 0;
+    pChan->pll.clkConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+    pChan->pll.clkConf.alternate_select = TS_PLL_INPUT_NONE_SEL;
+    pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
+    pChan->pll.clkConf.in_clks[TS_PLL_REFIN_IDX].input_divider = 0;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = TS_PLL_REFOUT_RATE_DEFAULT;
     pChan->pll.clkConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_mode = TS_PLL_REFOUT_CLK_MODE;
@@ -199,18 +220,44 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         goto channel_init_error;
     }
 
-    i2c_t trimDac = {ts, TS_TRIM_DAC_I2C_ADDR};
-    i2c_t trimPot = {ts, TS_TRIM_DPOT_I2C_ADDR};
+    i2c_t trimDac = {ts, TS_TRIM_DAC_BUS, TS_TRIM_DAC_I2C_ADDR};
+    i2c_t trimPot = {ts, TS_TRIM_DPOT_BUS, TS_TRIM_DPOT_I2C_ADDR};
 
-    retVal = spi_bus_init(&pChan->spibus, ts,
-                            TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_CS_NUM);
+    if(betaDevice)
+    {
+        retVal = spi_bus_init(&pChan->spibus, ts,
+                    TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_BETA_CS_NUM);
+    }
+    else
+    {
+        retVal = spi_bus_init(&pChan->spibus, ts,
+            TS_SPI_BUS_BASE_ADDR, TS_SPI_BUS_DEV_CS_NUM);
+    }
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
     }
 
+    if(!betaDevice)
+    {
+        retVal = spi_bus_init(&pChan->adcSpibus, ts,
+            TS_ADC_SPI_BUS_BASE_ADDR, TS_ADC_SPI_BUS_CS_NUM);
+        if(retVal != TS_STATUS_OK)
+        {
+            goto channel_init_error;
+        }
+    }
+
     spi_dev_t adcDev;
-    retVal = spi_dev_init(&adcDev, &pChan->spibus, TS_ADC_CS);
+    if(betaDevice)
+    {
+        retVal = spi_dev_init(&adcDev, &pChan->spibus, TS_BETA_ADC_CS);
+    }
+    else
+    {
+        retVal = spi_dev_init(&adcDev, &pChan->adcSpibus, TS_ADC_CS);
+    }
+
     if(retVal != TS_STATUS_OK)
     {
         goto channel_init_error;
@@ -224,7 +271,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     for(uint32_t chanIdx = 0; chanIdx < TS_NUM_CHANNELS; chanIdx++)
     {
         pChan->chan[chanIdx].channelNo = chanIdx;
-        ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT, TS_ADC_CH_FINE_GAIN_DEFAULT);
+        ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT);
         retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input,
                                             g_channelConf[chanIdx].adc_invert);
         if(retVal != TS_STATUS_OK)
@@ -387,46 +434,45 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     }
 
     //Set Voltage Scale
-    if(needUpdateGain || (param->volt_scale_mV != pTsHdl->chan[chanIdx].params.volt_scale_mV) || force)
+    if(needUpdateGain || (param->volt_scale_uV != pTsHdl->chan[chanIdx].params.volt_scale_uV) || force)
     {
         //Calculate dB gain value
         //TODO: Set both AFE and ADC gain?
-        int32_t afe_gain_mdB = (int32_t)(20000 * log10(TS_AFE_OUTPUT_NOMINAL_mVPP / (double)param->volt_scale_mV));
+        int32_t afe_gain_mdB = (int32_t)(20000 * log10(TS_AFE_OUTPUT_NOMINAL_uVPP / (double)param->volt_scale_uV));
 
         LOG_DEBUG("Channel %d AFE request %i mdB gain", chanIdx, afe_gain_mdB);
 
         retVal = ts_afe_set_gain(&pTsHdl->chan[chanIdx].afe, afe_gain_mdB);
         if(TS_STATUS_ERROR == retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_mV);
+            LOG_ERROR("Unable to set Channel %d voltage scale: %x", chanIdx, param->volt_scale_uV);
             return TS_INVALID_PARAM;
         }
         else
         {
             LOG_DEBUG("Channel %d AFE set to %i mdB gain", chanIdx, retVal);
-            retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_mVPP / pow(10.0, (double)retVal / 20000.0));
-            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_mV, retVal);
-            pTsHdl->chan[chanIdx].params.volt_scale_mV = retVal;
+            retVal = (int32_t)(TS_AFE_OUTPUT_NOMINAL_uVPP / pow(10.0, (double)retVal / 20000.0));
+            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d", chanIdx, param->volt_scale_uV, retVal);
+            pTsHdl->chan[chanIdx].params.volt_scale_uV = retVal;
             needUpdateOffset = true;
         }
     }
 
     //Set Voltage Offset
-    if(needUpdateOffset || (param->volt_offset_mV != pTsHdl->chan[chanIdx].params.volt_offset_mV) || force)
+    if(needUpdateOffset || (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV) || force)
     {
         //Adjust Trim DAC
         int32_t offset_actual = 0;
-        retVal = ts_afe_set_offset(&pTsHdl->chan[chanIdx].afe, param->volt_offset_mV, &offset_actual);
+        retVal = ts_afe_set_offset(&pTsHdl->chan[chanIdx].afe, param->volt_offset_uV, &offset_actual);
         if(TS_STATUS_OK != retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_mV);
+            LOG_ERROR("Unable to set Channel %d voltage offset: %i", chanIdx, param->volt_offset_uV);
             return TS_INVALID_PARAM;
         }
         else
         {
-            LOG_DEBUG("Channel %d AFE set to %i mV offset", chanIdx, offset_actual);
-            // pTsHdl->chan[chanIdx].params.volt_offset_mV = offset_actual;
-            pTsHdl->chan[chanIdx].params.volt_offset_mV = param->volt_offset_mV;
+            LOG_DEBUG("Channel %d AFE set to %i uV offset", chanIdx, offset_actual);
+            pTsHdl->chan[chanIdx].params.volt_offset_uV = param->volt_offset_uV;
         }
     }
 
@@ -450,7 +496,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         }
 
         //Update Sample Rate
-        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->status.adc_sample_resolution);
+        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->sampleMode);
     }
 
     return retVal;
@@ -480,14 +526,32 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels)
         tsScopeState_t state = {0};
         return state;
     }
+    ts_channel_t* pTsHdl = (ts_channel_t*)tsChannels;
+
+    pTsHdl->status.adc_sync = (litepcie_readl(pTsHdl->ctrl_handle, CSR_ADC_STATUS_ADDR) & (1 << CSR_ADC_STATUS_FRAME_SYNC_OFFSET)) ? 1 : 0;
 
     //Update XADC values
-    ts_channel_health_update((ts_channel_t*)tsChannels);
+    ts_channel_health_update(pTsHdl);
 
-    return ((ts_channel_t*)tsChannels)->status;
+    //Update Clock Status
+    int32_t clock_status =  mcp_clkgen_status(pTsHdl->pll.clkGen, TS_PLL_STATUS, TS_PLL_STATUS_LEN);
+    if(clock_status < 0)
+    {
+        LOG_ERROR("Failed to read PLL Clock Status %d", clock_status);
+    }
+    else
+    {
+        pTsHdl->status.local_osc_clk = (clock_status & (1 << TS_PLL_STATUS_IC2_VALID)) ? 1:0;
+        pTsHdl->status.ref_in_clk = (clock_status & (1 << TS_PLL_STATUS_IC1_VALID)) ? 1:0;
+        pTsHdl->status.pll_lock = (clock_status & (1 << TS_PLL_STATUS_APLL_LOCK)) ? 1:0;
+        pTsHdl->status.pll_low = (clock_status & (1 << TS_PLL_STATUS_APLL_LOW)) ? 1:0;
+        pTsHdl->status.pll_high = (clock_status & (1 << TS_PLL_STATUS_APLL_HIGH)) ? 1:0;
+        pTsHdl->status.pll_alt = (clock_status & (1 << TS_PLL_STATUS_APLL_ALT)) ? 1:0;
+    }
+    return pTsHdl->status;
 }
 
-int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution)
+int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsSampleFormat_t mode)
 {
     if(tsChannels == NULL)
     {
@@ -495,42 +559,72 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
     }
     ts_channel_t* ts =  (ts_channel_t*)tsChannels;
     uint64_t actual_rate = 0;
+    uint64_t max_rate = 0;
 
-    //TODO - Support valid rate/resolution combinations
-    if((rate < TS_MIN_SAMPLE_RATE) || (rate > TS_MAX_SAMPLE_RATE)
-         || (resolution != 256))
+
+    switch(mode)
+    {
+    case TS_8_BIT:
+    {
+        max_rate = TS_MAX_8BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 256;
+        break;
+    }
+    case TS_12_BIT_LSB:
+    {
+        max_rate = TS_MAX_12BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 4096;
+        break;
+    }
+    case TS_12_BIT_MSB:
+    {
+        max_rate = TS_MAX_12BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 65536;
+        break;
+    }
+    case TS_14_BIT:
+    {
+        max_rate = TS_MAX_14BIT_SAMPLE_RATE;
+        ts->status.adc_sample_resolution = 65536;
+        break;
+    }
+    default:
+        return TS_INVALID_PARAM;
+    }
+
+    if((rate < TS_MIN_SAMPLE_RATE) || (rate > max_rate))
     {
         return TS_INVALID_PARAM;
     }
 
-    //Input validation
-    if(ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL)
+    ts->sampleMode = mode;
+
+    // Use 1:1 rate for precision mode (14_bit)
+    if((ts->adc.adcDev.mode == HMCAD15_SINGLE_CHANNEL) || (ts->sampleMode == TS_14_BIT))
     {
         actual_rate = rate;
     }
     else if(ts->adc.adcDev.mode == HMCAD15_DUAL_CHANNEL)
     {
-        //Limit upper rate
-        if(rate > TS_MAX_DUAL_CH_RATE)
+        if(rate > (max_rate/2))
         {
-            rate = TS_MAX_DUAL_CH_RATE;
+            rate = (max_rate/2);
         }
         actual_rate = rate * 2;
     }
     else
     {
-        //Limit upper rate
-        if(rate > TS_MAX_QUAD_CH_RATE)
+        if(rate > (max_rate/4))
         {
-            rate = TS_MAX_QUAD_CH_RATE;
+            rate = (max_rate/4);
         }
         actual_rate = rate * 4;
     }
 
+    ts_adc_run(&ts->adc, 0);
+
     if(actual_rate != ts->pll.clkConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq)
     {
-        ts_adc_run(&ts->adc, 0);
-        
         // Apply resolution,rate configuration
         zl3026x_clk_config_t newConf = ts->pll.clkConf;
         newConf.out_clks[TS_PLL_SAMPLE_CLK_IDX].output_freq = actual_rate;
@@ -550,18 +644,118 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uin
             LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
             return clk_len;
         }
-
-        ts->status.adc_sample_rate = rate;
-        ts->status.adc_sample_resolution = resolution;
-        ts->status.adc_sample_bits = resolution == 256 ? 8 : 16;
-
-        ts_adc_set_sample_mode(&ts->adc, rate, resolution);
-        ts_adc_run(&ts->adc, ts->status.adc_state);
     }
+
+    ts->status.adc_sample_rate = rate;
+    ts->status.adc_sample_bits = (mode == TS_8_BIT) ? 8 : 16;
+
+    ts_adc_set_sample_mode(&ts->adc, rate, mode);
+    ts_adc_run(&ts->adc, ts->status.adc_state);
 
     return  TS_STATUS_OK;
 }
 
+int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t mode, uint32_t refclk_freq)
+{
+    if(tsChannels == NULL)
+    {
+        return TS_STATUS_ERROR;
+    }
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    zl3026x_clk_config_t newConf = ts->pll.clkConf;
+    bool clkout_en = (mode == TS_REFCLK_OUT);
+    bool clkin_en = (mode == TS_REFCLK_IN);
+    uint8_t clkin_divider = 0;
+    uint32_t input_freq = TS_PLL_LOCAL_OSC_RATE;
+
+    //Validate Settings
+    if (clkout_en && refclk_freq == 0)
+    {
+        LOG_ERROR("Invalid Clock Out Frequency, cannot be 0");
+        return TS_INVALID_PARAM;
+    }
+    else if(clkin_en && refclk_freq < ZL3026X_INPUT_CLK_MIN)
+    {
+        LOG_ERROR("Invalid Clock Input Frequency %d Hz.  Must be a minimum of %d Hz", refclk_freq, ZL3026X_INPUT_CLK_MIN);
+        return TS_INVALID_PARAM;
+    }
+
+    if(clkin_en)
+    {
+        //Divide Input Clock Frequency if needed
+        while((refclk_freq / (1UL << clkin_divider)) > ZL3026X_INPUT_CLK_MAX)
+        {
+            clkin_divider++;
+            if(clkin_divider > ZL3026X_IN_DIV_8)
+            {
+                LOG_ERROR("Unable to configure external clock input frequency %d Hz", refclk_freq);
+                return TS_INVALID_PARAM;
+            }
+        }
+
+        //Set Input Clock Configuration
+        newConf.in_clks[TS_PLL_REFIN_IDX].enable = 1;
+        newConf.in_clks[TS_PLL_REFIN_IDX].input_freq = refclk_freq / (1 << clkin_divider);
+        newConf.in_clks[TS_PLL_REFIN_IDX].input_divider = (zl3026x_input_div_t)clkin_divider;
+        newConf.input_select = TS_PLL_REFIN_SEL;
+        newConf.alternate_select = TS_PLL_LOCAL_OSC_SEL;
+
+        //Input frequency on bypass path
+        input_freq = newConf.in_clks[TS_PLL_REFIN_IDX].input_freq;
+    }
+    else
+    {
+        //Use Internal Reference Clock
+        newConf.in_clks[TS_PLL_REFIN_IDX].enable = 0;
+        newConf.input_select = TS_PLL_LOCAL_OSC_SEL;
+        newConf.alternate_select = TS_PLL_INPUT_NONE_SEL;
+    }
+
+    //Set Output Clock Configuration
+    if(clkout_en)
+    {
+        //Validate Output Clock Frequency
+        if(refclk_freq > ZL3026X_MAX_PLL_OUT)
+        {
+            LOG_ERROR("Invalid Clock Output Frequency %d Hz.  Must be a maximum of %d Hz", refclk_freq, ZL3026X_MAX_PLL_OUT);
+            return TS_INVALID_PARAM;
+        }
+
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 1;
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_freq = refclk_freq;
+        if(refclk_freq > input_freq)
+        {
+            newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_pll_select = ZL3026X_PLL_INT_DIV;
+        }
+        else
+        {
+            newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].output_pll_select = ZL3026X_PLL_BYPASS;
+        }
+    }
+    else
+    {
+        //Disable Output Ref Clock
+        newConf.out_clks[TS_PLL_REFOUT_CLK_IDX].enable = 0;
+    }
+
+    mcp_clkgen_conf_t clk_regs[MCP_CLKGEN_ARR_MAX_LEN] = {0};
+    int32_t clk_len = mcp_zl3026x_build_config(clk_regs, MCP_CLKGEN_ARR_MAX_LEN, newConf);
+    if(clk_len > 0)
+    {
+        if(TS_STATUS_OK != mcp_clkgen_config(ts->pll.clkGen, clk_regs, clk_len))
+        {
+            return TS_STATUS_ERROR;
+        }
+        ts->pll.clkConf = newConf;
+    }
+    else
+    {
+        LOG_ERROR("Failed to generate PLL Configuration: %d", clk_len);
+        return clk_len;
+    }
+
+    return TS_STATUS_OK;
+}
 
 int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal)
 {
@@ -581,8 +775,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     ts->chan[chanIdx].afe.cal = *cal;
 
     LOG_DEBUG("Received Calibration for channel %d", chanIdx);
-    LOG_DEBUG("\tBuffer Output:                 %d mV", cal->buffer_mV);
-    LOG_DEBUG("\t+VBIAS:                        %d mV", cal->bias_mV);
+    LOG_DEBUG("\tBuffer Output:                 %d uV", cal->buffer_uV);
+    LOG_DEBUG("\t+VBIAS:                        %d uV", cal->bias_uV);
     LOG_DEBUG("\t1M Attenuator Gain:            %d mdB", cal->attenuatorGain1M_mdB);
     LOG_DEBUG("\t50 Ohm Terminator Gain:        %d mdB", cal->attenuatorGain50_mdB);
     LOG_DEBUG("\tBuffer Output Gain:            %d mdB", cal->bufferGain_mdB);
@@ -590,8 +784,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\tPreamp Low Input Gain Error:   %d mdB", cal->preampLowGainError_mdB);
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampHighGainError_mdB);
     LOG_DEBUG("\tPreamp High Input Gain Error:  %d mdB", cal->preampOutputGainError_mdB);
-    LOG_DEBUG("\tPreamp Low Output Offset:      %d mV", cal->preampLowOffset_mV);
-    LOG_DEBUG("\tPreamp High Output Offset:     %d mV", cal->preampHighOffset_mV);
+    LOG_DEBUG("\tPreamp Low Output Offset:      %d uV", cal->preampLowOffset_uV);
+    LOG_DEBUG("\tPreamp High Output Offset:     %d uV", cal->preampHighOffset_uV);
     LOG_DEBUG("\tPreamp Input Bias Current:     %d uA", cal->preampInputBias_uA);
 
     //Force afe to recalculate gain/offsets
@@ -619,6 +813,36 @@ int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     return TS_STATUS_OK;
 }
 
+int32_t ts_channel_adc_calibration_set(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    LOG_DEBUG("Received Calibration for ADC");
+    LOG_DEBUG("\tFine 2-1:  %02X %02X", cal->branchFineGain[1], cal->branchFineGain[0]);
+    LOG_DEBUG("\tFine 4-3:  %02X %02X", cal->branchFineGain[3], cal->branchFineGain[2]);
+    LOG_DEBUG("\tFine 6-5:  %02X %02X", cal->branchFineGain[5], cal->branchFineGain[4]);
+    LOG_DEBUG("\tFine 8-7:  %02X %02X", cal->branchFineGain[7], cal->branchFineGain[6]);
+    
+    return ts_adc_cal_set(&ts->adc, cal);
+}
+
+int32_t ts_channel_adc_calibration_get(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal)
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || cal == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+
+    return ts_adc_cal_get(&ts->adc, cal);
+}
+
 int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl)
 {
     int32_t retVal = TS_STATUS_OK;
@@ -633,20 +857,6 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
     {
         return TS_INVALID_PARAM;
     }
-
-
-    //Set AFE Bandwidth
-    retVal = ts_afe_set_bw_filter(&ts->chan[chanIdx].afe, ctrl.pga_bw);
-    if(retVal > 0)
-    {
-        LOG_DEBUG("Channel %d AFE BW set to %i MHz", chanIdx, retVal);
-    }
-    else
-    {
-        LOG_ERROR("Unable to set Channel %d bandwidth %d", chanIdx, retVal);
-        return TS_INVALID_PARAM;
-    }
-
 
     //Set AC/DC Coupling
     if(TS_STATUS_OK == ts_afe_coupling_control(&ts->chan[chanIdx].afe,
@@ -688,7 +898,7 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
     lmh6518Config_t preamp = LMH6518_CONFIG_INIT;
     preamp.atten = ctrl.pga_atten;
     preamp.filter = ctrl.pga_bw;
-    preamp.preamp = ctrl.pga_high_gain = 0 ? PREAMP_LG : PREAMP_HG;
+    preamp.preamp = ctrl.pga_high_gain == 0 ? PREAMP_LG : PREAMP_HG;
     preamp.pm = PM_AUX_HIZ;
 
     retVal = lmh6518_apply_config(ts->chan[chanIdx].afe.amp, preamp);
@@ -737,6 +947,8 @@ static int32_t ts_channel_health_update(ts_channel_t* pTsHdl)
     pTsHdl->status.sys_health.vcc_int = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCINT_ADDR) / 4096 * 3)*1000);
     pTsHdl->status.sys_health.vcc_aux = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCAUX_ADDR) / 4096 * 3)*1000);
     pTsHdl->status.sys_health.vcc_bram = (uint32_t)(((double)litepcie_readl(pTsHdl->ctrl_handle, CSR_XADC_VCCBRAM_ADDR) / 4096 * 3)*1000);
+    pTsHdl->status.sys_health.frontend_power_good = (uint8_t)litepcie_readl(pTsHdl->ctrl_handle, CSR_FRONTEND_STATUS_ADDR) & (1 << CSR_FRONTEND_STATUS_FE_PG_OFFSET);
+    pTsHdl->status.sys_health.acq_power_good = (uint8_t)litepcie_readl(pTsHdl->ctrl_handle, CSR_ADC_STATUS_ADDR) & (1 << CSR_ADC_STATUS_ACQ_PG_OFFSET);
 
     return TS_STATUS_OK;
 }

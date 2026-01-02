@@ -29,25 +29,45 @@
 #include "litepcie_helpers.h"
 
 
-void litepcie_dma_set_loopback(file_t fd, uint8_t loopback_enable) {
+void litepcie_dma_set_loopback(struct litepcie_dma_ctrl *dma, uint8_t loopback_enable) {
     struct litepcie_ioctl_dma m;
     m.loopback_enable = loopback_enable;
-    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA, m));
+#if defined(__APPLE__)
+    size_t outlen = sizeof(m);
+    m.channel = dma->channel;
+#endif
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA, m));
 }
 
-void litepcie_dma_writer(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
+void litepcie_dma_writer(struct litepcie_dma_ctrl *dma, uint8_t enable, uint32_t intr_count, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_writer m;
     m.enable = enable;
-    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA_WRITER, m));
+    m.interrupt_count = intr_count;
+#if defined(__APPLE__)
+    size_t outlen = sizeof(m);
+    m.channel = dma->channel;
+    m.sw_count = *sw_count;
+#endif
+
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_WRITER, m));
+
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
     *lost_count = m.lost_count;
 }
 
-void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
+void litepcie_dma_reader(struct litepcie_dma_ctrl *dma, uint8_t enable, uint32_t intr_count, int64_t *hw_count, int64_t *sw_count, int64_t *lost_count) {
     struct litepcie_ioctl_dma_reader m;
     m.enable = enable;
-    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_DMA_READER, m));
+    m.interrupt_count = intr_count;
+#if defined(__APPLE__)
+    size_t outlen = sizeof(m);
+    m.channel = dma->channel;
+    m.sw_count = *sw_count;
+#endif
+
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_DMA_READER, m));
+
     *hw_count = m.hw_count;
     *sw_count = m.sw_count;
     *lost_count = m.lost_count;
@@ -55,23 +75,29 @@ void litepcie_dma_reader(file_t fd, uint8_t enable, int64_t *hw_count, int64_t *
 
 /* lock */
 
-uint8_t litepcie_request_dma(file_t fd, uint8_t reader, uint8_t writer) {
+uint8_t litepcie_request_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer) {
     struct litepcie_ioctl_lock m;
     m.dma_reader_request = reader > 0;
     m.dma_writer_request = writer > 0;
     m.dma_reader_release = 0;
     m.dma_writer_release = 0;
-    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_LOCK, m));
+#if defined(__APPLE__)
+    size_t outlen = sizeof(m);
+#endif
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_LOCK, m));
     return m.dma_reader_status;
 }
 
-void litepcie_release_dma(file_t fd, uint8_t reader, uint8_t writer) {
+void litepcie_release_dma(struct litepcie_dma_ctrl *dma, uint8_t reader, uint8_t writer) {
     struct litepcie_ioctl_lock m;
     m.dma_reader_request = 0;
     m.dma_writer_request = 0;
     m.dma_reader_release = reader > 0;
     m.dma_writer_release = writer > 0;
-    checked_ioctl(ioctl_args(fd, LITEPCIE_IOCTL_LOCK, m));
+#if defined(__APPLE__)
+    size_t outlen = sizeof(m);
+#endif
+    checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_LOCK, m));
 }
 
 int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, uint8_t zero_copy)
@@ -95,7 +121,7 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
              FILE_FLAG_NO_BUFFERING |
              FILE_FLAG_OVERLAPPED);
     //Last char is channel ID.  Zero remove char before opening file
-#else
+#elif defined(__linux__)
     if (dma->use_reader)
         dma->fds.events |= POLLOUT;
     if (dma->use_writer)
@@ -104,18 +130,18 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
 #endif
 
     dma->fds.fd = litepcie_open(devName, flags);
-    if (dma->fds.fd < 0) {
+    if (dma->fds.fd <= 0) {
         fprintf(stderr, "Could not open device\n");
         return -1;
     }
 
     /* request dma reader and writer */
-    if ((litepcie_request_dma(dma->fds.fd, dma->use_reader, dma->use_writer) == 0)) {
+    if ((litepcie_request_dma(dma, dma->use_reader, dma->use_writer) == 0)) {
         fprintf(stderr, "DMA not available\n");
         return -1;
     }
 
-    litepcie_dma_set_loopback(dma->fds.fd, dma->loopback);
+    litepcie_dma_set_loopback(dma, dma->loopback);
 
     if (dma->zero_copy) {
 #if defined(_WIN32)
@@ -123,6 +149,9 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
         return -1;
 #else
         /* if mmap: get it from the kernel */
+#if defined(__APPLE__)
+        size_t outlen = sizeof(struct litepcie_ioctl_mmap_dma_info);
+#endif
         checked_ioctl(ioctl_args(dma->fds.fd, LITEPCIE_IOCTL_MMAP_DMA_INFO, dma->mmap_dma_info));
         if (dma->use_writer) {
             dma->buf_rd = mmap(NULL, DMA_BUFFER_TOTAL_SIZE, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -166,11 +195,11 @@ int litepcie_dma_init(struct litepcie_dma_ctrl *dma, const char *device_name, ui
 void litepcie_dma_cleanup(struct litepcie_dma_ctrl *dma)
 {
     if (dma->use_reader)
-        litepcie_dma_reader(dma->fds.fd, 0, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
+        litepcie_dma_reader(dma, 0, 0, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
     if (dma->use_writer)
-        litepcie_dma_writer(dma->fds.fd, 0, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
+        litepcie_dma_writer(dma, 0, 0, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
 
-    litepcie_release_dma(dma->fds.fd, dma->use_reader, dma->use_writer);
+    litepcie_release_dma(dma, dma->use_reader, dma->use_writer);
 
     if (dma->zero_copy) {
 #if !defined(_WIN32)
@@ -194,9 +223,9 @@ void litepcie_dma_process(struct litepcie_dma_ctrl *dma)
 
     /* set / get dma */
     if (dma->use_writer)
-        litepcie_dma_writer(dma->fds.fd, 1, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
+        litepcie_dma_writer(dma, 1, 0, &dma->writer_hw_count, &dma->writer_sw_count, &dma->writer_dropped_count);
     if (dma->use_reader)
-        litepcie_dma_reader(dma->fds.fd, 1, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
+        litepcie_dma_reader(dma, 1, 0, &dma->reader_hw_count, &dma->reader_sw_count, &dma->reader_dropped_count);
 
 #if defined(_WIN32)
     uint32_t retLen = 0;
@@ -287,6 +316,8 @@ void litepcie_dma_process(struct litepcie_dma_ctrl *dma)
         dma->usr_write_buf_offset = 0;
 
     }
+#elif defined(__APPLE__)
+//TODO
 #else
     /* polling */
     retVal = poll(&dma->fds, 1, 100);
@@ -353,7 +384,7 @@ char *litepcie_dma_next_read_buffer(struct litepcie_dma_ctrl *dma)
     if (!dma->buffers_available_read)
         return NULL;
     dma->buffers_available_read--;
-    char *ret = dma->buf_rd + dma->usr_read_buf_offset * DMA_BUFFER_SIZE;
+    char *ret = (char*)dma->buf_rd + dma->usr_read_buf_offset * DMA_BUFFER_SIZE;
     dma->usr_read_buf_offset = (dma->usr_read_buf_offset + 1) % DMA_BUFFER_COUNT;
     return ret;
 }
@@ -363,7 +394,7 @@ char *litepcie_dma_next_write_buffer(struct litepcie_dma_ctrl *dma)
     if (!dma->buffers_available_write)
         return NULL;
     dma->buffers_available_write--;
-    char *ret = dma->buf_wr + dma->usr_write_buf_offset * DMA_BUFFER_SIZE;
+    char *ret = (char*)dma->buf_wr + dma->usr_write_buf_offset * DMA_BUFFER_SIZE;
     dma->usr_write_buf_offset = (dma->usr_write_buf_offset + 1) % DMA_BUFFER_COUNT;
     return ret;
 }

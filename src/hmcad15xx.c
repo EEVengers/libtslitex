@@ -39,10 +39,10 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
     adc->channelCfg[0].input = HMCAD15_ADC_IN1;
     adc->channelCfg[0].invert = 1;
     adc->channelCfg[0].coarse = 0;
-    adc->channelCfg[0].fine = 0;
     adc->clockDiv = HMCAD15_CLK_DIV_1;
     adc->fullScale_x10 = HMCAD15_FULL_SCALE_DEFAULT;
     adc->drive = HMCAD15_LVDS_DS_15;
+    adc->lvdsTerm = HMCAD15_LVDS_TERM_94;
     adc->lvdsPhase = HMCAD15_LVDS_PHASE_DEFAULT;
     adc->low_clk = 0;
 
@@ -57,6 +57,9 @@ int32_t hmcad15xx_init(hmcad15xxADC_t* adc, spi_dev_t dev)
 
     //Gain dB mode
     hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
+
+    //Set Jitter Ctrl
+    hmcad15xxRegWrite(adc, HMCAD15_REG_CLK_JITTER, 0xFF);
 
     //Channel Conf
     hmcad15xxApplySampleMode(adc);
@@ -104,6 +107,7 @@ int32_t hmcad15xx_power_mode(hmcad15xxADC_t* adc, hmcad15xxPower_t power)
                                 HMCAD15_DUAL_CH_1_SLP : 0;
                     break;
                 case HMCAD15_QUAD_CHANNEL:
+                case HMCAD15_PREC_QUAD_CHANNEL:
                     data |= adc->channelCfg[0].active == 0 ? 
                                 HMCAD15_QUAD_CH_0_SLP : 0;
                     data |= adc->channelCfg[1].active == 0 ? 
@@ -175,6 +179,40 @@ int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment)
     return TS_STATUS_OK;
 }
 
+int32_t hmcad15xx_fine_gain_set(hmcad15xxADC_t* adc, bool enable)
+{
+    uint16_t gainVals = 0;
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    if(enable)
+    {
+        gainVals = adc->fineCal[0];
+        gainVals |= adc->fineCal[1] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_1_2, gainVals);
+        gainVals = adc->fineCal[2];
+        gainVals |= adc->fineCal[3] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_3_4, gainVals);
+        gainVals = adc->fineCal[4];
+        gainVals |= adc->fineCal[5] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_5_6, gainVals);
+        gainVals = adc->fineCal[6];
+        gainVals |= adc->fineCal[7] << 8;
+        hmcad15xxRegWrite(adc, HMCAD15_REG_FINE_GAIN_7_8, gainVals);
+        //Enable Fine Gain Control
+        hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, HMCAD15_FGAIN_EN);
+    }
+    else
+    {
+        //Disable Fine Gain Control
+        hmcad15xxRegWrite(adc, HMCAD15_REG_GAIN_SEL, 0);
+    }
+    return TS_STATUS_OK;
+
+}
+
 int32_t hmcad15xx_set_test_pattern(hmcad15xxADC_t* adc, hmcad15xxTestMode_t mode, uint16_t testData1, uint16_t testData2)
 {
     if(!adc)
@@ -226,7 +264,8 @@ int32_t hmcad15xx_set_sample_mode(hmcad15xxADC_t* adc, uint32_t sample_rate, hmc
     
     if(((adc->mode == HMCAD15_SINGLE_CHANNEL) && (sample_rate < HMCAD15_SINGLE_LOW_CLK_THRESHOLD)) ||
         ((adc->mode == HMCAD15_DUAL_CHANNEL) && (sample_rate < HMCAD15_DUAL_LOW_CLK_THRESHOLD)) ||
-        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)))
+        ((adc->mode == HMCAD15_QUAD_CHANNEL) && (sample_rate < HMCAD15_QUAD_LOW_CLK_THRESHOLD)) ||
+        ((adc->mode == HMCAD15_PREC_QUAD_CHANNEL) && (sample_rate < HMCAD15_PREC_LOW_CLK_THRESHOLD)))
     {
         adc->low_clk = 1;
     }
@@ -260,6 +299,14 @@ static void hmcad15xxApplyLvdsMode(hmcad15xxADC_t* adc)
             HMCAD15_LVDS_DS_DATA(adc->drive));
     hmcad15xxRegWrite(adc, HMCAD15_REG_LVDS_CURRENT, data);
 
+    // Set LVDS Termination
+    data = adc->lvdsTerm == 0 ? 0 :
+            (HMCAD15_LVDS_DS_LCLK(adc->lvdsTerm)  |
+             HMCAD15_LVDS_DS_FRAME(adc->lvdsTerm) |
+             HMCAD15_LVDS_DS_DATA(adc->lvdsTerm)  |
+             HMCAD15_LVDS_TERM_EN_MASK);
+    hmcad15xxRegWrite(adc, HMCAD15_REG_TERM, data);
+
     // Set LVDS Data Width (bits per sample)
     data = (HMCAD15_DATA_WIDTH(adc->width) |
             HMCAD15_LOW_CLK(adc->low_clk));
@@ -290,10 +337,15 @@ static void hmcad15xxApplySampleMode(hmcad15xxADC_t* adc)
                     HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
         case HMCAD15_QUAD_CHANNEL:
-        case HMCAD15_14BIT_QUAD_CHANNEL:
             adc->clockDiv = HMCAD15_CLK_DIV_4;
             data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
-                    HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
+            break;
+        case HMCAD15_PREC_QUAD_CHANNEL:
+            adc->clockDiv = HMCAD15_CLK_DIV_1;
+            data = HMCAD15_SAMPLE_MODE_SET(adc->mode) |
+            HMCAD15_SAMPLE_MODE_PREC |
+            HMCAD15_CLK_DIV_SET(adc->clockDiv);
             break;
     }
     hmcad15xxRegWrite(adc, HMCAD15_REG_CHAN_MODE, data);
@@ -321,6 +373,7 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
                     HMCAD15_CH_INVERT_D2(adc->channelCfg[1].invert);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_PREC_QUAD_CHANNEL:
             in12 = HMCAD15_SEL_CH_1(adc->channelCfg[0].input);
             in12 |= HMCAD15_SEL_CH_2(adc->channelCfg[1].input);
             in34 = HMCAD15_SEL_CH_3(adc->channelCfg[2].input);
@@ -329,7 +382,10 @@ static void hmcad15xxApplyChannelMap(hmcad15xxADC_t* adc)
                     HMCAD15_CH_INVERT_Q2(adc->channelCfg[1].invert) |
                     HMCAD15_CH_INVERT_Q3(adc->channelCfg[2].invert) |
                     HMCAD15_CH_INVERT_Q4(adc->channelCfg[3].invert));
-        break;
+            break;
+        default:
+            LOG_ERROR("ADC Mode Not Supported: %d", adc->mode);
+            return;
     }
 
     hmcad15xxRegWrite(adc, HMCAD15_REG_IN_SEL_1_2, in12);
@@ -353,11 +409,15 @@ static void hmcad15xxApplyChannelGain(hmcad15xxADC_t* adc)
             hmcad15xxRegWrite(adc, HMCAD15_REG_COARSE_GAIN_2, cgain);
             break;
         case HMCAD15_QUAD_CHANNEL:
+        case HMCAD15_PREC_QUAD_CHANNEL:
             cgain = HMCAD15_CGAIN_Q1(adc->channelCfg[0].coarse);
             cgain |= HMCAD15_CGAIN_Q2(adc->channelCfg[1].coarse);
             cgain |= HMCAD15_CGAIN_Q3(adc->channelCfg[2].coarse);
             cgain |= HMCAD15_CGAIN_Q4(adc->channelCfg[3].coarse);
             hmcad15xxRegWrite(adc, HMCAD15_REG_COARSE_GAIN_1, cgain);
-        break;
+            break;
+        default:
+            LOG_ERROR("ADC Mode Not Supported: %d", adc->mode);
+            break;
     }
 }

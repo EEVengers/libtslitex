@@ -1,4 +1,4 @@
-build*
+build/*
 artifacts/*
 .vscode
 .venv

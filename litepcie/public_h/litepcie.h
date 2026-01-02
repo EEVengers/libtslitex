@@ -13,8 +13,12 @@ extern "C" {
 
 #ifdef _WIN32
 #include "litepcie_win.h"
-#else
+#elif __linux__
 #include "litepcie_linux.h"
+#elif __APPLE__
+#include "litepcie_mac.h"
+#else
+#error "UNSUPPORTED PLATFORM"
 #endif
 
 #ifdef __cplusplus

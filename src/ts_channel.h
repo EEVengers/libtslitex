@@ -81,10 +81,20 @@ tsScopeState_t ts_channel_scope_status(tsChannelHdl_t tsChannels);
  * 
  * @param tsChannels Thunderscope Channel handle
  * @param rate Samples per Second
- * @param resolution Number of bits in each sample.  Valid values are 2^8 (256), 2^12 (4096), and 2^14 (16384).
+ * @param mode Sample Mode to set the resolution of each sample.
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
-int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, uint32_t resolution);
+int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsSampleFormat_t mode);
+
+/**
+ * @brief Configure the Clock Generator Reference Clock In/Out
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param mode Set the Clock IN/OUT mode
+ * @param refclk_freq Set the input clock frequency if in IN mode, or output frequency if in OUT mode
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_ext_clock_config(tsChannelHdl_t tsChannels, tsRefClockMode_t mode, uint32_t refclk_freq);
 
 /**
  * @brief Set the calibration parameters for a channel
@@ -105,6 +115,24 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
  * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
  */
  int32_t ts_channel_calibration_get(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCalibration_t* cal);
+
+/**
+ * @brief Set the calibration parameters for the adc
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param cal Pointer to the calibration structure to apply
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_adc_calibration_set(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal);
+
+/**
+ * @brief Get the calibration parameters for the adc
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param cal Pointer to the calibration structure
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+ int32_t ts_channel_adc_calibration_get(tsChannelHdl_t tsChannels, tsAdcCalibration_t* cal);
 
 /** 
  * @brief Manually set the AFE controls for a channel

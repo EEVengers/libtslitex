@@ -13,13 +13,22 @@
 #include "platform.h"
 #include "util.h"
 #include "liblitepcie.h"
+#include "ts_calibration.h"
 
+
+#define TS_ADC_DATA_FRAMING_8BIT        (0)
+#define TS_ADC_DATA_FRAMING_12BIT_MSB   (1 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
+#define TS_ADC_DATA_FRAMING_12BIT_LSB   (2 << CSR_ADC_HMCAD1520_SAMPLE_BITS_DATA_WIDTH_OFFSET);
 
 typedef enum adc_shuffle_e
 {
-    ADC_SHUFFLE_1CH = 0,
-    ADC_SHUFFLE_2CH = 1,
-    ADC_SHUFFLE_4CH = 2,
+    ADC_8B_SHUFFLE_1CH  = 0,
+    ADC_8B_SHUFFLE_2CH  = 1,
+    ADC_8B_SHUFFLE_4CH  = 2,
+    ADC_12B_SHUFFLE_1CH = 3,
+    ADC_12B_SHUFFLE_2CH = 4,
+    ADC_12B_SHUFFLE_4CH = 5,
+    ADC_DUAL_8B_SHUFFLE_4CH = 6,
 } adc_shuffle_t;
 
 
@@ -35,8 +44,8 @@ int32_t ts_adc_init(ts_adc_t* adc, spi_dev_t spi, file_t fd)
 
     if(retVal == TS_STATUS_OK)
     {
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DOWNSAMPLING_ADDR, 1);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DOWNSAMPLING_ADDR, 1);
         retVal = hmcad15xx_full_scale_adjust(&adc->adcDev, TS_ADC_FULL_SCALE_ADJUST_DEFAULT);
     }
 
@@ -64,14 +73,14 @@ int32_t ts_adc_set_channel_conf(ts_adc_t* adc, uint8_t channel, uint8_t input, u
                 }
             }
             retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-            litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+            litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
         }
     }
 
     return retVal;
 }
 
-int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int32_t gainFine)
+int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse)
 {
     int32_t retVal = TS_STATUS_OK;
 
@@ -82,19 +91,17 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
     else
     {
         adc->tsChannels[channel].coarse = gainCoarse;
-        adc->tsChannels[channel].fine = gainFine;
 
         for(uint8_t i = 0; i < TS_NUM_CHANNELS; i++)
         {
             if(adc->tsChannels[channel].input == adc->adcDev.channelCfg[i].input)
             {
                 adc->adcDev.channelCfg[i].coarse = gainCoarse;
-                adc->adcDev.channelCfg[i].fine = gainFine;
                 break;
             }
         }
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     if(retVal == TS_STATUS_OK)
@@ -107,12 +114,23 @@ int32_t ts_adc_set_gain(ts_adc_t* adc, uint8_t channel, int32_t gainCoarse, int3
 
 int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
 {
+    if(adc == NULL || channel >= TS_NUM_CHANNELS)
+    {
+        return TS_STATUS_ERROR;
+    }
+    else
+    {
+        adc->tsChannels[channel].active = enable;
+        return ts_adc_update_channels(adc);
+    }
+}
+
+int32_t ts_adc_update_channels(ts_adc_t* adc)
+{
     int32_t retVal;
     uint8_t activeCount = 0;
     uint8_t inactiveCount = 0;
-    adc_shuffle_t shuffleMode = ADC_SHUFFLE_1CH;
-
-    adc->tsChannels[channel].active = enable;
+    adc_shuffle_t shuffleMode = ADC_8B_SHUFFLE_1CH;
 
     for(uint8_t i=0; i < TS_NUM_CHANNELS; i++)
     {
@@ -127,9 +145,9 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
         {
             //Disable Unused channels in config
             LOG_DEBUG("Disable CH %d", i);
+            inactiveCount++;
             adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount] = adc->tsChannels[i];
             adc->adcDev.channelCfg[TS_NUM_CHANNELS - inactiveCount].active = 0;
-            inactiveCount++;
         }
     }
 
@@ -140,26 +158,33 @@ int32_t ts_adc_channel_enable(ts_adc_t* adc, uint8_t channel, uint8_t enable)
     }
     else 
     {
-
-        if(activeCount == 1)
+        if(adc->adcDev.width == HMCAD15_14_BIT)
+        {
+            //Set Quad Channel, Dual-8
+            adc->adcDev.mode = HMCAD15_PREC_QUAD_CHANNEL;
+            shuffleMode = ADC_DUAL_8B_SHUFFLE_4CH;
+        }
+        else if(activeCount == 1)
         {
             adc->adcDev.mode = HMCAD15_SINGLE_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_1CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_1CH : ADC_12B_SHUFFLE_1CH);
         }
         else if(activeCount == 2)
         {
             adc->adcDev.mode = HMCAD15_DUAL_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_2CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_2CH : ADC_12B_SHUFFLE_2CH);
         }
         else
         {
             adc->adcDev.mode = HMCAD15_QUAD_CHANNEL;
-            shuffleMode = ADC_SHUFFLE_4CH;
+            shuffleMode = ((adc->adcDev.width == HMCAD15_8_BIT) ? ADC_8B_SHUFFLE_4CH : ADC_12B_SHUFFLE_4CH);
         }
+
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_DATA_CHANNELS_ADDR, 
+            shuffleMode << CSR_ADC_HMCAD1520_DATA_CHANNELS_SHUFFLE_OFFSET);
+            
         retVal = hmcad15xx_set_channel_config(&adc->adcDev);
-        
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_DATA_CHANNELS_ADDR, shuffleMode << CSR_ADC_HAD1511_DATA_CHANNELS_SHUFFLE_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal;
@@ -177,7 +202,7 @@ int32_t ts_adc_shutdown(ts_adc_t* adc)
     if(retVal == TS_STATUS_OK)
     {
         hmcad15xx_power_mode(&adc->adcDev, HMCAD15_CH_POWERDN);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_CONTROL_ADDR, 1 << CSR_ADC_HMCAD1520_CONTROL_FRAME_RST_OFFSET);
     }
 
     return retVal; 
@@ -194,28 +219,70 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
     return TS_STATUS_OK;
 }
 
-int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, uint32_t resolution)
+int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleFormat_t mode)
 {
     if(!adc)
     {
         return TS_STATUS_ERROR;
     }
     hmcad15xxDataWidth_t data_mode = HMCAD15_8_BIT;
-    if(resolution == 4096)
+    uint32_t sample_bits = TS_ADC_DATA_FRAMING_8BIT;
+    if(mode == TS_12_BIT_LSB)
     {
         data_mode = HMCAD15_12_BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_12BIT_LSB;
     }
-    //else support 14-bit precise mode?
+    else if(mode == TS_12_BIT_MSB)
+    {
+        data_mode = HMCAD15_12_BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_12BIT_MSB;
+    }
+    else if(mode == TS_14_BIT)
+    {
+        //Precision mode uses Dual-8 LVDS
+        data_mode = HMCAD15_14_BIT;
+        sample_bits = TS_ADC_DATA_FRAMING_8BIT;
+    }
 
     if(TS_STATUS_OK == hmcad15xx_set_sample_mode(&adc->adcDev, sample_rate, data_mode))
     {
-        hmcad15xx_set_channel_config(&adc->adcDev);
-        litepcie_writel(adc->ctrl, CSR_ADC_HAD1511_CONTROL_ADDR, 1 << CSR_ADC_HAD1511_CONTROL_FRAME_RST_OFFSET);
+        litepcie_writel(adc->ctrl, CSR_ADC_HMCAD1520_SAMPLE_BITS_ADDR, sample_bits);
+
+        ts_adc_update_channels(adc);
         return TS_STATUS_OK;
     }
     else
     {
-        LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, resolution);
+        LOG_ERROR("Failed to set the ADC Sample Mode %d/%d", sample_rate, mode);
         return TS_STATUS_ERROR;
     }
+}
+
+int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal)
+{
+    if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
+    {
+        adc->adcDev.fineCal[i] = cal->branchFineGain[i];
+    }
+
+    return hmcad15xx_fine_gain_set(&adc->adcDev, true);
+}
+
+int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal)
+{
+        if(!adc)
+    {
+        return TS_STATUS_ERROR;
+    }
+
+    for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
+    {
+        cal->branchFineGain[i] = adc->adcDev.fineCal[i];
+    }
+    return TS_STATUS_OK;
 }

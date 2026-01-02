@@ -6,6 +6,12 @@
  * Copyright (C) 2024 / Nate Meyer  / nate.devel@gmail.com
  *
  */
+#ifndef _MCP4728_H_
+#define _MCP4728_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <stdint.h>
 #include "i2c.h"
@@ -50,3 +56,8 @@ typedef struct Mcp4728ChannelConfig_s
  * @return int32_t TS_STATUS_OK on success, else error
  */
 int32_t mcp4728_channel_set(i2c_t dev, uint8_t channel, Mcp4728ChannelConfig_t conf);
+
+#ifdef __cplusplus
+}
+#endif
+#endif

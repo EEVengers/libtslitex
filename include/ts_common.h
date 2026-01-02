@@ -25,10 +25,22 @@ extern "C" {
 
 #define TS_IDENT_STR_LEN            (256)
 
-#define TS_MAX_SAMPLE_RATE          (1000000000)
-#define TS_MAX_DUAL_CH_RATE         (500000000)
-#define TS_MAX_QUAD_CH_RATE         (250000000)
+#define TS_MAX_8BIT_SAMPLE_RATE     (1000000000)
+#define TS_MAX_12BIT_SAMPLE_RATE    (660000000)
+#define TS_MAX_14BIT_SAMPLE_RATE    (125000000)
 #define TS_MIN_SAMPLE_RATE          (15000000)
+
+#define TS_HW_ID_REV_MASK           (7)
+#define TS_HW_ID_VARIANT_MASK       (1 << 8)
+#define TS_HW_ID_VALID_MASK         (1 << 9)
+
+#define TS_DEFUALT_CLKOUT_FREQ     (10000000) //10 MHz
+
+#define TS_GW_VERSION(major, minor, patch)  ((((major) & 0xFFFF) << 16) + \
+                                             (((minor) & 0xFF)   << 8) + \
+                                             (((patch) & 0x3F)   << 1))
+
+#define LITEX_VERSION(major, minor)  ((((major) & 0xFFFF) << 16) + ((minor) & 0xFFFF))
 
 /**
  * @brief Opaque Handle to a Thunderscope device instance
@@ -49,18 +61,41 @@ typedef enum tsChannelTerm_e
     TS_TERM_50 = 1,
 } tsChannelTerm_t;
 
+typedef enum tsSampleFormat_e
+{
+    TS_8_BIT = 0,
+    TS_12_BIT_LSB,
+    TS_12_BIT_MSB,
+    TS_14_BIT
+}tsSampleFormat_t;
+
+typedef enum tsRefClockMode_e
+{
+    TS_REFCLK_NONE = 0,
+    TS_REFCLK_OUT = 1,
+    TS_REFCLK_IN = 2
+} tsRefClockMode_t;
+
 typedef struct tsDeviceInfo_s
 {
     uint32_t device_id;
-    char device_path[TS_IDENT_STR_LEN];
-    char identity[TS_IDENT_STR_LEN];
-    char serial_number[TS_IDENT_STR_LEN];
+    uint32_t hw_id;     /**< hw_id[9] - ID Valid, hw_id[8] - PCIe/USB, hw_id[7:4] - Reserved, hw_id[3:0] - Revision */
+    uint32_t gw_id;     /**< 32-bit version ID: gw_id[31:16] - Major, gw_id[15:8] - Minor, gw_id[7:1] - Patch, gw_id[0] - next */
+    uint32_t litex;     /**< 32-bit LiteX version: litex[31:16] - Year, litex[15:0] - Month */
+    uint32_t board_rev; /**< 32-bit Board revision counter. */
+    char device_path[TS_IDENT_STR_LEN];     /**< Device Path where the instance is opened */
+    char identity[TS_IDENT_STR_LEN];        /**< Device Identity String */
+    char serial_number[TS_IDENT_STR_LEN];   /**< Serial Number */
+    char build_config[TS_IDENT_STR_LEN];    /**< Build Configuration description */
+    char build_date[TS_IDENT_STR_LEN];      /**< Date of Manufacture */
+    char mfg_signature[TS_IDENT_STR_LEN];   /**< Device Unique Manufacturing Signature */
+
 } tsDeviceInfo_t;
 
 typedef struct tsChannelParam_s
 {
-    uint32_t volt_scale_mV;     /**< Set full scale voltage in millivolts */
-    int32_t volt_offset_mV;     /**< Set offset voltage in millivolts */
+    uint32_t volt_scale_uV;     /**< Set full scale voltage in microvolts */
+    int32_t volt_offset_uV;     /**< Set offset voltage in microvolts */
     uint32_t bandwidth;         /**< Set Bandwidth Filter in MHz. Next highest filter will be selected */
     uint8_t coupling;           /**< Select AD/DC coupling for channel.  Use tsChannelCoupling_t enum */
     uint8_t term;               /**< Select Termination mode for channel.  Use tsChannelTerm_t enum */
@@ -73,6 +108,8 @@ typedef struct sysHealth_s {
     uint32_t vcc_int;
     uint32_t vcc_aux;
     uint32_t vcc_bram;
+    uint8_t frontend_power_good;
+    uint8_t acq_power_good;
 } sysHealth_t;
 
 typedef struct tsScopeState_s
@@ -86,14 +123,40 @@ typedef struct tsScopeState_s
         uint32_t flags;
         struct {
             uint8_t adc_state:1;
+            uint8_t adc_sync:1;
             uint8_t power_state:1;
             uint8_t pll_state:1;
             uint8_t afe_state:1;
+            uint8_t local_osc_clk:1;
+            uint8_t ref_in_clk:1;
+            uint8_t pll_lock:1;
+            uint8_t pll_low:1;
+            uint8_t pll_high:1;
+            uint8_t pll_alt:1;
         };
     };
     sysHealth_t sys_health;
 } tsScopeState_t;
 
+typedef enum tsSyncMode_e
+{
+    TS_SYNC_DISABLED,
+    TS_SYNC_OUT,
+    TS_SYNC_IN
+} tsSyncMode_t;
+
+typedef enum tsEventType_e
+{
+    TS_EVT_NONE = 0,
+    TS_EVT_HOST_SW,
+    TS_EVT_EXT_SYNC,
+} tsEventType_t;
+
+typedef struct tsEvent_s
+{
+    tsEventType_t ID;
+    uint64_t event_sample;
+} tsEvent_t;
 
 #ifdef __cplusplus
 }

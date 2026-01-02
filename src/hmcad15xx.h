@@ -53,6 +53,7 @@ extern "C" {
 
 #define HMCAD15_NUM_ADC             (4)
 #define HMCAD15_NUM_CHANNELS        (4)
+#define HMCAD15_NUM_BRANCHES        (8)
 
 #define HMCAD15_FULL_SCALE_SET(x)   (((((x+2) - HMCAD15_FULL_SCALE_MIN) * 0x3F) / \
                                         (HMCAD15_FULL_SCALE_MAX - HMCAD15_FULL_SCALE_MIN)) & 0x3F)
@@ -61,6 +62,8 @@ extern "C" {
 #define HMCAD15_FULL_SCALE_MIN      (-100)
 
 #define HMCAD15_SAMPLE_MODE_SET(x)  ((x) & 0x0F)
+
+#define HMCAD15_SAMPLE_MODE_PREC    (1 << 3)
 
 #define HMCAD15_CLK_DIV_SET(x)      (((x) & 0x03) << 8)
 #define HMCAD15_CLK_DIV_1           (0)
@@ -77,6 +80,9 @@ extern "C" {
 #define HMCAD15_SEL_CH_2(x)         (((x) & 0x0F) << 9)
 #define HMCAD15_SEL_CH_3(x)         (((x) & 0x0F) << 1)
 #define HMCAD15_SEL_CH_4(x)         (((x) & 0x0F) << 9)
+
+#define HMCAD15_CGAIN_MODE_X        (0x1 << 0)
+#define HMCAD15_FGAIN_EN            (0x1 << 1)
 
 #define HMCAD15_CGAIN_Q1(x)         ((x) & 0xF)
 #define HMCAD15_CGAIN_Q2(x)         (((x) & 0xF) << 4)
@@ -103,6 +109,11 @@ extern "C" {
 #define HMCAD15_LVDS_DS_LCLK(x)     ((x) & 0x07)
 #define HMCAD15_LVDS_DS_FRAME(x)    (((x) & 0x07) << 4)
 #define HMCAD15_LVDS_DS_DATA(x)     (((x) & 0x07) << 8)
+
+#define HMCAD15_LVDS_TERM_LCLK(x)   ((x) & 0x07)
+#define HMCAD15_LVDS_TERM_FRAME(x)  (((x) & 0x07) << 4)
+#define HMCAD15_LVDS_TERM_DATA(x)   (((x) & 0x07) << 8)
+#define HMCAD15_LVDS_TERM_EN_MASK   (1 << 14)
 
 #define HMCAD15_DATA_WIDTH(x)       ((x) & 0x07)
 #define HMCAD15_LOW_CLK(x)          (((x) & 0x01) << 3)
@@ -143,6 +154,14 @@ extern "C" {
 #define HMCAD15_LVDS_DS_55          (6)
 #define HMCAD15_LVDS_DS_45          (7)
 
+#define HMCAD15_LVDS_TERM_DEFAULT   (0)
+#define HMCAD15_LVDS_TERM_260       (1)
+#define HMCAD15_LVDS_TERM_150       (2)
+#define HMCAD15_LVDS_TERM_94        (3)
+#define HMCAD15_LVDS_TERM_125       (4)
+#define HMCAD15_LVDS_TERM_80        (5)
+#define HMCAD15_LVDS_TERM_66        (6)
+#define HMCAD15_LVDS_TERM_55        (7)
 
 #define HMCAD15_CLK_DIV_DEFAULT     (1)
 #define HMCAD15_LVDS_PHASE_DEFAULT  (HMCAD15_LVDS_PHASE_0DEG)
@@ -157,14 +176,14 @@ typedef enum hmcad15xxMode_e
     HMCAD15_SINGLE_CHANNEL = 1,
     HMCAD15_DUAL_CHANNEL = 2,
     HMCAD15_QUAD_CHANNEL = 4,
-    HMCAD15_14BIT_QUAD_CHANNEL = 8
+    HMCAD15_PREC_QUAD_CHANNEL = 8
 } hmcad15xxMode_t;
 
 typedef enum hmcad15xxDataWidth_e
 {
-    HMCAD15_8_BIT,
-    HMCAD15_12_BIT,
-    HMCAD15_14_BIT
+    HMCAD15_8_BIT = 0,
+    HMCAD15_12_BIT = 1,
+    HMCAD15_14_BIT = 4
 } hmcad15xxDataWidth_t;
 
 typedef enum hmcad15xxPower_e
@@ -195,7 +214,6 @@ typedef struct hmcad15xxChCfg_s
     uint8_t active;
     uint8_t input;
     uint8_t coarse;
-    uint8_t fine;
     uint8_t invert;
 } hmcad15xxChCfg_t;
 
@@ -207,9 +225,11 @@ typedef struct hmcad15xxADC_s
     hmcad15xxBtcFmt_t format;
     hmcad15xxDataWidth_t width;
     int32_t fullScale_x10;
+    uint8_t fineCal[HMCAD15_NUM_BRANCHES];
     uint8_t clockDiv;
     uint8_t lvdsPhase;
     uint8_t drive;
+    uint8_t lvdsTerm;
     uint8_t low_clk;
 } hmcad15xxADC_t;
 
@@ -258,6 +278,16 @@ int32_t hmcad15xx_set_channel_config(hmcad15xxADC_t* adc);
  * out of the allowable range
  */
 int32_t hmcad15xx_full_scale_adjust(hmcad15xxADC_t* adc, int8_t adjustment);
+
+/**
+ * @brief Update settings for the branch fine gain control
+ * 
+ * @param adc Pointer to an ADC instance
+ * @param enable Enable or Disable the fine gain adjustments
+ * @return int32_t TS_STATUS_OK if successful, TS_INVALID_PARAM if the gain settings 
+ * could not be applied.
+ */
+int32_t hmcad15xx_fine_gain_set(hmcad15xxADC_t* adc, bool enable);
 
 /**
  * @brief Put the HMCAD15xx into a test mode that sends test data out the LVDS

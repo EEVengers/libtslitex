@@ -1,0 +1,71 @@
+# This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
+# See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
+name: Build Python Bindings with CMake
+
+on:
+  push:
+    branches: [ "main", "dev*" ]
+  pull_request:
+    branches: [ "main", "dev*" ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      fail-fast: false
+
+      # Set up a matrix to run the following configurations:
+      # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
+      # 2. <Linux, Release, latest GCC compiler toolchain on the default runner image, default generator>
+      # 3. <Linux, Release, latest Clang compiler toolchain on the default runner image, default generator>
+      # 4. <MacOS, Release, latest Clang compiler toolchain on the default runner image, default generator>
+      ##
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        build_type: [Release] # Note, debug builds are not generated as they require the debug version of Python to be installed.
+        platform: [auto]
+        arch: [auto64]
+
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-tags: true
+        fetch-depth: 0
+
+    - name: Setup Python Environment
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+    - run: pip install -r ${{ github.workspace }}/requirements.txt
+
+    - name: Set Vars
+      id: strings
+      shell: bash
+      run: |
+        echo "build-output-dir=${{ github.workspace }}/build/" >> "$GITHUB_OUTPUT"
+        echo "build-wheels-dir=${{ github.workspace }}/build/bindings/python/wheelhouse/" >> "$GITHUB_OUTPUT"
+
+    - name: Configure CMake
+      # Configure CMake in a 'build' subdirectory.
+      run: >
+        cmake -B ${{ steps.strings.outputs.build-output-dir }}
+        -DPY_PLATFORM=${{ matrix.platform }}
+        -DPY_ARCH=${{ matrix.arch }}
+        -S ${{ github.workspace }}
+
+    - name: Build Library
+      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --clean-first --config ${{ matrix.build_type }} -t tslitex_static
+
+    - name: Build Python Wheels
+      # Build Wheel from Cython code.
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -t PyWheels
+    
+    - uses: actions/upload-artifact@v4
+      with:
+        name: wheel-${{ matrix.os }}-${{ matrix.arch }}
+        path: ${{ steps.strings.outputs.build-wheels-dir }}/*.whl

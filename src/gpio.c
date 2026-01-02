@@ -27,3 +27,9 @@ void gpio_clear(gpio_t gpio)
     uint32_t value = litepcie_readl(gpio.fd, gpio.reg);
     litepcie_writel(gpio.fd, gpio.reg, (value & ~gpio.bit_mask));
 }
+
+void gpio_group_set(gpio_t gpio, uint32_t set)
+{
+    uint32_t value = litepcie_readl(gpio.fd, gpio.reg) & ~gpio.bit_mask;
+    litepcie_writel(gpio.fd, gpio.reg, (value | (set & gpio.bit_mask)));
+}
