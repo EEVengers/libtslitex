@@ -373,6 +373,11 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
         return TS_STATUS_ERROR;
     }
 
+    // Reset Counter
+    uint32_t adc_ctrl = litepcie_readl(pInst->ctrl, CSR_ADC_CONTROL_ADDR);
+    adc_ctrl |= (1 << CSR_ADC_CONTROL_COUNT_RESET_OFFSET);
+    litepcie_writel(pInst->ctrl, CSR_ADC_CONTROL_ADDR, adc_ctrl);
+
     status = ts_channel_run(pInst->pChannel, enable);
     if(status != TS_STATUS_OK)
     {

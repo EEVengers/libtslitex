@@ -83,6 +83,8 @@ int32_t samples_init(sampleStream_t* inst, uint8_t devIdx, uint8_t channel)
                 printf("failed to acquire writer mapped buffer");
             }
 #endif //APPLE_MMAP_DMA
+
+            samples_enable_set(inst, 0);
         }
         //else, DMA Unavailable
     }
