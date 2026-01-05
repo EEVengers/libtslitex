@@ -56,6 +56,21 @@ int32_t events_initialize(file_t handle)
     return status;
 }
 
+int32_t events_flush(file_t handle)
+{
+    if(handle == INVALID_HANDLE_VALUE)
+    {
+        LOG_ERROR("Invalid Event Handle");
+        return TS_STATUS_ERROR;
+    }
+    uint32_t event_cfg = litepcie_readl(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR);
+    event_cfg |= EVENT_FIFO_FLUSH;
+    LOG_DEBUG("Flush Events Queue");
+    litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, event_cfg);
+
+    return TS_STATUS_OK;
+}
+
 bool events_available(file_t handle)
 {
     if(handle != INVALID_HANDLE_VALUE && 

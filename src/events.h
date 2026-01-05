@@ -29,6 +29,14 @@ extern "C" {
 int32_t events_initialize(file_t handle);
 
 /**
+ * @brief Flush any pending events in the FIFO
+ * 
+ * @param handle File handle
+ * @return int32_t TS_STATUS_OK if the Event controller is flushed successfully
+ */
+int32_t events_flush(file_t handle);
+
+/**
  * @brief Check status bit if an Event is pending in the queue
  * 
  * @param handle File handle

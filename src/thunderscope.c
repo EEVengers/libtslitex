@@ -372,22 +372,20 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
     {
         return TS_STATUS_ERROR;
     }
-
+    
+    // Disable ADC Gate
+    status = ts_channel_run(pInst->pChannel, 0);
+    
     // Reset Counter
     uint32_t adc_ctrl = litepcie_readl(pInst->ctrl, CSR_ADC_CONTROL_ADDR);
     adc_ctrl |= (1 << CSR_ADC_CONTROL_COUNT_RESET_OFFSET);
     litepcie_writel(pInst->ctrl, CSR_ADC_CONTROL_ADDR, adc_ctrl);
 
-    status = ts_channel_run(pInst->pChannel, enable);
-    if(status != TS_STATUS_OK)
-    {
-        gpio_group_set(pInst->status_leds, pInst->signals->error);
-        return status;
-    }
-
     if(enable)
     {
-        gpio_group_set(pInst->status_leds, pInst->signals->active);
+        // Flush Event FIFO
+        events_flush(pInst->ctrl);
+
         //Get current sample increment
         pInst->bytes_per_sample = ts_channel_scope_status(pInst->pChannel).adc_sample_bits / 8;
         uint8_t active_channels = 0;
@@ -408,12 +406,37 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
         {
             pInst->bytes_per_sample *= 4;
         }
+
+        // Reset Counter
+        uint32_t adc_ctrl = litepcie_readl(pInst->ctrl, CSR_ADC_CONTROL_ADDR);
+        adc_ctrl |= (1 << CSR_ADC_CONTROL_COUNT_RESET_OFFSET);
+        litepcie_writel(pInst->ctrl, CSR_ADC_CONTROL_ADDR, adc_ctrl);
+        
+        //Enable Sample DMA
+        status = samples_enable_set(&pInst->samples, enable);
+
+        if(status == TS_STATUS_OK)
+        {
+            // Release ADC Gate
+            status = ts_channel_run(pInst->pChannel, enable);
+            gpio_group_set(pInst->status_leds, pInst->signals->active);
+        }
+
     }
     else
     {
+
+        status = samples_enable_set(&pInst->samples, enable);
+
         gpio_group_set(pInst->status_leds, pInst->signals->ready);
     }
-    return samples_enable_set(&pInst->samples, enable);
+
+    if(status != TS_STATUS_OK)
+    {
+        gpio_group_set(pInst->status_leds, pInst->signals->error);
+    }
+
+    return status;
 }
 
 int32_t thunderscopeRead(tsHandle_t ts, uint8_t* buffer, uint32_t len)
