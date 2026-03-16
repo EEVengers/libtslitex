@@ -17,6 +17,7 @@
 #include "ts_channel.h"
 #include "samples.h"
 #include "events.h"
+#include "platform.h"
 #include "gpio.h"
 #include "ts_fw_manager.h"
 #include "ts_data.h"
@@ -45,6 +46,7 @@ typedef struct ts_inst_s
     ts_fw_manager_t fw;
     uint32_t interrupt_rate;
     uint8_t bytes_per_sample;
+    uint8_t sample_divisor;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -388,6 +390,8 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
 
         //Get current sample increment
         pInst->bytes_per_sample = ts_channel_scope_status(pInst->pChannel).adc_sample_bits / 8;
+        pInst->sample_divisor = 1;
+
         uint8_t active_channels = 0;
         for(uint8_t ch=0; ch < TS_NUM_CHANNELS; ch++)
         {
@@ -401,10 +405,12 @@ int32_t thunderscopeDataEnable(tsHandle_t ts, uint8_t enable)
         if(active_channels == 2)
         {
             pInst->bytes_per_sample *= 2;
+            pInst->sample_divisor = 2;
         }
         else if(active_channels > 2)
         {
             pInst->bytes_per_sample *= 4;
+            pInst->sample_divisor = 4;
         }
 
         // Reset Counter
@@ -500,6 +506,7 @@ int32_t thunderscopeEventSyncAssert(tsHandle_t ts)
 int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;
+    uint32_t adjustment = 0;
     int32_t status = TS_STATUS_ERROR;
     if(pInst && evt)
     {
@@ -511,29 +518,22 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
         }
         else
         {
-            status = events_get_next(pInst->ctrl, evt);
+            status = events_get_next(pInst->ctrl, evt, &adjustment);
 
             if(status == TS_STATUS_OK)
             {
                 //Adjust Sample Count by Samples/increment
                 evt->event_sample = evt->event_sample * TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample;
+                //Adjust Sample Count by ADC Pipeline latency
+                evt->event_sample += TS_ADC_BASE_PIPELINE_DELAY / pInst->sample_divisor;
+                //Adjust Sample Count by sub-sample offset
+                evt->event_sample += adjustment / pInst->sample_divisor;
             }
             else
             {
                 evt->event_sample = 0;
             }
         }
-
-        #if 0
-        //Debug
-        static uint64_t lastBuffer = 0;
-        if(pInst->samples.driver_buffer_count > (lastBuffer + 950))
-        {
-            evt->ID = TS_EVT_EXT_SYNC;
-            evt->event_sample = ((pInst->samples.driver_buffer_count * DMA_BUFFER_SIZE)) / pInst->bytes_per_sample + 200;
-            lastBuffer = pInst->samples.driver_buffer_count;
-        }
-        #endif
     }
 
     return status;

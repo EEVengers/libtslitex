@@ -84,7 +84,7 @@ bool events_available(file_t handle)
     }
 }
 
-int32_t events_get_next(file_t handle, tsEvent_t *pEvent)
+int32_t events_get_next(file_t handle, tsEvent_t *pEvent, uint32_t *adjustment)
 {
     if(handle == INVALID_HANDLE_VALUE)
     {
@@ -104,6 +104,8 @@ int32_t events_get_next(file_t handle, tsEvent_t *pEvent)
     pEvent->event_sample += (uint64_t)litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READMARKER_ADDR + 4);
 
     evt_data = litepcie_readl(handle, CSR_EVENTS_ENGINE_FIFO_READSOURCE_ADDR);
+    *adjustment = (evt_data >> CSR_EVENTS_ENGINE_FIFO_READSOURCE_ADJUST_OFFSET) & 0xFF;
+    
     if((evt_data & 0xF) == EVENT_SOURCE_SW)
     {
         pEvent->ID = TS_EVT_HOST_SW;

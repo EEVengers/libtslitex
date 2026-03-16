@@ -49,9 +49,10 @@ bool events_available(file_t handle);
  * 
  * @param handle File handle
  * @param pEvent Pointer to an event structure to populate
+ * @param adjustment Pointer to store an adjustment value that indicates the offset within the sample group to align the event
  * @return int32_t TS_STATUS_OK if the event was retrieved successfully
  */
-int32_t events_get_next(file_t handle, tsEvent_t *pEvent);
+int32_t events_get_next(file_t handle, tsEvent_t *pEvent, uint32_t *adjustment);
 
 /**
  * @brief Configure the Event Generator to produce a timed event.  The event will repeat with the

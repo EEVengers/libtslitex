@@ -26,6 +26,8 @@ extern "C" {
 #define TS_ADC_CH_COARSE_GAIN_DEFAULT           (9)
 #define TS_ADC_CH_FINE_GAIN_DEFAULT             (0)
 
+#define TS_ADC_BASE_PIPELINE_DELAY              (128) /**< Per the HMCAD1520 Datasheet Single Channel Pipeline Delay */
+
 #define TS_ADC_CH_NO_INVERT     (0)
 #define TS_ADC_CH_INVERT        (1)
 

@@ -107,6 +107,7 @@ static uint32_t get_flash_data(spiflash_dev_t* dev, uint32_t flash_addr, uint8_t
         {
             flash_window = (flash_addr+index) >> 16;
             litepcie_writel(dev->fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR, flash_window);
+            flash_window = litepcie_readl(dev->fd, CSR_FLASH_ADAPTER_WINDOW0_ADDR);
         }
 
         flash_data = litepcie_readl(dev->fd, (flash_base + ((flash_addr+index) & 0xFFFF)));
