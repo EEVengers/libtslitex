@@ -135,6 +135,8 @@ cdef extern from "thunderscope.h":
 
     int32_t thunderscopeEventSyncAssert(tsHandle_t ts) nogil
 
+    int32_t thunderscopeEventSyncPeriodicConfig(tsHandle_t ts, uint32_t period_us)
+
     int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
 
     int32_t thunderscopeFwUpdate(tsHandle_t ts, const char* bitstream, uint32_t len) nogil

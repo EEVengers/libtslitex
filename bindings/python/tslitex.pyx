@@ -289,6 +289,12 @@ cdef class Thunderscope:
         with nogil:
             tslitex.thunderscopeEventSyncAssert(<tslitex.tsHandle_t>self._tsHandle)
 
+    
+    def EventPeriod(self, period: float):
+        cdef uint32_t period_us
+        period_us = <uint32_t>(period * 1000000)
+        tslitex.thunderscopeEventSyncPeriodicConfig(<tslitex.tsHandle_t>self._tsHandle, period_us)
+
     def Enable(self, enable: bool):
         cdef int32_t retVal = tslitex.thunderscopeDataEnable(self._tsHandle, <uint8_t>enable)
         if retVal != tslitex.TS_STATUS_OK:

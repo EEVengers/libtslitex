@@ -158,6 +158,16 @@ int32_t thunderscopeExtSyncConfig(tsHandle_t ts, tsSyncMode_t mode);
 int32_t thunderscopeEventSyncAssert(tsHandle_t ts);
 
 /**
+ * @brief Configure the Thunderscope to generate a periodic Sync Event
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param period_us Period of the Event Rate in microseconds. A rate of zero (0) disables the periodic
+ *          event generation.
+ * @return int32 TS_STATUS_OK if the period was configured successfully, or a negative error code
+ */
+int32_t thunderscopeEventSyncPeriodicConfig(tsHandle_t ts, uint32_t period_us);
+
+/**
  * @brief Poll for a Event
  * 
  * Event struct will be populated with TS_EVT_NONE if there is no event available.

@@ -503,6 +503,18 @@ int32_t thunderscopeEventSyncAssert(tsHandle_t ts)
     return status;
 }
 
+int32_t thunderscopeEventSyncPeriodicConfig(tsHandle_t ts, uint32_t period_us)
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+    int32_t status = TS_STATUS_ERROR;
+    if(pInst)
+    {
+            status = events_set_periodic(pInst->ctrl, period_us);
+    }
+
+    return status;
+}
+
 int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;

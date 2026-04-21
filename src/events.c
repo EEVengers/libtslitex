@@ -120,6 +120,11 @@ int32_t events_get_next(file_t handle, tsEvent_t *pEvent, uint32_t *adjustment)
         return TS_STATUS_ERROR;
     }
 
+    LOG_DEBUG("Event Get: %s @ Sample - %llu + %lu",
+            pEvent->ID == TS_EVT_HOST_SW ? "SWE":"EXT",
+            pEvent->event_sample,
+            *adjustment);
+
     return TS_STATUS_OK;
 }
 
@@ -182,6 +187,7 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
         evt_ctrl &= ~(1UL << EVENT_OUTPUT_EXT_SYNC);
         //Disable Ext Input
         evt_ctrl &= ~(1UL << EVENT_SOURCE_EXT_SYNC);
+        evt_ctrl &= ~(1UL << EVENT_SOURCE_SW);
         LOG_DEBUG("Set Event Control 0x%X", evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_EXT_SYNC_CONTROL_ADDR, EXT_SYNC_DISABLED);
@@ -192,6 +198,7 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
     {
         //Disable Ext Output
         evt_ctrl &= ~(1UL << EVENT_OUTPUT_EXT_SYNC);
+        evt_ctrl &= ~(1UL << CSR_EVENTS_ENGINE_CONTROL_SYNC_SEL_OFFSET);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
 
         //Set SYNC IN
@@ -215,6 +222,9 @@ int32_t events_set_ext_sync(file_t handle, tsSyncMode_t mode)
         
         //Enable Ext Output
         evt_ctrl |= (1UL << EVENT_OUTPUT_EXT_SYNC);
+        evt_ctrl |= (1UL << EVENT_SOURCE_SW);
+        //Set Event engine to sync marker value from Output clock domain
+        evt_ctrl |= (1UL << CSR_EVENTS_ENGINE_CONTROL_SYNC_SEL_OFFSET);
         LOG_DEBUG("Set Event Control 0x%X", evt_ctrl);
         litepcie_writel(handle, CSR_EVENTS_ENGINE_CONTROL_ADDR, evt_ctrl);
 
