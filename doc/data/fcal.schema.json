@@ -1,0 +1,193 @@
+{
+    "$id": "https://example.com/schemas/fcal",
+    "title": "Factory Calibration",
+    "type": "object",
+    "properties": {
+        "version": {
+            "type": "integer",
+            "minimum": 1
+        },
+        "serial": {
+            "type": "string",
+            "maxLength": 256
+        },
+        "timestamp": {
+            "type": "string",
+            "description": "UTC date/time in ISO 8601 format"
+        },
+        "channel1": {
+            "type": "object",
+            "properties": {
+                "attenuatorScale": {
+                    "type": "number"
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/channelPathCalibration"
+                    }
+                },
+                "pgaLoadScales":{
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/pgaLoadScale"
+                    }
+                }
+            }
+        },
+        "channel2": {
+            "type": "object",
+            "properties": {
+                "attenuatorScale": {
+                    "type": "number"
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/channelPathCalibration"
+                    }
+                },
+                "pgaLoadScales":{
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/pgaLoadScale"
+                    }
+                }
+            }
+        },
+        "channel3": {
+            "type": "object",
+            "properties": {
+                "attenuatorScale": {
+                    "type": "number"
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/channelPathCalibration"
+                    }
+                },
+                "pgaLoadScales":{
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/pgaLoadScale"
+                    }
+                }
+            }
+        },
+        "channel4": {
+            "type": "object",
+            "properties": {
+                "attenuatorScale": {
+                    "type": "number"
+                },
+                "paths": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/channelPathCalibration"
+                    }
+                },
+                "pgaLoadScales":{
+                    "type": "array",
+                    "items": {
+                        "$ref": "/schemas/pgaLoadScale"
+                    }
+                }
+            }
+        },
+        "adc":{
+            "type": "object",
+            "properties": {
+                "fineGainBranch1": {
+                    "type": "number"
+                },
+                "fineGainBranch2": {
+                    "type": "number"
+                },
+                "fineGainBranch3": {
+                    "type": "number"
+                },
+                "fineGainBranch4": {
+                    "type": "number"
+                },
+                "fineGainBranch5": {
+                    "type": "number"
+                },
+                "fineGainBranch6": {
+                    "type": "number"
+                },
+                "fineGainBranch7": {
+                    "type": "number"
+                },
+                "fineGainBranch8": {
+                    "type": "number"
+                }
+            }
+        }
+    },
+    "required": [
+        "version",
+        "serial",
+        "channel1",
+        "channel2",
+        "channel3",
+        "channel4",
+        "adc"
+    ],
+    "$defs": {
+        "channelPathCalibration": {
+            "$id": "https://example.com/schemas/channelPathCalibration",
+            "title": "Channel Path Calibration",
+            "type": "object",
+            "properties": {
+                "pgaPreampGain": {
+                    "enum": ["high", "low"]
+                },
+                "pgaLadderAttenuator": {
+                    "type": "number"
+                },
+                "trimScaleDac": {
+                    "type": "number"
+                },
+                "trimOffsetDacScale": {
+                    "type": "number"
+                },
+                "trimOffsetDacZero": {
+                    "type": "number"
+                },
+                "bufferInputVpp": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "pgaPreampGain",
+                "pgaLadderAttenuator",
+                "trimScaleDac",
+                "trimOffsetDacScale",
+                "trimOffsetDacZero",
+                "bufferInputVpp"
+            ]
+        },
+        "pgaLoadScale": {
+            "$id": "https://example.com/schemas/pgaLoadScale",
+            "title": "PGA Load Scale",
+            "type": "object",
+            "properties": {
+                "sampleRate": {
+                    "type": "number"
+                },
+                "channelCount": {
+                    "type": "number"
+                },
+                "scale": {
+                    "type": "number"
+                }
+            },
+            "required": [
+                "sampleRate",
+                "channelCount",
+                "scale"
+            ]  
+        }
+    }
+}
