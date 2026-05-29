@@ -71,6 +71,7 @@ static const char* ts_fw_parse_bit_header(const char* header, const char** part,
 {
     const uint8_t* position = header;
     uint16_t key_len = 0;
+    *bin_len = 0;
 
     //First Field ('0FF0...')
     key_len = (uint16_t)(position[0] << 8) + (position[1]);
@@ -183,9 +184,11 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
     const char* part_name = NULL;
     atomic_store(&mngr->fw_progress, 0);
     const char* bin_start = ts_fw_parse_bit_header(file_stream, &part_name, &bin_length);
-    if(bin_length > len)
+    if((bin_start == NULL) ||
+        (bin_length >= len) ||
+        (bin_length == 0))
     {
-        LOG_ERROR("INVALID length in bitstream header (%u > %u)", bin_length, len);
+        LOG_ERROR("INVALID bitstream header");
         return TS_STATUS_ERROR;
     }
     LOG_DEBUG("Bitstream Length: %u", bin_length);

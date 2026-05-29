@@ -109,9 +109,8 @@ static void fw_upgrade(tsHandle_t ts, const char* file_path)
         printf("Gateware update in progress....");
 
         // Load New bitstream
-        thunderscopeFwUpdate(ts, bitstream, file_size);
-
-        printf("Update Complete!\r\n");
+        if (TS_STATUS_OK == thunderscopeFwUpdate(ts, bitstream, file_size))
+            printf("Update Complete!\r\n");
 
         // Close File
         file.close();
