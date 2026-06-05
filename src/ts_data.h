@@ -42,6 +42,16 @@ int32_t ts_data_factory_cal_get(ts_fw_manager_t* mngr, tsScopeCalibration_t *fca
  */
 int32_t ts_data_factory_id_get(ts_fw_manager_t* mngr, tsDeviceInfo_t* infos);
 
+/**
+ * @brief Parse a given nul-terminated json string into the Factory Calibration structure
+ * 
+ * @param cal_buffer Pointer to the json string
+ * @param fcal Pointer to the calibration data struct
+ * 
+ * @return TS_STATUS_OK if the calibration was parsed successfully
+ */
+int32_t ts_data_parse_factory_cal(uint8_t* cal_buffer, tsScopeCalibration_t *fcal);
+
 
 #ifdef __cplusplus
 }
