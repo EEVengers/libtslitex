@@ -39,7 +39,7 @@ static bool ts_parse_channel_bitmap(struct json_object *channel_list_obj, tsChan
                 return false;
             }
             ch_bitmap |= (1 << ch_num);
-            *count++;
+            (*count)++;
         }
         else
         {
@@ -65,6 +65,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
 {
     bool status = true;
     struct json_object *item;
+    struct json_object *arr_obj;
     struct json_object *paths_obj;
     bool high_gain = false;
     uint32_t ladder_idx = 0;
@@ -83,9 +84,9 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
     }
 
     // Parse Path Cal
-    if (json_object_object_get_ex(afe_obj, "path", &item) && json_object_get_type(item) == json_type_array)
+    if (json_object_object_get_ex(afe_obj, "path", &arr_obj) && json_object_get_type(arr_obj) == json_type_array)
     {
-        struct json_object *path_obj = json_object_array_get_idx(item, path_idx);
+        struct json_object *path_obj = json_object_array_get_idx(arr_obj, path_idx);
         while (path_obj != NULL)
         {
             // Get Gain and Ladder Index
@@ -99,7 +100,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
                 status = false;
             
                 path_idx++;
-                path_obj = json_object_array_get_idx(item, path_idx);
+                path_obj = json_object_array_get_idx(arr_obj, path_idx);
                 continue;
             }
             
@@ -112,7 +113,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
                     LOG_ERROR("Calibration Error invalid PGA Ladder %d", ladder_idx);
                     status = false;
                     path_idx++;
-                    path_obj = json_object_array_get_idx(item, path_idx);
+                    path_obj = json_object_array_get_idx(arr_obj, path_idx);
                     continue;    
                 }
             }
@@ -121,7 +122,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
                 LOG_ERROR("Calibration Error parsing PGA Ladder");
                 status = false;
                 path_idx++;
-                path_obj = json_object_array_get_idx(item, path_idx);
+                path_obj = json_object_array_get_idx(arr_obj, path_idx);
                 continue;
             }
 
@@ -129,7 +130,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
 
             // Parse Path variables
             if (json_object_object_get_ex(path_obj, "trimDPot", &item) && json_object_get_type(item) == json_type_int)
-                path_cal->trimScaleDac = json_object_get_int(item);
+                path_cal->trimDPot = json_object_get_int(item);
             if (json_object_object_get_ex(path_obj, "trimDacScale", &item) && json_object_get_type(item) == json_type_double)
                 path_cal->trimOffsetDacScale = json_object_get_double(item);
             if (json_object_object_get_ex(path_obj, "trimDacZeroM", &item) && json_object_get_type(item) == json_type_double)
@@ -140,7 +141,7 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
                 path_cal->bufferInputVpp = json_object_get_double(item);
             
             path_idx++;
-            path_obj = json_object_array_get_idx(item, path_idx);
+            path_obj = json_object_array_get_idx(arr_obj, path_idx);
         }
     }
     else
@@ -367,6 +368,7 @@ int32_t ts_data_parse_factory_cal(uint8_t* cal_buffer, tsScopeCalibration_t *fca
                 LOG_ERROR("Problem while reading calibration data for ADC");
             }
         }
+        ret = TS_STATUS_OK;
     }
     else
     {

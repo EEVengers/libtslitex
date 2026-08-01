@@ -33,6 +33,7 @@ typedef enum tsCalAdcTest_e
 
 typedef enum tsChannelsActive_e
 {
+    TS_CHAN_NONE    = 0b0000,
     TS_CHAN_0       = 0b0001,
     TS_CHAN_1       = 0b0010,
     TS_CHAN_0_1     = 0b0011,
@@ -53,7 +54,7 @@ typedef struct tsAfePathCalibration_s
     double trimOffsetDacZeroC;
     double trimOffsetDacZeroM;
     double trimOffsetDacScale;
-    double trimScaleDac;
+    uint32_t trimDPot;
 } tsAfePathCalibration_t;
 
 typedef struct tsAfeCalibration_s
@@ -77,7 +78,7 @@ typedef struct tsAdcBranchGain_s
     tsChannelsActive_t channels;
     struct {
         uint32_t rate;
-        uint32_t gain[8];
+        uint8_t gain[8];
     } conf[TS_CAL_NUM_RATES];
 } tsAdcBranchGain_t;
 

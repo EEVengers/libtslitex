@@ -258,7 +258,7 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleForm
     }
 }
 
-int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal)
+int32_t ts_adc_cal_set(ts_adc_t* adc, uint8_t cal[])
 {
     if(!adc)
     {
@@ -267,13 +267,13 @@ int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal)
 
     for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
     {
-        adc->adcDev.fineCal[i] = cal->branchFineGain[i];
+        adc->adcDev.fineCal[i] = cal[i];
     }
 
     return hmcad15xx_fine_gain_set(&adc->adcDev, true);
 }
 
-int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal)
+int32_t ts_adc_cal_get(ts_adc_t* adc, uint8_t cal[])
 {
         if(!adc)
     {
@@ -282,7 +282,7 @@ int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal)
 
     for(int i=0; i < HMCAD15_NUM_BRANCHES; i++)
     {
-        cal->branchFineGain[i] = adc->adcDev.fineCal[i];
+        cal[i] = adc->adcDev.fineCal[i];
     }
     return TS_STATUS_OK;
 }

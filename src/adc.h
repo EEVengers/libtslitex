@@ -110,7 +110,7 @@ int32_t ts_adc_set_sample_mode(ts_adc_t* adc, uint32_t sample_rate, tsSampleForm
  * @param cal Pointer to a ADC Calibration structure
  * @return int32_t TS_STATUS_OK if the calibration was applied successfully
  */
-int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal);
+int32_t ts_adc_cal_set(ts_adc_t* adc, uint8_t cal[]);
 
 /**
  * @brief Set the calibration on the ADC
@@ -119,7 +119,7 @@ int32_t ts_adc_cal_set(ts_adc_t* adc, tsAdcCalibration_t *cal);
  * @param cal Pointer to a ADC Calibration structure
  * @return int32_t TS_STATUS_OK if the calibration was applied successfully
  */
-int32_t ts_adc_cal_get(ts_adc_t* adc, tsAdcCalibration_t *cal);
+int32_t ts_adc_cal_get(ts_adc_t* adc, uint8_t cal[]);
 
 #ifdef __cplusplus
 }
