@@ -22,6 +22,26 @@
 #include <stddef.h>
 #include <math.h>
 
+/**
+ * @brief Calculate the the maximum possible offset for a single AFE config
+ * 
+ * @param cal AFE Calibration setting
+ * @param temp_C Current temperature in Celcius
+ * 
+ * @return Maximum possible offset for the given AFE parameters
+ */
+static inline double ts_afe_offset_max(tsAfePathCalibration_t cal, double temp_C);
+
+/**
+ * @brief Calculate the the minimum possible offset for a single AFE config
+ * 
+ * @param cal AFE Calibration setting
+ * @param temp_C Current temperature in Celcius
+ * 
+ * @return Minimum possible offset for the given AFE parameters
+ */
+static inline double ts_afe_offset_min(tsAfePathCalibration_t cal, double temp_C);
+
 
 //Amp SPI Dev, Trim DAC, Trim DPot, term, attenuation, DC Switch
 int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t trimDac, uint8_t dacCh,
@@ -67,29 +87,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     afe->isAttenuated = true;
     
     // Default calibration
-    afe->cal.buffer_uV = TS_VBUFFER_NOMINAL_UV;
-    afe->cal.bias_uV = TS_VBIAS_NOMINAL_UV;
-    afe->cal.attenuatorGain1M_mdB = TS_ATTENUATION_1M_GAIN_mdB;
-    afe->cal.attenuatorGain50_mdB = TS_TERMINATION_50OHM_GAIN_mdB;
-    afe->cal.bufferGain_mdB = TS_BUFFER_GAIN_NOMINAL_mdB;
-    afe->cal.trimRheostat_range = MCP4452_104_FULL_SCALE_OHM;
-    afe->cal.preampLowGainError_mdB = 0;
-    afe->cal.preampHighGainError_mdB = 0;
-    afe->cal.preampOutputGainError_mdB = 0;
-    afe->cal.preampLowOffset_uV = 0;
-    afe->cal.preampHighOffset_uV = 0;
-    afe->cal.preampInputBias_uA = TS_PREAMP_INPUT_BIAS_CURRENT_uA;
-    afe->cal.preampAttenuatorGain_mdB[0] =  TS_AFE_PREAMP_ATTEN_0_mdB;
-    afe->cal.preampAttenuatorGain_mdB[1] =  TS_AFE_PREAMP_ATTEN_1_mdB;
-    afe->cal.preampAttenuatorGain_mdB[2] =  TS_AFE_PREAMP_ATTEN_2_mdB;
-    afe->cal.preampAttenuatorGain_mdB[3] =  TS_AFE_PREAMP_ATTEN_3_mdB;
-    afe->cal.preampAttenuatorGain_mdB[4] =  TS_AFE_PREAMP_ATTEN_4_mdB;
-    afe->cal.preampAttenuatorGain_mdB[5] =  TS_AFE_PREAMP_ATTEN_5_mdB;
-    afe->cal.preampAttenuatorGain_mdB[6] =  TS_AFE_PREAMP_ATTEN_6_mdB;
-    afe->cal.preampAttenuatorGain_mdB[7] =  TS_AFE_PREAMP_ATTEN_7_mdB;
-    afe->cal.preampAttenuatorGain_mdB[8] =  TS_AFE_PREAMP_ATTEN_8_mdB;
-    afe->cal.preampAttenuatorGain_mdB[9] =  TS_AFE_PREAMP_ATTEN_9_mdB;
-    afe->cal.preampAttenuatorGain_mdB[10] = TS_AFE_PREAMP_ATTEN_10_mdB;
+    afe->cal = TS_AFE_DEFAULT_CAL;
     
     Mcp4728ChannelConfig_t trimConf = {0};
     trimConf.vref = MCP4728_VREF_VDD;
@@ -108,189 +106,142 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     return retVal;
 }
 
-int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB)
+
+int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, double offset, double* gain_actual, double* offset_actual)
 {
-    int32_t gain_actual = 0;
-    int32_t gain_request = gain_mdB;
+    double reqScale = afe_Vpp;
+    double attenScale = 1.0;
+    bool needsAtten = false;
+    lmh6518Preamp_t preamp = PREAMP_LG;
+    uint32_t pathIdx = 0;
+    uint8_t trimPotVal = 0;
+    Mcp4728ChannelConfig_t trimConf = {.vref = MCP4728_VREF_VDD,
+                                        .power = MCP4728_PD_NORMAL,
+                                        .gain = MCP4728_GAIN_1X,
+                                        .value = 0};  
+
+    if(NULL == afe || NULL == offset_actual || NULL == gain_actual)
+    {
+        //ERROR
+        return TS_STATUS_ERROR;
+    }
+
     afe->isAttenuated = false;
-    if(NULL == afe)
-    {
-        //ERROR
-        return TS_STATUS_ERROR;
-    }
 
-    //Remove Buffer gain calibration value
-    gain_request -= afe->cal.bufferGain_mdB;
-    
-    //Remove Preamp Output gain calibration value
-    gain_request -= afe->cal.preampOutputGainError_mdB;
-
-    if(isBetaDevice(afe->termPin.fd))
-    {
-        // If 50-Ohm mode in use, limit gain to TBD
-        if(afe->termination == TS_TERM_50)
-        {
-            gain_request -= afe->cal.attenuatorGain50_mdB;
-        }
-        else if(gain_request < LMH6518_MIN_GAIN_mdB)
-        {
-            // Update Attenuation if needed
-            afe->isAttenuated = true;
-            ts_afe_attenuation_control(afe, true);
-            gain_request -= afe->cal.attenuatorGain1M_mdB;
-        }
-    }
-    else if(gain_request < LMH6518_MIN_GAIN_mdB)
-    {
-        // Update Attenuation if needed
-        ts_afe_attenuation_control(afe, true);
-        gain_request -= afe->cal.attenuatorGain1M_mdB;
-    }
-
-    gain_actual = lmh6518_calc_gain_config(&afe->ampConf, gain_request);
-
-    if((gain_actual == 0) ||
-        (TS_STATUS_OK != lmh6518_apply_config(afe->amp, afe->ampConf)))
-    {
-        return TS_STATUS_ERROR;
-    }
-
-    if(afe->isAttenuated)
-    {
-        gain_actual += afe->cal.attenuatorGain1M_mdB;
-    }
-    else
-    {
-        ts_afe_attenuation_control(afe, false);
-        if(isBetaDevice(afe->termPin.fd) && afe->termination == TS_TERM_50)
-        {
-            gain_actual += afe->cal.attenuatorGain50_mdB;
-        }
-    }
-
-    if(afe->ampConf.preamp == PREAMP_LG)
-    {
-        gain_actual += afe->cal.preampLowGainError_mdB;
-    }
-    else
-    {
-        gain_actual += afe->cal.preampHighGainError_mdB;
-    }
-
-    gain_actual += afe->cal.bufferGain_mdB;
-    gain_actual += afe->cal.preampOutputGainError_mdB;
-
-    LOG_DEBUG("AFE Gain request: %d mdB actual: %d mdB", gain_mdB, gain_actual);
-
-    return gain_actual;
-}
-
-int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_uV, int32_t* offset_actual)
-{
-    uint16_t offsetVal = TS_TRIM_DAC_DEFAULT;
-    int64_t V_dac = 0;
-    int64_t R_trim = 0;
-    int64_t gain_afe = 0;
-    int64_t V_zero = 0;
-    int64_t gain_preamp = 0;
-
-    if(NULL == afe || NULL == offset_actual)
-    {
-        //ERROR
-        return TS_STATUS_ERROR;
-    }
-
-    // Determine offset calculation
+    // Test if requested Vpp is too large
     if(afe->termination == TS_TERM_50)
     {
-        gain_afe += afe->cal.attenuatorGain50_mdB;
-    }
-    else if(afe->isAttenuated)
-    {
-        gain_afe += afe->cal.attenuatorGain1M_mdB;
-    }
-
-    V_zero = afe->cal.buffer_uV;
-
-    gain_preamp = lmh6518_gain_from_config(afe->ampConf);
-    if(afe->ampConf.preamp == PREAMP_LG)
-    {
-        gain_preamp += afe->cal.preampLowGainError_mdB;
-        V_zero += (int32_t)((double)afe->cal.preampLowOffset_uV / pow(10, ((double)gain_preamp/20000.0)));
+        if (afe_Vpp > TS_AFE_50OHM_SAFE_INPUT_VPP)
+        {
+            LOG_ERROR("Cannot set requested voltage, too high");
+            return TS_INVALID_PARAM;
+        }
+        
+        if(isBetaDevice(afe->termPin.fd))
+        {
+            // If 50-Ohm mode in use, limit gain to TBD
+            attenScale = TS_AFE_BETA_TERM_SCALE;
+        }
     }
     else
     {
-        gain_preamp += afe->cal.preampHighGainError_mdB;
-        V_zero += (int32_t)((double)afe->cal.preampHighOffset_uV / pow(10, ((double)gain_preamp/20000.0)));
-    } 
+        if (afe_Vpp > TS_AFE_1MOHM_SAFE_INPUT_VPP)
+        {
+            LOG_ERROR("Cannot set requested voltage, too high");
+            return TS_INVALID_PARAM;
+        } 
 
-    // Desired Trim Voltage
-    LOG_DEBUG("AFE Offset Request %d uv with %lld mdB Input Gain", offset_uV, gain_afe);
-    int64_t V_trim = V_zero + (int64_t)((double)offset_uV * pow(10.0, (double)gain_afe/20000.0));
-    LOG_DEBUG("AFE Offset target V_trim %lld uV compared to V_zero of %lld uV", V_trim, V_zero);
+        if((reqScale < afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp) ||
+           (offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)) ||
+           (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)))
+        {
+            // Update Attenuation if needed
+            needsAtten = true;
+            attenScale = afe->cal.attenuatorScale;
+        }
+    }
+
+    // Calculate Actual FSV
+    reqScale /= attenScale;
+    offset /= attenScale;
+
+    // Check if we need high or low gain range
+    if ( afe->cal.highPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp > reqScale)
+    {
+        preamp = PREAMP_HG;
+    }
+
+    // Loop through PGA cal settings
+    do {
+        //Check offset range is valid
+        if ((preamp == PREAMP_LG && 
+                (offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[pathIdx], temp_C)) ||
+                (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[pathIdx], temp_C))) ||
+            (preamp == PREAMP_HG && 
+                (offset > ts_afe_offset_max(afe->cal.highPgaPathCal[pathIdx], temp_C)) ||
+                (offset < ts_afe_offset_min(afe->cal.highPgaPathCal[pathIdx], temp_C))))
+        {
+            // Offset invalid. Try the next one
+            continue;
+        }
+
+        // Check for Vpp range
+        if (((preamp == PREAMP_LG) && (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp > reqScale)) ||
+            ((preamp == PREAMP_HG) && (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp > reqScale)))
+        {
+            //Use this one
+            break;
+        }
+
+    } while(++pathIdx < TS_CAL_NUM_PATHS);
+
+    if (pathIdx == TS_CAL_NUM_PATHS)
+    {
+        LOG_ERROR("Cannot set requested voltage, unable to find acceptable config");
+        return TS_INVALID_PARAM;
+    }
+
+    // Set attenuator
+    afe->isAttenuated = needsAtten;
+    ts_afe_attenuation_control(afe, needsAtten);
     
-    // Progressively reduce R_trim until V_dac is within range of 0-VDD
-    uint8_t trimPotVal = (1 << afe->trimPotBits);
-    do
-    {
-        R_trim = ((((trimPotVal) * afe->cal.trimRheostat_range) / ((1 << afe->trimPotBits))) + MCP4432_RWIPER);
-
-        /** 
-         * Preamp sinks an input bias current (I_trim), so need to add this factor when comparing current
-         * between top and bottom legs of the Trim voltage.
-         * 
-         * I_dac + I_bias + I_trim = 0
-         * (V_trim - V_dac)/R_trim + (V_trim - V_bias)/R_bias + I_trim = 0
-         *  Solved for V_dac becomes:
-         *  V_dac = V_trim + R_trim * ((V_trim - V_bias)/R_bias + I_trim)
-         */
-        V_dac = V_trim + (R_trim * (((V_trim - (int64_t)afe->cal.bias_uV)/TS_BIAS_RESISTOR_NOMINAL) + afe->cal.preampInputBias_uA));
-        if(V_dac >= 0 && V_dac <= TS_AFE_TRIM_VDD_NOMINAL)
-        {
-            LOG_DEBUG("Setting Vdac to %lld uV, Rtrim to %lld Ohm", V_dac, R_trim);
-            offsetVal = (V_dac * MCP4728_FULL_SCALE_VAL) / TS_AFE_TRIM_VDD_NOMINAL;
-            break;
-        }
-
-        if(trimPotVal == 0)
-        {
-            LOG_ERROR("AFE Unable to produce Trim voltage %lld for requested offset %d", V_trim, offset_uV);
-            if(V_trim > afe->cal.bias_uV)
-            {
-                V_dac = TS_AFE_TRIM_VDD_NOMINAL;
-                offsetVal = MCP4728_FULL_SCALE_VAL;
-            }
-            else
-            {
-                V_dac = 0;
-            }
-            break;
-        }
-    } while(trimPotVal-- > 0);
-
-    Mcp4728ChannelConfig_t trimConf = {0};
-    trimConf.vref = MCP4728_VREF_VDD;
-    trimConf.power = MCP4728_PD_NORMAL;
-    trimConf.gain = MCP4728_GAIN_1X;
-    trimConf.value = offsetVal;
-
-    if(TS_STATUS_OK != mcp4728_channel_set(afe->trimDac, afe->trimDacCh, trimConf))
+    // Configure PGA
+    afe->ampConf.atten = pathIdx;
+    afe->ampConf.preamp = preamp;
+    if(TS_STATUS_OK != lmh6518_apply_config(afe->amp, afe->ampConf))
     {
         return TS_STATUS_ERROR;
     }
+    
+    if (preamp == PREAMP_LG)
+    {
+        *gain_actual = attenScale * afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp;
+    }
+    else
+    {
+        *gain_actual = attenScale * afe->cal.highPgaPathCal[pathIdx].bufferInputVpp;
+    }
 
-    if(TS_STATUS_OK != mcp443x_set_wiper(afe->trimPot, afe->trimPotCh, trimPotVal))
+    // Adjust Trim DAC
+    if (preamp == PREAMP_LG)
+    {
+        trimPotVal = afe->cal.lowPgaPathCal[pathIdx].trimDPot;
+        trimConf.value = (afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C + afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroC) +
+            (offset / (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp / afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacScale));
+    }
+    else
+    {
+        trimPotVal = afe->cal.highPgaPathCal[pathIdx].trimDPot;
+        trimConf.value = (afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C + afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroC) +
+            (offset / (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp / afe->cal.highPgaPathCal[pathIdx].trimOffsetDacScale));
+    }
+
+    if (TS_STATUS_OK != mcp4728_channel_set(afe->trimDac, afe->trimDacCh, trimConf) ||
+        (TS_STATUS_OK != mcp443x_set_wiper(afe->trimPot, afe->trimPotCh, trimPotVal)))
     {
         return TS_STATUS_ERROR;
     }
-
-    // Reverse offset calc
-    V_dac = (offsetVal * TS_AFE_TRIM_VDD_NOMINAL) / MCP4728_FULL_SCALE_VAL;
-    V_trim = (int64_t) ((((double)TS_BIAS_RESISTOR_NOMINAL * (double)V_dac) + ((double)afe->cal.bias_uV * R_trim)
-                            - ((double)TS_BIAS_RESISTOR_NOMINAL * (double)R_trim * (double)afe->cal.preampInputBias_uA))
-                            /(TS_BIAS_RESISTOR_NOMINAL + R_trim));
-    *offset_actual = (int32_t)(((double)V_trim - ((double)V_zero)) / pow(10.0, (double)gain_afe/20000.0));
-    LOG_DEBUG("AFE Offset actual V_trim %lld uv, Offset %d uV", V_trim, *offset_actual);
+    
     return TS_STATUS_OK;
 }
 
@@ -415,3 +366,32 @@ int32_t ts_afe_coupling_control(ts_afe_t* afe, tsChannelCoupling_t coupled)
     return TS_STATUS_OK;
 }
 
+
+static inline double ts_afe_offset_max(tsAfePathCalibration_t cal, double temp_C)
+{
+    double offsetMax = 0.0;
+    double dacRangePos = MCP4728_FULL_SCALE_VAL - ((cal.trimOffsetDacZeroM * temp_C) + cal.trimOffsetDacZeroC);
+    
+    if (dacRangePos > 0)
+        dacRangePos = 0;
+    else if (dacRangePos > MCP4728_FULL_SCALE_VAL)
+        dacRangePos = MCP4728_FULL_SCALE_VAL;
+
+    offsetMax = cal.bufferInputVpp * dacRangePos / cal.trimOffsetDacScale;
+
+    return offsetMax;
+}
+
+static inline double ts_afe_offset_min(tsAfePathCalibration_t cal, double temp_C)
+{
+    double offsetMin = 0.0;
+    double dacRangeNeg = cal.trimOffsetDacZeroM * temp_C + cal.trimOffsetDacZeroC;
+    if (dacRangeNeg > 0)
+        dacRangeNeg = 0;
+    else if (dacRangeNeg > MCP4728_FULL_SCALE_VAL)
+        dacRangeNeg = MCP4728_FULL_SCALE_VAL;
+
+    offsetMin = - cal.bufferInputVpp * dacRangeNeg / cal.trimOffsetDacScale;
+
+    return offsetMin;
+}

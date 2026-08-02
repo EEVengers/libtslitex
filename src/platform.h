@@ -31,28 +31,40 @@ extern "C" {
 #define TS_ADC_CH_NO_INVERT     (0)
 #define TS_ADC_CH_INVERT        (1)
 
-#define TS_AFE_OUTPUT_NOMINAL_uVPP              (700000.0)
-#define TS_ATTENUATION_1M_GAIN_mdB              (-33979) /**< 50x Attenuation = 20 * log(1/50) * 1000 */
-#define TS_TERMINATION_50OHM_GAIN_mdB           (-13979) /**< 5x Attenuation from 50Ohm mode.  20 * log(1/5) * 1000 */
+#define TS_AFE_50OHM_SAFE_INPUT_VPP             (5.5 * 2.828) /**< Limit Vpp configuration to 5.0Vrms (+10%) in 50Ohm termination */
+#define TS_AFE_1MOHM_SAFE_INPUT_VPP             (40.0)        /**< Limit Vpp configuration to 40.0Vrms in 1MOhm termination */
 
-#define TS_VBUFFER_NOMINAL_UV                   (2500000)
-#define TS_VBIAS_NOMINAL_UV                     (2500000)
-#define TS_AFE_TRIM_VDD_NOMINAL                 (5000000)
-#define TS_BUFFER_GAIN_NOMINAL_mdB              (-250)
-#define TS_BIAS_RESISTOR_NOMINAL                (500)
-#define TS_PREAMP_INPUT_BIAS_CURRENT_uA         (40)
+#define TS_AFE_BETA_TERM_SCALE                  (5.0)
 
-#define TS_AFE_PREAMP_ATTEN_0_mdB               (0)
-#define TS_AFE_PREAMP_ATTEN_1_mdB               (-2000)
-#define TS_AFE_PREAMP_ATTEN_2_mdB               (-4000)
-#define TS_AFE_PREAMP_ATTEN_3_mdB               (-6000)
-#define TS_AFE_PREAMP_ATTEN_4_mdB               (-8000)
-#define TS_AFE_PREAMP_ATTEN_5_mdB               (-10000)
-#define TS_AFE_PREAMP_ATTEN_6_mdB               (-12000)
-#define TS_AFE_PREAMP_ATTEN_7_mdB               (-14000)
-#define TS_AFE_PREAMP_ATTEN_8_mdB               (-16000)
-#define TS_AFE_PREAMP_ATTEN_9_mdB               (-18000)
-#define TS_AFE_PREAMP_ATTEN_10_mdB              (-20000)
+#define TS_AFE_DEFAULT_CAL          (tsChannelCalibration_t) { \
+    .attenuatorScale = 0.02, \
+    .highPgaPathCal = { \
+        {.bufferInputVpp = 0.0097, .trimOffsetDacZeroC = 2156, .trimOffsetDacZeroM = 1.475, .trimOffsetDacScale = 129.4, .trimDPot = 20}, \
+        {.bufferInputVpp = 0.0122, .trimOffsetDacZeroC = 2157, .trimOffsetDacZeroM = 1.465, .trimOffsetDacScale = 163.0, .trimDPot = 20}, \
+        {.bufferInputVpp = 0.0154, .trimOffsetDacZeroC = 2156, .trimOffsetDacZeroM = 1.482, .trimOffsetDacScale = 204.9, .trimDPot = 20}, \
+        {.bufferInputVpp = 0.0194, .trimOffsetDacZeroC = 2149, .trimOffsetDacZeroM = 1.438, .trimOffsetDacScale = 245.7, .trimDPot = 19}, \
+        {.bufferInputVpp = 0.0243, .trimOffsetDacZeroC = 2147, .trimOffsetDacZeroM = 1.458, .trimOffsetDacScale = 308.4, .trimDPot = 19}, \
+        {.bufferInputVpp = 0.0306, .trimOffsetDacZeroC = 2149, .trimOffsetDacZeroM = 1.430, .trimOffsetDacScale = 387.3, .trimDPot = 18}, \
+        {.bufferInputVpp = 0.0385, .trimOffsetDacZeroC = 2144, .trimOffsetDacZeroM = 1.345, .trimOffsetDacScale = 463.2, .trimDPot = 18}, \
+        {.bufferInputVpp = 0.0485, .trimOffsetDacZeroC = 2145, .trimOffsetDacZeroM = 1.340, .trimOffsetDacScale = 581.9, .trimDPot = 12}, \
+        {.bufferInputVpp = 0.0609, .trimOffsetDacZeroC = 2113, .trimOffsetDacZeroM = 0.880, .trimOffsetDacScale = 508.9, .trimDPot =  9}, \
+        {.bufferInputVpp = 0.0767, .trimOffsetDacZeroC = 2095, .trimOffsetDacZeroM = 0.678, .trimOffsetDacScale = 499.1, .trimDPot =  7}, \
+        {.bufferInputVpp = 0.0966, .trimOffsetDacZeroC = 2086, .trimOffsetDacZeroM = 0.498, .trimOffsetDacScale = 507.5, .trimDPot =  7} \
+        }, \
+    .lowPgaPathCal = { \
+        {.bufferInputVpp = 0.0970, .trimOffsetDacZeroC = 2078, .trimOffsetDacZeroM = 0.428, .trimOffsetDacScale =  507.9, .trimDPot =  7}, \
+        {.bufferInputVpp = 0.1219, .trimOffsetDacZeroC = 2068, .trimOffsetDacZeroM = 0.318, .trimOffsetDacScale =  490.0, .trimDPot =  5}, \
+        {.bufferInputVpp = 0.1531, .trimOffsetDacZeroC = 2063, .trimOffsetDacZeroM = 0.255, .trimOffsetDacScale =  522.4, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.1925, .trimOffsetDacZeroC = 2063, .trimOffsetDacZeroM = 0.250, .trimOffsetDacScale =  657.0, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.2420, .trimOffsetDacZeroC = 2063, .trimOffsetDacZeroM = 0.240, .trimOffsetDacScale =  826.8, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.3048, .trimOffsetDacZeroC = 2062, .trimOffsetDacZeroM = 0.255, .trimOffsetDacScale = 1039.5, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.3832, .trimOffsetDacZeroC = 2062, .trimOffsetDacZeroM = 0.238, .trimOffsetDacScale = 1308.2, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.4816, .trimOffsetDacZeroC = 2061, .trimOffsetDacZeroM = 0.255, .trimOffsetDacScale = 1647.5, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.6060, .trimOffsetDacZeroC = 2061, .trimOffsetDacZeroM = 0.238, .trimOffsetDacScale = 2072.1, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.7625, .trimOffsetDacZeroC = 2059, .trimOffsetDacZeroM = 0.258, .trimOffsetDacScale = 2601.2, .trimDPot =  4}, \
+        {.bufferInputVpp = 0.9591, .trimOffsetDacZeroC = 2057, .trimOffsetDacZeroM = 0.255, .trimOffsetDacScale = 3266.1, .trimDPot =  4} \
+    } \
+}
 
 #define TS_SPI_BUS_BASE_ADDR    (CSR_SPIBUS_SPI0_CONTROL_ADDR)
 #define TS_SPI_BUS_BETA_CS_NUM  (5)

@@ -62,23 +62,18 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 
 
 /**
- * @brief Set the AFE input gain for a channel
+ * @brief Set the Gain and Offset for an AFE channel
  * 
- * @param afe   Pointer to an AFE instance
- * @param gain_mdB Gain in milli-dB
- * @return int32_t Actual gain value set. TS_STATUS_ERROR on error.
- */
-int32_t ts_afe_set_gain(ts_afe_t* afe, int32_t gain_mdB);
-
-/**
- * @brief Set the AFE input gain for a channel
+ * @param afe Pointer to an AFE instance
+ * @param temp_c Current system temperature
+ * @param afe_vpp Requested AFE scale
+ * @param offset Requested voltage offset
+ * @param afe_vpp_actual Actual applied AFE scale
+ * @param offset_actual Actual applied voltage offset
  * 
- * @param afe   Pointer to an AFE instance
- * @param offset_uV Offset in uV
- * @param offset_uV Applied Offset in uV
  * @return int32_t TS_STATUS_OK on success, else error
  */
-int32_t ts_afe_set_offset(ts_afe_t* afe, int32_t offset_uV, int32_t* offset_actual);
+int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_c, double afe_Vpp, double offset, double* afe_vpp_actual, double* offset_actual);
 
 /**
  * @brief Set the AFE Bandwidth filter for a channel
