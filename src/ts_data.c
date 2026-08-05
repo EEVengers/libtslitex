@@ -13,6 +13,11 @@
 #include "ts_fw_manager.h"
 #include "util.h"
 
+static inline bool json_obj_type_is_number(const struct json_object* obj)
+{
+    return ((json_object_get_type(obj) == json_type_double) || (json_object_get_type(obj) == json_type_int));
+}
+
 static bool ts_parse_channel_bitmap(struct json_object *channel_list_obj, tsChannelsActive_t *chan, uint32_t *count)
 {
     struct json_object *ch_obj;
@@ -66,14 +71,14 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
     bool status = true;
     struct json_object *item;
     struct json_object *arr_obj;
-    struct json_object *paths_obj;
+    struct json_object *path_obj;
     bool high_gain = false;
     uint32_t ladder_idx = 0;
     size_t path_idx = 0;
     tsAfePathCalibration_t* path_cal;
 
     // Parse Attenuator Scale
-    if (json_object_object_get_ex(afe_obj, "attenuatorScale", &item) && json_object_get_type(item) == json_type_double)
+    if (json_object_object_get_ex(afe_obj, "attenuatorScale", &item) && json_obj_type_is_number(item))
     {
         afe_cal->attenuatorScale = json_object_get_double(item);
     }
@@ -86,13 +91,13 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
     // Parse Path Cal
     if (json_object_object_get_ex(afe_obj, "path", &arr_obj) && json_object_get_type(arr_obj) == json_type_array)
     {
-        struct json_object *path_obj = json_object_array_get_idx(arr_obj, path_idx);
+        path_obj = json_object_array_get_idx(arr_obj, path_idx);
         while (path_obj != NULL)
         {
             // Get Gain and Ladder Index
             if (json_object_object_get_ex(path_obj, "pgaPreampGain", &item) && json_object_get_type(item) == json_type_string)
             {
-                high_gain = (json_object_get_string(item) == "high") ? true : false;
+                high_gain = (0 == strncmp("high", json_object_get_string(item), 4)) ? true : false;
             }
             else
             {
@@ -131,13 +136,13 @@ static bool ts_parse_afe_cal(tsChannelCalibration_t *afe_cal, struct json_object
             // Parse Path variables
             if (json_object_object_get_ex(path_obj, "trimDPot", &item) && json_object_get_type(item) == json_type_int)
                 path_cal->trimDPot = json_object_get_int(item);
-            if (json_object_object_get_ex(path_obj, "trimDacScale", &item) && json_object_get_type(item) == json_type_double)
+            if (json_object_object_get_ex(path_obj, "trimDacScale", &item) && json_obj_type_is_number(item))
                 path_cal->trimOffsetDacScale = json_object_get_double(item);
-            if (json_object_object_get_ex(path_obj, "trimDacZeroM", &item) && json_object_get_type(item) == json_type_double)
+            if (json_object_object_get_ex(path_obj, "trimDacZeroM", &item) && json_obj_type_is_number(item))
                 path_cal->trimOffsetDacZeroM = json_object_get_double(item);
-            if (json_object_object_get_ex(path_obj, "trimDacZeroC", &item) && json_object_get_type(item) == json_type_double)
+            if (json_object_object_get_ex(path_obj, "trimDacZeroC", &item) && json_obj_type_is_number(item))
                 path_cal->trimOffsetDacZeroC = json_object_get_double(item);
-            if (json_object_object_get_ex(path_obj, "bufferInputVpp", &item) && json_object_get_type(item) == json_type_double)
+            if (json_object_object_get_ex(path_obj, "bufferInputVpp", &item) && json_obj_type_is_number(item))
                 path_cal->bufferInputVpp = json_object_get_double(item);
             
             path_idx++;
@@ -159,8 +164,9 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
     struct json_object *cal_obj;
     struct json_object *rate_obj;
     struct json_object *scale_obj;
+    struct json_object *gain_obj;
     struct json_object *arr_obj;
-    size_t scale_idx = 0;
+    size_t load_idx = 0;
     size_t rate_idx = 0;
     int32_t int_value;
     tsChannelsActive_t channels;
@@ -168,10 +174,10 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
     // Parse Load Scale
     if (json_object_object_get_ex(adc, "loadScale", &cal_obj) && json_object_get_type(cal_obj) == json_type_array)
     {
-        scale_obj = json_object_array_get_idx(cal_obj, scale_idx);
+        scale_obj = json_object_array_get_idx(cal_obj, load_idx);
         while (scale_obj != NULL)
         {
-            if (scale_idx >= TS_CAL_NUM_LOADS)
+            if (load_idx >= TS_CAL_NUM_LOADS)
             {
                 LOG_ERROR("Too many entries in loadScale");
                 status = false;
@@ -182,17 +188,25 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             if (json_object_object_get_ex(scale_obj, "channel", &item) && json_object_get_type(item) == json_type_array &&
                 ts_parse_channel_bitmap(item, &channels, &count))
             {
-                adc_cal->loadCal[scale_idx].channels = channels;
+                adc_cal->loadCal[load_idx].channels = channels;
 
                 if(json_object_object_get_ex(scale_obj, "rateScale", &item) && json_object_get_type(item) == json_type_array)
                 {
+                    rate_idx = 0;
                     rate_obj = json_object_array_get_idx(item, rate_idx);
                     while (rate_obj != NULL)
                     {
                         struct json_object *val_obj;
 
+                        if (rate_idx >= TS_CAL_NUM_RATES)
+                        {
+                            LOG_ERROR("Too many entries in rateScale");
+                            status = false;
+                            break;
+                        }
+
                         if (json_object_object_get_ex(rate_obj, "rate", &val_obj) && json_object_get_type(val_obj) == json_type_int)
-                            adc_cal->loadCal[scale_idx].conf[rate_idx].rate = json_object_get_int(val_obj);
+                            adc_cal->loadCal[load_idx].conf[rate_idx].rate = json_object_get_int(val_obj);
     
                         if (json_object_object_get_ex(rate_obj, "scale", &arr_obj) &&
                                 json_object_get_type(arr_obj) == json_type_array)
@@ -200,8 +214,8 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
                             for (size_t ch=0; ch < count; ch++)
                             {
                                 val_obj = json_object_array_get_idx(arr_obj, ch);
-                                if (val_obj != NULL && json_object_get_type(val_obj) == json_type_double)
-                                    adc_cal->loadCal[scale_idx].conf[rate_idx].scale[ch] = json_object_get_double(val_obj);
+                                if (val_obj != NULL && json_obj_type_is_number(val_obj))
+                                    adc_cal->loadCal[load_idx].conf[rate_idx].scale[ch] = json_object_get_double(val_obj);
                             }
                         }
 
@@ -212,23 +226,23 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             }
             else
             {
-                LOG_ERROR("Unknown channel list in LoadScale[%d]", scale_idx);
+                LOG_ERROR("Unknown channel list in LoadScale[%d]", load_idx);
                 status = false;
             }
 
-            scale_idx++;
-            scale_obj = json_object_array_get_idx(cal_obj, scale_idx);
+            load_idx++;
+            scale_obj = json_object_array_get_idx(cal_obj, load_idx);
         }
     }
 
     // Parse Branch Gain
-    scale_idx = 0;
     if (json_object_object_get_ex(adc, "branchGain", &cal_obj) && json_object_get_type(cal_obj) == json_type_array)
     {
-        item = json_object_array_get_idx(cal_obj, scale_idx);
-        while (item != NULL)
+        load_idx = 0;
+        gain_obj = json_object_array_get_idx(cal_obj, load_idx);
+        while (gain_obj != NULL)
         {
-            if (scale_idx >= TS_CAL_NUM_LOADS)
+            if (load_idx >= TS_CAL_NUM_LOADS)
             {
                 LOG_ERROR("Too many entries in loadScale");
                 status = false;
@@ -236,20 +250,28 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             }
 
             uint32_t count;
-            if (json_object_object_get_ex(scale_obj, "channel", &item) && json_object_get_type(item) == json_type_array &&
+            if (json_object_object_get_ex(gain_obj, "channel", &item) && json_object_get_type(item) == json_type_array &&
                 ts_parse_channel_bitmap(item, &channels, &count))
             {
-                adc_cal->branchFineGain[scale_idx].channels = channels;
+                adc_cal->branchFineGain[load_idx].channels = channels;
 
-                if(json_object_object_get_ex(scale_obj, "rateGain", &item) && json_object_get_type(item) == json_type_array)
+                if(json_object_object_get_ex(gain_obj, "rateGain", &item) && json_object_get_type(item) == json_type_array)
                 {
+                    rate_idx = 0;
                     rate_obj = json_object_array_get_idx(item, rate_idx);
                     while (rate_obj != NULL)
                     {
                         struct json_object *val_obj;
+                        
+                        if (rate_idx >= TS_CAL_NUM_RATES)
+                        {
+                            LOG_ERROR("Too many entries in rateGain");
+                            status = false;
+                            break;
+                        }
 
                         if (json_object_object_get_ex(rate_obj, "rate", &val_obj) && json_object_get_type(val_obj) == json_type_int)
-                            adc_cal->branchFineGain[scale_idx].conf[rate_idx].rate = json_object_get_int(val_obj);
+                            adc_cal->branchFineGain[load_idx].conf[rate_idx].rate = json_object_get_int(val_obj);
     
                         if (json_object_object_get_ex(rate_obj, "gain", &arr_obj) &&
                                 json_object_get_type(arr_obj) == json_type_array && json_object_array_length(arr_obj) == 8)
@@ -257,8 +279,8 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
                             for (size_t branch = 0; branch < 8; branch++)
                             {
                                 val_obj = json_object_array_get_idx(arr_obj, branch);
-                                if (val_obj != NULL && json_object_get_type(val_obj) == json_type_double)
-                                    adc_cal->branchFineGain[scale_idx].conf[rate_idx].gain[branch] = json_object_get_double(val_obj);
+                                if (val_obj != NULL && json_obj_type_is_number(val_obj))
+                                    adc_cal->branchFineGain[load_idx].conf[rate_idx].gain[branch] = (int8_t)json_object_get_int(val_obj);
                             }
                         }
                         else
@@ -273,12 +295,12 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             }
             else
             {
-                LOG_ERROR("Unknown channel list in LoadScale[%d]", scale_idx);
+                LOG_ERROR("Unknown channel list in LoadScale[%d]", load_idx);
                 status = false;
             }
 
-            scale_idx++;
-            item = json_object_array_get_idx(cal_obj, scale_idx);
+            load_idx++;
+            gain_obj = json_object_array_get_idx(cal_obj, load_idx);
         }
     }
 
@@ -411,11 +433,11 @@ int32_t ts_data_factory_cal_get(ts_fw_manager_t* mngr, tsScopeCalibration_t *fca
 
     cal_buffer[cal_len] = '\0';
 
-    ts_data_parse_factory_cal(cal_buffer, fcal);
+    ret = ts_data_parse_factory_cal(cal_buffer, fcal);
 
     free(cal_buffer);
 
-    return TS_STATUS_OK;
+    return ret;
 }
 
 int32_t ts_data_factory_id_get(ts_fw_manager_t* mngr, tsDeviceInfo_t* infos)

@@ -888,7 +888,7 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\tHigh Gain PGA");
     for (int path = 0; path < TS_CAL_NUM_PATHS; path++)
     {
-        LOG_DEBUG("\tPGA Attenuator:              %d", path);
+        LOG_DEBUG("\tPGA Attenuator: %d", path);
         LOG_DEBUG("\t\tBuffer Vpp:                  %.03f V", cal->highPgaPathCal[path].bufferInputVpp);
         LOG_DEBUG("\t\tTrim Rheostat:               %d", cal->highPgaPathCal[path].trimDPot);
         LOG_DEBUG("\t\tTrim DAC Scale:              %.03f", cal->highPgaPathCal[path].trimOffsetDacScale);
@@ -898,7 +898,7 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     LOG_DEBUG("\tLow Gain PGA");
     for (int path = 0; path < TS_CAL_NUM_PATHS; path++)
     {
-        LOG_DEBUG("\t\tPGA Attenuator:              %d", path);
+        LOG_DEBUG("\tPGA Attenuator: %d", path);
         LOG_DEBUG("\t\tBuffer Vpp:                  %.03f V", cal->lowPgaPathCal[path].bufferInputVpp);
         LOG_DEBUG("\t\tTrim Rheostat:               %d", cal->lowPgaPathCal[path].trimDPot);
         LOG_DEBUG("\t\tTrim DAC Scale:              %.03f", cal->lowPgaPathCal[path].trimOffsetDacScale);

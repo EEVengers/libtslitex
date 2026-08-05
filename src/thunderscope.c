@@ -120,8 +120,24 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         pInst->identity.identity[i] = (char)litepcie_readl(pInst->ctrl, CSR_IDENTIFIER_MEM_BASE + 4 * i);
     }
     
-    
     strncpy(pInst->identity.device_path, devName, TS_IDENT_STR_LEN);
+    
+    if(TS_STATUS_OK != ts_fw_manager_init(pInst->ctrl, &pInst->fw))
+    {
+        LOG_ERROR("Failed to initialize spiflash");
+        samples_teardown(&pInst->samples);
+        ts_channel_destroy(pInst->pChannel);
+        litepcie_close(pInst->ctrl);
+        free(pInst);
+        return NULL;
+    }
+
+    // Get Factory Build Info
+    ts_data_factory_id_get(&pInst->fw, &pInst->identity);
+
+    pInst->status_leds.fd = pInst->ctrl;
+    pInst->status_leds.reg = TS_STATUS_LED_ADDR;
+    pInst->status_leds.bit_mask = TS_STATUS_LED_MASK;
 
     if(!skip_init)
     {
@@ -144,26 +160,34 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         }
         pInst->bytes_per_sample = 1;
         pInst->initialized = true;
+
+        // Fetch Factory Calibration
+        tsScopeCalibration_t factory_cal = {0};
+        if (TS_STATUS_OK == ts_data_factory_cal_get(&pInst->fw, &factory_cal))
+        {
+            if(TS_STATUS_OK != ts_channel_adc_calibration_set(pInst->pChannel, &factory_cal.adcCal))
+            {
+                LOG_ERROR("Failed to set factory config for adc");
+            }
+            for(uint32_t i = 0; i < TS_NUM_CHANNELS; i++)
+            {
+                if(TS_STATUS_OK != ts_channel_calibration_set(pInst->pChannel, i, &factory_cal.afeCal[i]))
+                {
+                    LOG_ERROR("Failed to set factory config for channel %d", i);
+                }
+            }
+        }
+        else
+        {
+            LOG_ERROR("Failed to read factory cal from memory");
+        }
+
     }
 
-    if(TS_STATUS_OK != ts_fw_manager_init(pInst->ctrl, &pInst->fw))
-    {
-        LOG_ERROR("Failed to initialize spiflash");
-        samples_teardown(&pInst->samples);
-        ts_channel_destroy(pInst->pChannel);
-        litepcie_close(pInst->ctrl);
-        free(pInst);
-        return NULL;
-    }
 
     events_initialize(pInst->ctrl);
 
-    // Get Factory Build Info
-    ts_data_factory_id_get(&pInst->fw, &pInst->identity);
-
-    pInst->status_leds.fd = pInst->ctrl;
-    pInst->status_leds.reg = TS_STATUS_LED_ADDR;
-    pInst->status_leds.bit_mask = TS_STATUS_LED_MASK;
+   
     if(pInst->identity.hw_id & TS_HW_ID_VALID_MASK)
     {
         pInst->signals = &ts_dev_leds;
@@ -172,6 +196,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
     {
         pInst->signals = &ts_beta_leds;
     }
+
     gpio_group_set(pInst->status_leds, pInst->signals->ready);
 
     LOG_DEBUG("Opened TS idx %d with handle %p", devIdx, pInst);

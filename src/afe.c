@@ -150,15 +150,15 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
             LOG_ERROR("Cannot set requested voltage, too high");
             return TS_INVALID_PARAM;
         } 
-
-        if((reqScale < afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp) ||
-           (offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)) ||
-           (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)))
-        {
-            // Update Attenuation if needed
-            needsAtten = true;
-            attenScale = afe->cal.attenuatorScale;
-        }
+    }
+    
+    if((reqScale > afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp) ||
+        (offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)) ||
+        (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[TS_CAL_NUM_PATHS - 1], temp_C)))
+    {
+        // Update Attenuation if needed
+        needsAtten = true;
+        attenScale = afe->cal.attenuatorScale;
     }
 
     // Calculate Actual FSV
@@ -171,15 +171,21 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
         preamp = PREAMP_HG;
     }
 
+    LOG_DEBUG("Searching for: ");
+    LOG_DEBUG("\tPreamp:    %s", preamp == PREAMP_HG ? "HIGH" : "LOW");
+    LOG_DEBUG("\tBufferVpp: %f", reqScale);
+    LOG_DEBUG("\tOffset:    %f", offset);
+    LOG_DEBUG("\tTemp:      %f C", temp_C);
+
     // Loop through PGA cal settings
     do {
         //Check offset range is valid
         if ((preamp == PREAMP_LG && 
-                (offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[pathIdx], temp_C)) ||
-                (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[pathIdx], temp_C))) ||
+                ((offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[pathIdx], temp_C)) ||
+                 (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[pathIdx], temp_C)))) ||
             (preamp == PREAMP_HG && 
-                (offset > ts_afe_offset_max(afe->cal.highPgaPathCal[pathIdx], temp_C)) ||
-                (offset < ts_afe_offset_min(afe->cal.highPgaPathCal[pathIdx], temp_C))))
+                ((offset > ts_afe_offset_max(afe->cal.highPgaPathCal[pathIdx], temp_C)) ||
+                 (offset < ts_afe_offset_min(afe->cal.highPgaPathCal[pathIdx], temp_C)))))
         {
             // Offset invalid. Try the next one
             continue;
@@ -372,7 +378,7 @@ static inline double ts_afe_offset_max(tsAfePathCalibration_t cal, double temp_C
     double offsetMax = 0.0;
     double dacRangePos = MCP4728_FULL_SCALE_VAL - ((cal.trimOffsetDacZeroM * temp_C) + cal.trimOffsetDacZeroC);
     
-    if (dacRangePos > 0)
+    if (dacRangePos < 0)
         dacRangePos = 0;
     else if (dacRangePos > MCP4728_FULL_SCALE_VAL)
         dacRangePos = MCP4728_FULL_SCALE_VAL;
@@ -386,7 +392,7 @@ static inline double ts_afe_offset_min(tsAfePathCalibration_t cal, double temp_C
 {
     double offsetMin = 0.0;
     double dacRangeNeg = cal.trimOffsetDacZeroM * temp_C + cal.trimOffsetDacZeroC;
-    if (dacRangeNeg > 0)
+    if (dacRangeNeg < 0)
         dacRangeNeg = 0;
     else if (dacRangeNeg > MCP4728_FULL_SCALE_VAL)
         dacRangeNeg = MCP4728_FULL_SCALE_VAL;
