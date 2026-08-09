@@ -415,13 +415,13 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         needActiveUpdate = true;
     }
 
-    if ((0 != active) &&
+    if ((0 != param->active) &&
         ((param->volt_scale_uV != pTsHdl->chan[chanIdx].params.volt_scale_uV) ||
          (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV)))
     {
         needUpdateGain = true;
     }
-    
+
     active = ts_channel_active_get(pTsHdl);
 
     //Set AFE Bandwidth
@@ -884,7 +884,7 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     ts->chan[chanIdx].afe.cal = *cal;
 
     LOG_DEBUG("Received Calibration for channel %d", chanIdx);
-    LOG_DEBUG("\tAttenuator Scale               %.03f uV", cal->attenuatorScale);
+    LOG_DEBUG("\tAttenuator Scale               %.03f", cal->attenuatorScale);
     LOG_DEBUG("\tHigh Gain PGA");
     for (int path = 0; path < TS_CAL_NUM_PATHS; path++)
     {

@@ -18,7 +18,7 @@ extern "C" {
 #include "ts_common.h"
 
 #define TS_CAL_NUM_PATHS 11
-#define TS_CAL_NUM_LOADS 18
+#define TS_CAL_NUM_LOADS 11
 #define TS_CAL_NUM_RATES 8
 
 typedef enum tsCalAdcTest_e
