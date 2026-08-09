@@ -151,7 +151,7 @@ cdef class Channel:
     def Calibration(self):
         cdef int32_t retVal
         cdef ts_calibration.tsChannelCalibration_t calibration
-        retVal = ts_calibration.thunderscopeChanCalibrationSet(self.dev, self._channel, &calibration)
+        retVal = ts_calibration.thunderscopeChanCalibrationGet(self.dev, self._channel, &calibration)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to get Channel {self._channel} Calibration ({retVal})")
         return calibration

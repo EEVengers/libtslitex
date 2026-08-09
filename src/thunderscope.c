@@ -560,7 +560,9 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
             if(status == TS_STATUS_OK)
             {
                 //Adjust Sample Count by Samples/increment
-                evt->event_sample = evt->event_sample * TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample;
+                evt->event_sample = (evt->event_sample * (TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample));
+                //Shift by half a data frame
+                evt->event_sample -= (TS_BYTES_PER_SAMPLE_COUNT/2) / pInst->bytes_per_sample;
                 //Adjust Sample Count by ADC Pipeline latency
                 evt->event_sample += TS_ADC_BASE_PIPELINE_DELAY / pInst->sample_divisor;
                 //Adjust Sample Count by sub-sample offset

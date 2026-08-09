@@ -64,22 +64,29 @@ typedef struct tsAfeCalibration_s
     tsAfePathCalibration_t lowPgaPathCal[TS_CAL_NUM_PATHS];
 } tsChannelCalibration_t;
 
+typedef struct tsAdcLoad_s
+{
+    uint32_t rate;
+    double scale[TS_NUM_CHANNELS];
+} tsAdcLoad_t;
+
+
 typedef struct tsAdcLoadCalibration_s
 {
     tsChannelsActive_t channels;
-    struct {
-        uint32_t rate;
-        double scale[TS_NUM_CHANNELS];
-    } conf[TS_CAL_NUM_RATES];
+    tsAdcLoad_t conf[TS_CAL_NUM_RATES];
 } tsAdcLoadCalibration_t;
+
+typedef struct tsAdcGain_s
+{
+    uint32_t rate;
+    uint8_t gain[8];
+} tsAdcGain_t;
 
 typedef struct tsAdcBranchGain_s
 {
     tsChannelsActive_t channels;
-    struct {
-        uint32_t rate;
-        uint8_t gain[8];
-    } conf[TS_CAL_NUM_RATES];
+    tsAdcGain_t conf[TS_CAL_NUM_RATES];
 } tsAdcBranchGain_t;
 
 typedef struct tsAdcCalibration_s
