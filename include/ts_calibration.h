@@ -169,6 +169,16 @@ int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal);
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t *ctrl);
 
 /**
+ * @brief Manually Set the Branch Fine Gain parameters of the ADC
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param fineGain Array of 8 fine-gain values (bytes)
+ * 
+ * @return int32_t TS_STATUS_OK if the parameters were applied
+ */
+int32_t thunderscopeCalibrationManualAdcFineGain(tsHandle_t ts, uint8_t fineGain[8]);
+
+/**
  * @brief Manually set the ADC test pattern mode.
  * 
  * @param ts Handle to the Thunderscope device

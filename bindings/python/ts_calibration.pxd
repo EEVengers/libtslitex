@@ -100,3 +100,5 @@ cdef extern from "ts_calibration.h":
     int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t* cal)
 
     int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t* ctrl)
+
+    int32_t thunderscopeCalibrationManualAdcFineGain(tsHandle_t ts, uint8_t[8] fineGain)

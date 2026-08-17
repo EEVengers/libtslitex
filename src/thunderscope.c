@@ -377,6 +377,18 @@ int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsCha
     return TS_STATUS_ERROR;
 }
 
+int32_t thunderscopeCalibrationManualAdcFineGain(tsHandle_t ts, uint8_t fineGain[8])
+{
+    ts_inst_t* pInst = (ts_inst_t*)ts;
+
+    if(pInst && pInst->initialized && (fineGain != NULL))
+    {
+        return ts_channel_calibration_manual_fine_gain(pInst->pChannel, fineGain);
+    }
+    
+    return TS_STATUS_ERROR;
+}
+
 int32_t thunderscopeCalibrationAdcTest(tsHandle_t ts, tsCalAdcTest_t test_mode, uint32_t test_pattern)
 {
     ts_inst_t* pInst = (ts_inst_t*)ts;

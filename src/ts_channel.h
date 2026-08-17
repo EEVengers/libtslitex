@@ -145,6 +145,15 @@ int32_t ts_channel_adc_calibration_set(tsChannelHdl_t tsChannels, tsAdcCalibrati
 int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsChannelCtrl_t ctrl);
 
 /**
+ * @brief Manually set the ADC Branch Fine Gain
+ * 
+ * @param tsChannels Thunderscope Channel handle
+ * @param fineGain Array of branch gain values
+ * @return int32_t TS_STATUS_OK on success, else TS_STATUS_ERROR
+ */
+int32_t ts_channel_calibration_manual_fine_gain(tsChannelHdl_t tsChannels, uint8_t fineGain[8]);
+
+/**
  * @brief Set the ADC into a Test Mode
  * 
  * @param tsChannels Thunderscope Channel handle

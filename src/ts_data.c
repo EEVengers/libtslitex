@@ -226,7 +226,7 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             }
             else
             {
-                LOG_ERROR("Unknown channel list in LoadScale[%d]", load_idx);
+                LOG_ERROR("Unknown channel list in LoadScale[%zd]", load_idx);
                 status = false;
             }
 
@@ -295,7 +295,7 @@ static bool ts_parse_adc_cal(tsAdcCalibration_t *adc_cal, struct json_object *ad
             }
             else
             {
-                LOG_ERROR("Unknown channel list in LoadScale[%d]", load_idx);
+                LOG_ERROR("Unknown channel list in LoadScale[%zd]", load_idx);
                 status = false;
             }
 
@@ -375,7 +375,7 @@ int32_t ts_data_parse_factory_cal(uint8_t* cal_buffer, tsScopeCalibration_t *fca
                 }
                 else
                 {
-                    LOG_ERROR("Cannot retrieve AFE channel ID: %d", ch_idx);
+                    LOG_ERROR("Cannot retrieve AFE channel ID: %zd", ch_idx);
                 }
 
                 ch_idx++;

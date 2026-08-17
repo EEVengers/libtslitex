@@ -1054,6 +1054,18 @@ int32_t ts_channel_calibration_manual(tsChannelHdl_t tsChannels, uint32_t chanId
     return TS_STATUS_OK;
 }
 
+int32_t ts_channel_calibration_manual_fine_gain(tsChannelHdl_t tsChannels, uint8_t fineGain[8])
+{
+    ts_channel_t* ts =  (ts_channel_t*)tsChannels;
+    if(tsChannels == NULL || fineGain == NULL)
+    {
+        LOG_ERROR("Invalid handle");
+        return TS_STATUS_ERROR;
+    }
+        
+    return ts_adc_cal_set(&ts->adc, fineGain);
+}
+
 int32_t ts_channel_set_adc_test(tsChannelHdl_t tsChannels, hmcad15xxTestMode_t mode, uint16_t pattern1, uint16_t pattern2)
 {
     return hmcad15xx_set_test_pattern(&((ts_channel_t*)tsChannels)->adc.adcDev, mode, pattern1, pattern2);
