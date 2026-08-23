@@ -36,6 +36,7 @@ typedef struct ts_channel_s {
         uint8_t channelNo;
         tsChannelParam_t params;
         ts_afe_t afe;
+        uint32_t lastTempAdjust;
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
@@ -313,6 +314,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         }
 
         pChan->chan[chanIdx].params = g_tsParamsDefault;
+        pChan->chan[chanIdx].lastTempAdjust = 0;
     }
 
     if( TS_STATUS_OK != ts_channel_health_update(pChan))
@@ -417,7 +419,8 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
 
     if ((0 != param->active) &&
         ((param->volt_scale_uV != pTsHdl->chan[chanIdx].params.volt_scale_uV) ||
-         (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV)))
+         (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV)) ||
+        (abs((int32_t)pTsHdl->status.sys_health.temp_c - (int32_t)pTsHdl->chan[chanIdx].lastTempAdjust) > TS_OFFS_TEMP_HYST))
     {
         needUpdateGain = true;
     }
@@ -529,6 +532,9 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
             LOG_DEBUG("Channel %d AFE set to %.06f V offset", chanIdx, offset_actual);
         }
     }
+
+    //Update channel last temp
+    pTsHdl->chan[chanIdx].lastTempAdjust = pTsHdl->status.sys_health.temp_c;
 
     //Set Active
     if(needActiveUpdate)

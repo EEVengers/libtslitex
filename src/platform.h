@@ -22,6 +22,8 @@ extern "C" {
 #define TS_STATUS_LED_COUNT                     (3)
 #define TS_STATUS_LED_MASK                      ((1 << TS_STATUS_LED_COUNT) - 1)
 
+#define TS_OFFS_TEMP_HYST                       (400) /**< millidegree Celcius temp must change before recalculating offset parameters */
+
 #define TS_ADC_FULL_SCALE_ADJUST_DEFAULT        (0x20) /**< Full Scale Adjust set 2V */
 #define TS_ADC_CH_COARSE_GAIN_DEFAULT           (9)
 #define TS_ADC_CH_FINE_GAIN_DEFAULT             (0)
