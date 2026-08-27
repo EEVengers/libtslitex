@@ -22,6 +22,8 @@
 #include <stddef.h>
 #include <math.h>
 
+#define TS_THRESH_ADJ       (1E-6) // Fudge Float compares by 1uV so we can reliably reapply the same settings
+
 /**
  * @brief Calculate the the maximum possible offset for a single AFE config
  * 
@@ -167,7 +169,7 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     reqScale /= attenScale;
 
     // Check if we need high or low gain range
-    if ( afe->cal.highPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp > reqScale)
+    if ( (afe->cal.highPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp + TS_THRESH_ADJ) > reqScale)
     {
         preamp = PREAMP_HG;
     }
@@ -193,8 +195,8 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
         }
 
         // Check for Vpp range
-        if (((preamp == PREAMP_LG) && (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp > reqScale)) ||
-            ((preamp == PREAMP_HG) && (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp > reqScale)))
+        if (((preamp == PREAMP_LG) && ((afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp + TS_THRESH_ADJ) > reqScale)) ||
+            ((preamp == PREAMP_HG) && ((afe->cal.highPgaPathCal[pathIdx].bufferInputVpp + TS_THRESH_ADJ) > reqScale)))
         {
             //Use this one
             break;
