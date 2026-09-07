@@ -15,82 +15,20 @@
             "type": "string",
             "description": "UTC date/time in ISO 8601 format"
         },
-        "channel1": {
-            "type": "object",
+        "frontend": {
+            "type": "array",
+            "maxItems": 4,
             "properties": {
+                "channel": {
+                    "type": "integer"
+                },
                 "attenuatorScale": {
                     "type": "number"
                 },
-                "paths": {
+                "path": {
                     "type": "array",
                     "items": {
                         "$ref": "/schemas/channelPathCalibration"
-                    }
-                },
-                "pgaLoadScales":{
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/pgaLoadScale"
-                    }
-                }
-            }
-        },
-        "channel2": {
-            "type": "object",
-            "properties": {
-                "attenuatorScale": {
-                    "type": "number"
-                },
-                "paths": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/channelPathCalibration"
-                    }
-                },
-                "pgaLoadScales":{
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/pgaLoadScale"
-                    }
-                }
-            }
-        },
-        "channel3": {
-            "type": "object",
-            "properties": {
-                "attenuatorScale": {
-                    "type": "number"
-                },
-                "paths": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/channelPathCalibration"
-                    }
-                },
-                "pgaLoadScales":{
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/pgaLoadScale"
-                    }
-                }
-            }
-        },
-        "channel4": {
-            "type": "object",
-            "properties": {
-                "attenuatorScale": {
-                    "type": "number"
-                },
-                "paths": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/channelPathCalibration"
-                    }
-                },
-                "pgaLoadScales":{
-                    "type": "array",
-                    "items": {
-                        "$ref": "/schemas/pgaLoadScale"
                     }
                 }
             }
@@ -98,29 +36,39 @@
         "adc":{
             "type": "object",
             "properties": {
-                "fineGainBranch1": {
-                    "type": "number"
+                "loadScale": {
+                    "type": "array",
+                    "properties": {
+                        "channel": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "rateScale": {
+                            "type" : "array",
+                            "items": {
+                                "$ref": "/schemas/adcRateScales"
+                            }
+                        }
+                    }
                 },
-                "fineGainBranch2": {
-                    "type": "number"
-                },
-                "fineGainBranch3": {
-                    "type": "number"
-                },
-                "fineGainBranch4": {
-                    "type": "number"
-                },
-                "fineGainBranch5": {
-                    "type": "number"
-                },
-                "fineGainBranch6": {
-                    "type": "number"
-                },
-                "fineGainBranch7": {
-                    "type": "number"
-                },
-                "fineGainBranch8": {
-                    "type": "number"
+                "branchGain": {
+                    "type": "array",
+                    "properties": {
+                        "channel": {
+                            "type": "array",
+                            "items": {
+                                "type": "integer"
+                            }
+                        },
+                        "rateGain": {
+                            "type" : "array",
+                            "items": {
+                                "$ref": "/schemas/adcRateGain"
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -128,10 +76,7 @@
     "required": [
         "version",
         "serial",
-        "channel1",
-        "channel2",
-        "channel3",
-        "channel4",
+        "frontend",
         "adc"
     ],
     "$defs": {
@@ -143,16 +88,19 @@
                 "pgaPreampGain": {
                     "enum": ["high", "low"]
                 },
-                "pgaLadderAttenuator": {
+                "pgaLadder": {
+                    "type": "integer"
+                },
+                "trimDPot": {
+                    "type": "integer"
+                },
+                "trimDacScale": {
                     "type": "number"
                 },
-                "trimScaleDac": {
+                "trimDacZeroM": {
                     "type": "number"
                 },
-                "trimOffsetDacScale": {
-                    "type": "number"
-                },
-                "trimOffsetDacZero": {
+                "trimDacZeroC": {
                     "type": "number"
                 },
                 "bufferInputVpp": {
@@ -161,32 +109,54 @@
             },
             "required": [
                 "pgaPreampGain",
-                "pgaLadderAttenuator",
-                "trimScaleDac",
-                "trimOffsetDacScale",
-                "trimOffsetDacZero",
+                "pgaLadder",
+                "trimDPot",
+                "trimDacScale",
+                "trimDacZeroM",
+                "trimDacZeroC",
                 "bufferInputVpp"
             ]
         },
-        "pgaLoadScale": {
-            "$id": "https://example.com/schemas/pgaLoadScale",
+        "adcRateScale": {
+            "$id": "https://example.com/schemas/adcRateScale",
             "title": "PGA Load Scale",
             "type": "object",
             "properties": {
-                "sampleRate": {
-                    "type": "number"
-                },
-                "channelCount": {
-                    "type": "number"
+                "rate": {
+                    "type": "integer"
                 },
                 "scale": {
-                    "type": "number"
+                    "type": "array",
+                    "Items": {
+                        "type": "number"
+                    }
                 }
             },
             "required": [
-                "sampleRate",
-                "channelCount",
+                "rate",
                 "scale"
+            ]  
+        },
+        "adcRateGain": {
+            "$id": "https://example.com/schemas/adcRateGain",
+            "title": "ADC Rate Gain",
+            "type": "object",
+            "properties": {
+                "rate": {
+                    "type": "integer"
+                },
+                "gain": {
+                    "type": "array",
+                    "minItems": 8,
+                    "maxItems": 8,
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "required": [
+                "rate",
+                "gain"
             ]  
         }
     }

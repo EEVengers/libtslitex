@@ -151,7 +151,7 @@ cdef class Channel:
     def Calibration(self):
         cdef int32_t retVal
         cdef ts_calibration.tsChannelCalibration_t calibration
-        retVal = ts_calibration.thunderscopeChanCalibrationSet(self.dev, self._channel, &calibration)
+        retVal = ts_calibration.thunderscopeChanCalibrationGet(self.dev, self._channel, &calibration)
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to get Channel {self._channel} Calibration ({retVal})")
         return calibration
@@ -202,6 +202,17 @@ cdef class Thunderscope:
         if retVal != tslitex.TS_STATUS_OK:
             raise ValueError(f"Failed to get ADC Calibration ({retVal})")
         return calibration
+    
+    def ManualAdcFineGain(self, fineGain: bytearray[8]):
+        cdef int32_t retVal
+        cdef unsigned char[8] gain = fineGain
+
+        if len(fineGain) != 8:
+            raise ValueError("ADC Fine Gain must by exactyly 8 bytes")
+
+        retVal = ts_calibration.thunderscopeCalibrationManualAdcFineGain(self._tsHandle, <uint8_t*>&gain[0])
+        if retVal != tslitex.TS_STATUS_OK:
+            raise ValueError(f"Failed to manually set ADC FineGain Parameters {fineGain}")
 
     def firmwareUpdate(self, bitfile):
         if type(bitfile) is not bytes:

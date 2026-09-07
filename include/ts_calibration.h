@@ -17,6 +17,10 @@ extern "C" {
 #include <stdbool.h>
 #include "ts_common.h"
 
+#define TS_CAL_NUM_PATHS 11
+#define TS_CAL_NUM_LOADS 11
+#define TS_CAL_NUM_RATES 8
+
 typedef enum tsCalAdcTest_e
 {
     TS_ADC_TEST_DISABLE,
@@ -27,28 +31,75 @@ typedef enum tsCalAdcTest_e
     TS_ADC_TEST_SYNC
 } tsCalAdcTest_t;
 
-typedef struct tsChannelCalibration_s
+typedef enum tsChannelsActive_e
 {
-    int32_t buffer_uV;
-    int32_t bias_uV;
-    int32_t attenuatorGain1M_mdB;
-    int32_t attenuatorGain50_mdB;
-    int32_t bufferGain_mdB;
-    int32_t trimRheostat_range;
-    int32_t preampLowGainError_mdB;
-    int32_t preampHighGainError_mdB;
-    int32_t preampAttenuatorGain_mdB[11];
-    int32_t preampOutputGainError_mdB;
-    int32_t preampLowOffset_uV;
-    int32_t preampHighOffset_uV;
-    int32_t preampInputBias_uA;
+    TS_CHAN_NONE    = 0b0000,
+    TS_CHAN_0       = 0b0001,
+    TS_CHAN_1       = 0b0010,
+    TS_CHAN_0_1     = 0b0011,
+    TS_CHAN_2       = 0b0100,
+    TS_CHAN_0_2     = 0b0101,
+    TS_CHAN_1_2     = 0b0110,
+    TS_CHAN_3       = 0b1000,
+    TS_CHAN_0_3     = 0b1001,
+    TS_CHAN_1_3     = 0b1010,
+    TS_CHAN_2_3     = 0b1100,
+    TS_CHAN_0_1_2_3 = 0b1111
+} tsChannelsActive_t;
+
+/* Calibration From the FCAL Json Schema */
+typedef struct tsAfePathCalibration_s
+{
+    double bufferInputVpp;
+    double trimOffsetDacZeroC;
+    double trimOffsetDacZeroM;
+    double trimOffsetDacScale;
+    uint32_t trimDPot;
+} tsAfePathCalibration_t;
+
+typedef struct tsAfeCalibration_s
+{
+    double attenuatorScale;
+    tsAfePathCalibration_t highPgaPathCal[TS_CAL_NUM_PATHS];
+    tsAfePathCalibration_t lowPgaPathCal[TS_CAL_NUM_PATHS];
 } tsChannelCalibration_t;
+
+typedef struct tsAdcLoad_s
+{
+    uint32_t rate;
+    double scale[TS_NUM_CHANNELS];
+} tsAdcLoad_t;
+
+
+typedef struct tsAdcLoadCalibration_s
+{
+    tsChannelsActive_t channels;
+    tsAdcLoad_t conf[TS_CAL_NUM_RATES];
+} tsAdcLoadCalibration_t;
+
+typedef struct tsAdcGain_s
+{
+    uint32_t rate;
+    uint8_t gain[8];
+} tsAdcGain_t;
+
+typedef struct tsAdcBranchGain_s
+{
+    tsChannelsActive_t channels;
+    tsAdcGain_t conf[TS_CAL_NUM_RATES];
+} tsAdcBranchGain_t;
 
 typedef struct tsAdcCalibration_s
 {
-    // Fine Gain Branch Adjustment
-    uint8_t branchFineGain[8];
+    tsAdcLoadCalibration_t loadCal[TS_CAL_NUM_LOADS];
+    tsAdcBranchGain_t branchFineGain[TS_CAL_NUM_LOADS];
 } tsAdcCalibration_t;
+
+typedef struct tsScopeCalibration_s
+{
+    tsChannelCalibration_t afeCal[TS_NUM_CHANNELS];
+    tsAdcCalibration_t adcCal;
+} tsScopeCalibration_t;
 
 typedef struct tsChannelCtrl_s
 {
@@ -67,12 +118,6 @@ typedef struct tsChannelCtrl_s
     uint8_t pga_atten;
     uint8_t pga_bw;
 } tsChannelCtrl_t;
-
-typedef struct tsScopeCalibration_s
-{
-    tsChannelCalibration_t afeCal[TS_NUM_CHANNELS];
-    tsAdcCalibration_t adcCal;
-} tsScopeCalibration_t;
 
 
 /**
@@ -122,6 +167,16 @@ int32_t thunderscopeAdcCalibrationGet(tsHandle_t ts, tsAdcCalibration_t *cal);
  * @return int32_t TS_STATUS_OK if the parameters were applied
  */
 int32_t thunderscopeCalibrationManualCtrl(tsHandle_t ts, uint32_t channel, tsChannelCtrl_t *ctrl);
+
+/**
+ * @brief Manually Set the Branch Fine Gain parameters of the ADC
+ * 
+ * @param ts Handle to the Thunderscope device
+ * @param fineGain Array of 8 fine-gain values (bytes)
+ * 
+ * @return int32_t TS_STATUS_OK if the parameters were applied
+ */
+int32_t thunderscopeCalibrationManualAdcFineGain(tsHandle_t ts, uint8_t fineGain[8]);
 
 /**
  * @brief Manually set the ADC test pattern mode.
