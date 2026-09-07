@@ -4,11 +4,15 @@ name: Build with CMake
 
 on:
   push:
-    branches: [ "main", "dev*" ]
+    branches:
+      - "main"
+      - "dev/*"
     tags:
-      - "v*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
-    branches: [ "main", "dev*" ]
+    branches:
+      - "main"
+      - "dev/*"
 
 jobs:
   build:
@@ -54,7 +58,7 @@ jobs:
             c_compiler: gcc
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-tags: true
         fetch-depth: 0
@@ -86,7 +90,7 @@ jobs:
     #   # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
     #   run: ctest --build-config ${{ matrix.build_type }}
     
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: ${{ steps.strings.outputs.artifact-name }}
         path: ${{ steps.strings.outputs.build-output-dir }}/artifacts
