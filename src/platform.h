@@ -34,7 +34,7 @@ extern "C" {
 #define TS_ADC_CH_INVERT        (1)
 
 #define TS_AFE_50OHM_SAFE_INPUT_VPP             (5.5 * 2.828) /**< Limit Vpp configuration to 5.0Vrms (+10%) in 50Ohm termination */
-#define TS_AFE_1MOHM_SAFE_INPUT_VPP             (40.0)        /**< Limit Vpp configuration to 40.0Vrms in 1MOhm termination */
+#define TS_AFE_1MOHM_SAFE_INPUT_VPP             (40.0)        /**< Limit Vpp configuration to 40.0V in 1MOhm termination */
 
 #define TS_AFE_BETA_TERM_SCALE                  (5.0)
 
