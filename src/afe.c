@@ -248,6 +248,12 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
         trimPotVal = (uint8_t) afe->cal.highPgaPathCal[pathIdx].trimDPot;
     }
     
+    /**
+     * There is a limit to the PGA specified in the LMH6518 datasheet that the input common-mode voltage (average of IN+/IN-)
+     * stays in the range 1.9-3.1V, this is +/-0.6V from the reference 2.5V.  This limits our offset range and is enforced by
+     * the path calibration dpot never going below '4' (1562.5 ohms = around 1.9V to 3.1V input CM).
+     * Ref: https://www.ti.com/lit/ds/symlink/lmh6518.pdf
+     */
     trimConf.value = (uint16_t) (offsetZero + (reqOffset * offsetScale));
     
     //Limit DAC value between 0-4095
