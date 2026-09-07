@@ -518,8 +518,8 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
                                         &gain, &offset_actual);
         if(TS_STATUS_OK != retVal)
         {
-            LOG_ERROR("Unable to set Channel %d voltage scale: %i", chanIdx, param->volt_scale_uV);
-            LOG_ERROR("                        voltage offset: %i", chanIdx, param->volt_offset_uV);
+            LOG_ERROR("Unable to set Channel %d voltage scale: %u", chanIdx, param->volt_scale_uV);
+            LOG_ERROR("                        voltage offset: %i", param->volt_offset_uV);
             return TS_INVALID_PARAM;
         }
         else
@@ -528,7 +528,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
             LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d",
                         chanIdx, param->volt_scale_uV,
                         pTsHdl->chan[chanIdx].params.volt_scale_uV);
-            pTsHdl->chan[chanIdx].params.volt_offset_uV = (uint32_t) (offset_actual * 1000000.0);
+            pTsHdl->chan[chanIdx].params.volt_offset_uV = (int32_t) (offset_actual * 1000000.0);
             LOG_DEBUG("Channel %d AFE set to %.06f V offset", chanIdx, offset_actual);
         }
     }

@@ -112,6 +112,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, double offset, double* gain_actual, double* offset_actual)
 {
     double reqScale = afe_Vpp;
+    double reqOffset = offset;
     double attenScale = 1.0;
     double offsetScale;
     double offsetZero;
@@ -122,7 +123,7 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     Mcp4728ChannelConfig_t trimConf = {.vref = MCP4728_VREF_VDD,
                                         .power = MCP4728_PD_NORMAL,
                                         .gain = MCP4728_GAIN_1X,
-                                        .value = 0};  
+                                        .value = 0};
 
     if(NULL == afe || NULL == offset_actual || NULL == gain_actual)
     {
@@ -144,7 +145,7 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
         if(isBetaDevice(afe->termPin.fd))
         {
             // If 50-Ohm mode in use, limit gain to TBD
-            attenScale = TS_AFE_BETA_TERM_SCALE;
+            attenScale *= TS_AFE_BETA_TERM_SCALE;
         }
     }
     else
@@ -162,11 +163,12 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     {
         // Update Attenuation if needed
         needsAtten = true;
-        attenScale = afe->cal.attenuatorScale;
+        attenScale *= afe->cal.attenuatorScale;
     }
 
     // Calculate Actual FSV
     reqScale /= attenScale;
+    reqOffset /= attenScale;
 
     // Check if we need high or low gain range
     if ( (afe->cal.highPgaPathCal[TS_CAL_NUM_PATHS - 1].bufferInputVpp + TS_THRESH_ADJ) > reqScale)
@@ -177,18 +179,18 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     LOG_DEBUG("Searching for: ");
     LOG_DEBUG("\tPreamp:    %s", preamp == PREAMP_HG ? "HIGH" : "LOW");
     LOG_DEBUG("\tBufferVpp: %f", reqScale);
-    LOG_DEBUG("\tOffset:    %f", offset);
+    LOG_DEBUG("\tOffset:    %f", reqOffset);
     LOG_DEBUG("\tTemp:      %f C", temp_C);
 
     // Loop through PGA cal settings
     do {
         //Check offset range is valid
         if ((preamp == PREAMP_LG && 
-                ((offset > ts_afe_offset_max(afe->cal.lowPgaPathCal[pathIdx], temp_C)) ||
-                 (offset < ts_afe_offset_min(afe->cal.lowPgaPathCal[pathIdx], temp_C)))) ||
+                ((reqOffset > ts_afe_offset_max(afe->cal.lowPgaPathCal[pathIdx], temp_C)) ||
+                 (reqOffset < ts_afe_offset_min(afe->cal.lowPgaPathCal[pathIdx], temp_C)))) ||
             (preamp == PREAMP_HG && 
-                ((offset > ts_afe_offset_max(afe->cal.highPgaPathCal[pathIdx], temp_C)) ||
-                 (offset < ts_afe_offset_min(afe->cal.highPgaPathCal[pathIdx], temp_C)))))
+                ((reqOffset > ts_afe_offset_max(afe->cal.highPgaPathCal[pathIdx], temp_C)) ||
+                 (reqOffset < ts_afe_offset_min(afe->cal.highPgaPathCal[pathIdx], temp_C)))))
         {
             // Offset invalid. Try the next one
             continue;
@@ -234,19 +236,19 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     // Adjust Trim DAC
     if (preamp == PREAMP_LG)
     {
-        offsetScale = afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp * attenScale);
+        offsetScale = afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp);
         offsetZero = ((afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C) + afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroC);
         trimPotVal = (uint8_t)afe->cal.lowPgaPathCal[pathIdx].trimDPot;
         
     }
     else
     {
-        offsetScale = afe->cal.highPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp * attenScale);
+        offsetScale = afe->cal.highPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp);
         offsetZero = ((afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C) + afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroC);
         trimPotVal = (uint8_t) afe->cal.highPgaPathCal[pathIdx].trimDPot;
     }
     
-    trimConf.value = (uint16_t) (offsetZero + (offset * offsetScale));
+    trimConf.value = (uint16_t) (offsetZero + (reqOffset * offsetScale));
     
     //Limit DAC value between 0-4095
     if (trimConf.value < 0)
@@ -254,7 +256,7 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     if (trimConf.value > 4095)
         trimConf.value = 4095;
 
-    *offset_actual = ((double)trimConf.value - offsetZero) / offsetScale;
+    *offset_actual = (((double)trimConf.value - offsetZero) / offsetScale) * attenScale;
 
     if (TS_STATUS_OK != mcp4728_channel_set(afe->trimDac, afe->trimDacCh, trimConf) ||
         (TS_STATUS_OK != mcp443x_set_wiper(afe->trimPot, afe->trimPotCh, trimPotVal)))
