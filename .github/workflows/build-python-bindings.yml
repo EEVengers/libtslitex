@@ -1,22 +1,26 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: Build Python Bindings with CMake
+name: Build Python Bindings
 
 on:
   push:
-    branches: [ "main", "dev*" ]
+    branches:
+      - "main"
+      - "dev/*"
     tags:
-      - "v*"
+      - "v[0-9]+.[0-9]+.[0-9]+"
   pull_request:
-    branches: [ "main", "dev*" ]
+    branches:
+      - "main"
 
 jobs:
   build:
+    name: Build Python Wheels
     runs-on: ${{ matrix.os }}
 
     strategy:
       # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
-      fail-fast: false
+      fail-fast: true
 
       # Set up a matrix to run the following configurations:
       # 1. <Windows, Release, latest MSVC compiler toolchain on the default runner image, default generator>
@@ -30,15 +34,14 @@ jobs:
         platform: [auto]
         arch: [auto64]
 
-
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v7
       with:
         fetch-tags: true
         fetch-depth: 0
 
     - name: Setup Python Environment
-      uses: actions/setup-python@v5
+      uses: actions/setup-python@v7
       with:
         python-version: '3.13'
         cache: 'pip'
@@ -67,7 +70,53 @@ jobs:
       # Build Wheel from Cython code.
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }} -t PyWheels
     
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@v7
       with:
         name: wheel-${{ matrix.os }}-${{ matrix.arch }}
         path: ${{ steps.strings.outputs.build-wheels-dir }}/*.whl
+
+  publish-to-testpypi:
+    name: Publish to TestPyPI
+    if: ${{ github.repository == 'EEVengers/libtslitex' && ! github.event.pull_request }}
+    needs:
+    - build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/tslitex
+    permissions:
+      id-token: write
+    
+    steps:
+    - name: Download Wheels
+      uses: actions/download-artifact@v8
+      with:
+        pattern: wheel-*
+        path: dist/
+        merge-multiple: true
+    - name: Publish to TestPyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        repository-url: https://test.pypi.org/legacy/
+
+  publish-to-pypi:
+    name: Publish to PyPI
+    if: ${{ github.repository == 'EEVengers/libtslitex' && github.ref_type == 'tag'}}
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tslitex
+    permissions:
+      id-token: write
+    
+    steps:
+    - name: Download Wheels
+      uses: actions/download-artifact@v8
+      with:
+        pattern: wheel-*
+        path: dist/
+        merge-multiple: true
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
