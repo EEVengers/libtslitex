@@ -53,14 +53,22 @@ if (GIT_FOUND)
         set(${PROJECT_NAME}_VERSION_GIT_SHA "unknown")
     else()
 		#How many commits since last tag
-		execute_process(COMMAND ${GIT_EXECUTABLE} rev-list main ${${PROJECT_NAME}_VERSION_STRING}^..HEAD --count
+		execute_process(COMMAND ${GIT_EXECUTABLE} rev-parse --verify refs/tags/${${PROJECT_NAME}_VERSION_STRING}
+			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+			OUTPUT_VARIABLE ${PROJECT_NAME}_TAG_REF
+			OUTPUT_STRIP_TRAILING_WHITESPACE
+			ERROR_QUIET
+			RESULT_VARIABLE GIT_REVPARSE_RESULT)
+		
+		execute_process(COMMAND ${GIT_EXECUTABLE} rev-list --count ${${PROJECT_NAME}_TAG_REF}..HEAD
 			WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 			OUTPUT_VARIABLE ${PROJECT_NAME}_VERSION_AHEAD
 			OUTPUT_STRIP_TRAILING_WHITESPACE
 			ERROR_QUIET
 			RESULT_VARIABLE GIT_REVLIST_RESULT)
 		
-		if (NOT GIT_REVLIST_RESULT EQUAL 0)
+		if (NOT GIT_REVPARSE_RESULT EQUAL 0 AND NOT GIT_REVLIST_RESULT EQUAL 0)
+			message("Invalid GIT rev-list result ${GIT_REVLIST_RESULT}")
 			set(${PROJECT_NAME}_VERSION_AHEAD 0)
 		endif()
 
@@ -104,7 +112,6 @@ else()
 	set(${PROJECT_NAME}_VERSION_STRING_FULL "unknown-version")
 
 endif()
-
 
 # Set project version (without the preceding 'v')
 message(STATUS "Setting ${PROJECT_NAME} version to: ${${PROJECT_NAME}_VERSION_STRING_FULL}")
