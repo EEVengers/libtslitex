@@ -77,7 +77,10 @@ jobs:
 
   publish-to-testpypi:
     name: Publish to TestPyPI
-    if: ${{ github.repository == 'EEVengers/libtslitex' && ! github.event.pull_request }}
+    if: >-
+      ${{ github.repository == 'EEVengers/libtslitex' &&
+      (github.ref == 'refs/heads/main' || github.ref_type == 'tag') &&
+      github.event_name == 'push' }}
     needs:
     - build
     runs-on: ubuntu-latest
@@ -101,7 +104,9 @@ jobs:
 
   publish-to-pypi:
     name: Publish to PyPI
-    if: ${{ github.repository == 'EEVengers/libtslitex' && github.ref_type == 'tag'}}
+    if: >-
+      ${{ github.repository == 'EEVengers/libtslitex' &&
+      github.ref_type == 'tag'}}
     needs:
       - build
     runs-on: ubuntu-latest
