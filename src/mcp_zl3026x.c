@@ -497,6 +497,9 @@ static uint64_t mcp_zl3026x_selected_input_freq(zl3026x_clk_config_t *conf)
     case ZL3026X_INPUT_XO_DBL:
         freq = conf->in_xo.xo_freq*2;
         break;
+    case ZL3026X_INPUT_NONE:
+        freq = 0;
+        break;
     }
     return freq;
 }

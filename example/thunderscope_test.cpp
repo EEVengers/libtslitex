@@ -525,7 +525,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
     if(watch_bitslip)
     {
         bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
-        printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+        printf("Bitslip Snapshot: %ur\n", bitslip_count);
         dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_FRAME_DEBUG_ADDR);
         printf("FRAME Debug: 0x%08x\r\n", dbg_monitor);
         dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);
@@ -609,7 +609,7 @@ static void test_capture(file_t fd, uint32_t idx, uint8_t channelBitmap, uint16_
                 {
                     tsScopeState_t scopeState = {0};
                     bitslip_count = litepcie_readl(fd, CSR_ADC_HMCAD1520_BITSLIP_COUNT_ADDR);
-                    printf("Bitslip Snapshot: %lu\r\n", bitslip_count);
+                    printf("Bitslip Snapshot: %u\r\n", bitslip_count);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_FRAME_DEBUG_ADDR);
                     printf("FRAME Debug: 0x%08x\r\n", dbg_monitor);
                     dbg_monitor = litepcie_readl(fd, CSR_ADC_HMCAD1520_RANGE_ADDR);

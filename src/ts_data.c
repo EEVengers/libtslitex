@@ -315,7 +315,7 @@ int32_t ts_data_parse_factory_cal(uint8_t* cal_buffer, tsScopeCalibration_t *fca
     size_t ch_idx = 0;
     int32_t ret = TS_STATUS_ERROR;
 
-    json_data = json_tokener_parse(cal_buffer);
+    json_data = json_tokener_parse((char*)cal_buffer);
     if (!json_data)
     {
         LOG_ERROR("Failed to parse Factory Calibration JSON");
@@ -468,7 +468,7 @@ int32_t ts_data_factory_id_get(ts_fw_manager_t* mngr, tsDeviceInfo_t* infos)
 
     // Parse json
     hwid_buffer[hwid_len] = '\0';
-    fid = json_tokener_parse(hwid_buffer);
+    fid = json_tokener_parse((char*)hwid_buffer);
     
     // Store HWID version
     if(json_object_object_get_ex(fid,"version", &item))

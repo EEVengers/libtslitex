@@ -705,7 +705,7 @@ int32_t thunderscopeFactoryReadItem(tsHandle_t ts, const uint32_t tag, char* con
     ts_inst_t* pInst = (ts_inst_t*)ts;
     if(pInst)
     {
-        return ts_fw_manager_factory_data_retreive(&pInst->fw, tag, content_buffer, item_max_len);
+        return ts_fw_manager_factory_data_retreive(&pInst->fw, tag, (uint8_t*)content_buffer, item_max_len);
     }
     else
     {

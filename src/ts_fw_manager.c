@@ -69,7 +69,7 @@ static uint32_t ts_fw_get_idcode(file_t fd)
 
 static const char* ts_fw_parse_bit_header(const char* header, const char** part, uint32_t* bin_len)
 {
-    const uint8_t* position = header;
+    const uint8_t* position = (const uint8_t*)header;
     uint16_t key_len = 0;
     *bin_len = 0;
 
@@ -103,7 +103,7 @@ static const char* ts_fw_parse_bit_header(const char* header, const char** part,
         return NULL;
     }
     key_len = (uint16_t)(position[1] << 8) + (position[2]);
-    *part = &position[3];
+    *part = (char*)&position[3];
     LOG_DEBUG("Part: %s", &position[3]);
     position += (3+key_len);
 
@@ -139,7 +139,7 @@ static const char* ts_fw_parse_bit_header(const char* header, const char** part,
     LOG_DEBUG("Bitstream Length: %u", *bin_len);
     position += 5;
 
-    return position;
+    return (char*)position;
 }
 
 int32_t ts_fw_manager_init(file_t fd, ts_fw_manager_t* mngr)
@@ -321,7 +321,7 @@ int32_t ts_fw_manager_user_data_read(ts_fw_manager_t* mngr, char* buffer, uint32
     }
     
     // Read File from SPI Flash
-    if(readLen != spiflash_read(&mngr->flash_dev, (mngr->partition_table->user_config_start + offset), buffer, readLen))
+    if(readLen != spiflash_read(&mngr->flash_dev, (mngr->partition_table->user_config_start + offset), (uint8_t*)buffer, readLen))
     {
         LOG_ERROR("Failed to read user data partition (%d)", readLen);
         return TS_STATUS_ERROR;
