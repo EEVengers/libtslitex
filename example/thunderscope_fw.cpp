@@ -335,7 +335,7 @@ int main(int argc, char** argv)
 
                 // Close File
                 file.close();
-                delete data_content;
+                delete[] data_content;
             }
             else
             {

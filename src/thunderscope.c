@@ -666,7 +666,7 @@ int32_t thunderscopeFactoryProvisionAppendTLV(tsHandle_t ts, const uint32_t tag,
     ts_inst_t* pInst = (ts_inst_t*)ts;
     if(pInst)
     {
-        return ts_fw_manager_factory_data_append(&pInst->fw, tag, length, content);
+        return ts_fw_manager_factory_data_append(&pInst->fw, tag, length, (const uint8_t*)content);
     }
     else
     {

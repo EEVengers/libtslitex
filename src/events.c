@@ -120,7 +120,7 @@ int32_t events_get_next(file_t handle, tsEvent_t *pEvent, uint32_t *adjustment)
         return TS_STATUS_ERROR;
     }
 
-    LOG_DEBUG("Event Get: %s @ Sample - %llu + %lu",
+    LOG_DEBUG("Event Get: %s @ Sample - %llu + %u",
             pEvent->ID == TS_EVT_HOST_SW ? "SWE":"EXT",
             pEvent->event_sample,
             *adjustment);

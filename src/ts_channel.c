@@ -115,6 +115,7 @@ const static tsChannelParam_t g_tsParamsDefault = {.active = false,
                                                    .volt_scale_uV = 700000};
 
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
+static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param);
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 static tsChannelsActive_t ts_channel_active_get(ts_channel_t* pTsHdl);
 static uint32_t ts_channel_active_index(tsChannelsActive_t active, uint32_t chanIdx);
@@ -393,7 +394,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force)
 {
     int32_t retVal = TS_STATUS_OK;
-    bool needUpdateGain = false, needUpdateOffset = false, needActiveUpdate = false;
+    bool needUpdateGain = false, needActiveUpdate = false;
     tsChannelsActive_t active = TS_CHAN_NONE;
     
     if(param->active != pTsHdl->chan[chanIdx].params.active)
@@ -477,83 +478,85 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         }
     }
 
-    //Set Voltage Scale
-    if(needUpdateGain || force)
+    //Set Active
+    if(needActiveUpdate)
     {
-        // Calculate gain value
-        double gain = 1.0;
-        double requestVpp = ((double)param->volt_scale_uV) * 0.000001;
+        //Apply param to current channel, other channels will be updated when setting the sample rate.
+        retVal = ts_channel_apply_params(pTsHdl, chanIdx, param);
 
-        // 1. Adjust for ADC Load scale
-        double loadScale = 1.0;
-        uint32_t scaleIdx = ts_channel_active_index(active, chanIdx);
-
-        // Check the scaleIdx is valid
-        if (scaleIdx < TS_NUM_CHANNELS)
+        if (retVal == TS_STATUS_OK)
         {
-            for (uint32_t load = 0; load < TS_CAL_NUM_LOADS; load++)
+            //Update Sample Rate
+            retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->sampleMode);
+        }
+    }
+    else if (needUpdateGain || force)
+    {
+        retVal = ts_channel_apply_params(pTsHdl, chanIdx, param);
+    }
+
+    return retVal;
+}
+
+static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param)
+{
+    int32_t retVal;
+    tsChannelsActive_t active = ts_channel_active_get(pTsHdl);
+
+    // Calculate gain value
+    double gain = 1.0;
+    double requestVpp = ((double)param->volt_scale_uV) * 0.000001;
+
+    // 1. Adjust for ADC Load scale
+    double loadScale = 1.0;
+    uint32_t scaleIdx = ts_channel_active_index(active, chanIdx);
+
+    // Check the scaleIdx is valid
+    if (scaleIdx < TS_NUM_CHANNELS)
+    {
+        for (uint32_t load = 0; load < TS_CAL_NUM_LOADS; load++)
+        {
+            if (pTsHdl->adcCal.loadCal[load].channels == active)
             {
-                if (pTsHdl->adcCal.loadCal[load].channels == active)
+                for(uint32_t rateIdx = 0; rateIdx < TS_CAL_NUM_RATES; rateIdx++)
                 {
-                    for(uint32_t rateIdx = 0; rateIdx < TS_CAL_NUM_RATES; rateIdx++)
+                    if (pTsHdl->adcCal.loadCal[load].conf[rateIdx].rate == pTsHdl->status.adc_sample_rate)
                     {
-                        if (pTsHdl->adcCal.loadCal[load].conf[rateIdx].rate == pTsHdl->status.adc_sample_rate)
-                        {
-                            loadScale = pTsHdl->adcCal.loadCal[load].conf[rateIdx].scale[scaleIdx];
-                            break;
-                        }
+                        loadScale = pTsHdl->adcCal.loadCal[load].conf[rateIdx].scale[scaleIdx];
+                        break;
                     }
-                    break;
                 }
+                break;
             }
         }
+    }
 
-        // 2. Update AFE Settings
-        double offset_actual = 0.0;
-        LOG_DEBUG("Channel %d AFE request %f Vpp", chanIdx, requestVpp);
-        retVal = ts_afe_set_ch_config(&pTsHdl->chan[chanIdx].afe,
-                                        (pTsHdl->status.sys_health.temp_c / 1000.0),
-                                        (requestVpp / loadScale),
-                                        param->volt_offset_uV / 1000000.0,
-                                        &gain, &offset_actual);
-        if(TS_STATUS_OK != retVal)
-        {
-            LOG_ERROR("Unable to set Channel %d voltage scale: %u", chanIdx, param->volt_scale_uV);
-            LOG_ERROR("                        voltage offset: %i", param->volt_offset_uV);
-            return TS_INVALID_PARAM;
-        }
-        else
-        {
-            pTsHdl->chan[chanIdx].params.volt_scale_uV = (uint32_t) (gain * loadScale * 1000000.0);
-            LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d",
-                        chanIdx, param->volt_scale_uV,
-                        pTsHdl->chan[chanIdx].params.volt_scale_uV);
-            pTsHdl->chan[chanIdx].params.volt_offset_uV = (int32_t) (offset_actual * 1000000.0);
-            LOG_DEBUG("Channel %d AFE set to %.06f V offset", chanIdx, offset_actual);
-        }
+    // 2. Update AFE Settings
+    double offset_actual = 0.0;
+    LOG_DEBUG("Channel %d AFE request %f Vpp", chanIdx, requestVpp);
+    retVal = ts_afe_set_ch_config(&pTsHdl->chan[chanIdx].afe,
+                                    (pTsHdl->status.sys_health.temp_c / 1000.0),
+                                    (requestVpp / loadScale),
+                                    param->volt_offset_uV / 1000000.0,
+                                    &gain, &offset_actual);
+    if(TS_STATUS_OK != retVal)
+    {
+        LOG_ERROR("Unable to set Channel %d voltage scale: %u", chanIdx, param->volt_scale_uV);
+        LOG_ERROR("                        voltage offset: %i", param->volt_offset_uV);
+        return TS_INVALID_PARAM;
+    }
+    else
+    {
+        pTsHdl->chan[chanIdx].params.volt_scale_uV = (uint32_t) (gain * loadScale * 1000000.0);
+        LOG_DEBUG("Channel %d voltage scale Request: %d Actual: %d",
+                    chanIdx, param->volt_scale_uV,
+                    pTsHdl->chan[chanIdx].params.volt_scale_uV);
+        pTsHdl->chan[chanIdx].params.volt_offset_uV = (int32_t) (offset_actual * 1000000.0);
+        LOG_DEBUG("Channel %d AFE set to %.06f V offset", chanIdx, offset_actual);
     }
 
     //Update channel last temp
     pTsHdl->chan[chanIdx].lastTempAdjust = pTsHdl->status.sys_health.temp_c;
-
-    //Set Active
-    if(needActiveUpdate)
-    {
-        // Reconfigure parameters for other active channels
-        for (uint8_t ch = 0; ch < TS_NUM_CHANNELS; ch++)
-        {
-            //TODO: Refactor this function to remove reentrant behavior
-            //  This is only reached if the given active param differs from the chan[] param, so it should
-            //  only cause a single reentrant call here
-            if (ch != chanIdx && pTsHdl->chan[ch].params.active)
-            {
-                ts_channel_update_params(pTsHdl, ch, &pTsHdl->chan[ch].params, true);
-            }
-        }
-
-        //Update Sample Rate
-        retVal = ts_channel_sample_rate_set((tsChannelHdl_t)pTsHdl, pTsHdl->status.adc_sample_rate, pTsHdl->sampleMode);
-    }
 
     return retVal;
 }
@@ -762,6 +765,14 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsS
                 }
             }
             break;
+        }
+    }
+
+    for (uint8_t ch = 0; ch < TS_NUM_CHANNELS; ch++)
+    {
+        if (ts->chan[ch].params.active)
+        {
+            ts_channel_apply_params(ts, ch, &ts->chan[ch].params);
         }
     }
 

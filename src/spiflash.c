@@ -307,7 +307,7 @@ int32_t spiflash_erase(spiflash_dev_t* dev, uint32_t addr, uint32_t len)
     }
 
     for (i=0; i<len; i+=SPI_FLASH_ERASE_SIZE) {
-        LOG_DEBUG("Erase SPI Flash @0x%08lx", ((uint32_t)addr+i));
+        LOG_DEBUG("Erase SPI Flash @0x%08x", ((uint32_t)addr+i));
         spiflash_write_enable(dev);
         spiflash_sector_erase(dev, addr+i);
 
@@ -344,7 +344,7 @@ int32_t spiflash_write(spiflash_dev_t* dev, uint32_t addr, const uint8_t *pData,
     uint32_t offset = 0;
     uint32_t j = 0;
 
-    LOG_DEBUG("Write SPI Flash @0x%08lx", ((uint32_t)addr));
+    LOG_DEBUG("Write SPI Flash @0x%08x", ((uint32_t)addr));
 
     while(w_len) {
         spiflash_write_enable(dev);
@@ -410,7 +410,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
             (flash_id == 0xC22537) ||
             (flash_id == 0xC22B27))
         {
-            LOG_DEBUG("Using SPIFLASH Divisor %ld", divisor);
+            LOG_DEBUG("Using SPIFLASH Divisor %d", divisor);
             break;
         }
         else
