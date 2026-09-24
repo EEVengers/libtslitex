@@ -37,6 +37,7 @@ typedef struct ts_channel_s {
         tsChannelParam_t params;
         ts_afe_t afe;
         uint32_t lastTempAdjust;
+        double lastScaleReq;
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
@@ -315,6 +316,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         }
 
         pChan->chan[chanIdx].params = g_tsParamsDefault;
+        pChan->chan[chanIdx].lastScaleReq = 700000;
         pChan->chan[chanIdx].lastTempAdjust = 0;
     }
 
@@ -506,6 +508,7 @@ static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, t
     // Calculate gain value
     double gain = 1.0;
     double requestVpp = ((double)param->volt_scale_uV) * 0.000001;
+    pTsHdl->chan[chanIdx].lastScaleReq = requestVpp;
 
     // 1. Adjust for ADC Load scale
     double loadScale = 1.0;
@@ -772,7 +775,9 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsS
     {
         if (ts->chan[ch].params.active)
         {
-            ts_channel_apply_params(ts, ch, &ts->chan[ch].params);
+            tsChannelParam_t param = ts->chan[ch].params;
+            param.volt_scale_uV = (uint32_t)(ts->chan[ch].lastScaleReq * 1000000.0);
+            ts_channel_apply_params(ts, ch, &param);
         }
     }
 
@@ -924,7 +929,9 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     }
 
     //Force afe to recalculate gain/offsets
-    ts_channel_update_params(ts, chanIdx, &ts->chan[chanIdx].params, true);
+    tsChannelParam_t param = ts->chan[chanIdx].params;
+    param.volt_scale_uV = (uint32_t)(ts->chan[chanIdx].lastScaleReq * 1000000.0);
+    ts_channel_apply_params(ts, chanIdx, &param);
 
     return TS_STATUS_OK;
 }
