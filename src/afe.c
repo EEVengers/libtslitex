@@ -114,7 +114,7 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     double reqScale = afe_Vpp;
     double reqOffset = offset;
     double attenScale = 1.0;
-    double offsetScale;
+    double offsetScale = 0.0;
     double offsetZero;
     bool needsAtten = false;
     lmh6518Preamp_t preamp = PREAMP_LG;
@@ -164,6 +164,13 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
         // Update Attenuation if needed
         needsAtten = true;
         attenScale *= afe->cal.attenuatorScale;
+    }
+
+    //Validate attenuator scale is not zero
+    if (attenScale == 0.0)
+    {
+        LOG_ERROR("Invalid Attenuator Scale of Zero");
+        return TS_STATUS_ERROR;
     }
 
     // Calculate Actual FSV
@@ -236,16 +243,25 @@ int32_t ts_afe_set_ch_config(ts_afe_t* afe, double temp_C, double afe_Vpp, doubl
     // Adjust Trim DAC
     if (preamp == PREAMP_LG)
     {
-        offsetScale = afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp);
+        if (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp != 0.0)
+            offsetScale = afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.lowPgaPathCal[pathIdx].bufferInputVpp);
         offsetZero = ((afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C) + afe->cal.lowPgaPathCal[pathIdx].trimOffsetDacZeroC);
         trimPotVal = (uint8_t)afe->cal.lowPgaPathCal[pathIdx].trimDPot;
         
     }
     else
     {
-        offsetScale = afe->cal.highPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp);
+        if (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp != 0.0)
+            offsetScale = afe->cal.highPgaPathCal[pathIdx].trimOffsetDacScale / (afe->cal.highPgaPathCal[pathIdx].bufferInputVpp);
         offsetZero = ((afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroM * temp_C) + afe->cal.highPgaPathCal[pathIdx].trimOffsetDacZeroC);
         trimPotVal = (uint8_t) afe->cal.highPgaPathCal[pathIdx].trimDPot;
+    }
+
+    //Validate offset value is not zero
+    if (offsetScale == 0.0)
+    {
+        LOG_ERROR("Invalid Offset Scale of Zero");
+        return TS_STATUS_ERROR;
     }
     
     /**
@@ -405,7 +421,8 @@ static inline double ts_afe_offset_max(tsAfePathCalibration_t cal, double temp_C
     else if (dacRangePos > MCP4728_FULL_SCALE_VAL)
         dacRangePos = MCP4728_FULL_SCALE_VAL;
 
-    offsetMax = cal.bufferInputVpp * dacRangePos / cal.trimOffsetDacScale;
+    if (cal.trimOffsetDacScale != 0.0)
+        offsetMax = cal.bufferInputVpp * dacRangePos / cal.trimOffsetDacScale;
 
     return offsetMax;
 }
@@ -419,7 +436,8 @@ static inline double ts_afe_offset_min(tsAfePathCalibration_t cal, double temp_C
     else if (dacRangeNeg > MCP4728_FULL_SCALE_VAL)
         dacRangeNeg = MCP4728_FULL_SCALE_VAL;
 
-    offsetMin = - cal.bufferInputVpp * dacRangeNeg / cal.trimOffsetDacScale;
+    if (cal.trimOffsetDacScale != 0.0)
+        offsetMin = - cal.bufferInputVpp * dacRangeNeg / cal.trimOffsetDacScale;
 
     return offsetMin;
 }

@@ -525,7 +525,14 @@ static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, t
                 {
                     if (pTsHdl->adcCal.loadCal[load].conf[rateIdx].rate == pTsHdl->status.adc_sample_rate)
                     {
-                        loadScale = pTsHdl->adcCal.loadCal[load].conf[rateIdx].scale[scaleIdx];
+                        if (pTsHdl->adcCal.loadCal[load].conf[rateIdx].scale[scaleIdx] != 0.0)
+                        {
+                            loadScale = pTsHdl->adcCal.loadCal[load].conf[rateIdx].scale[scaleIdx];
+                        }
+                        else
+                        {
+                            LOG_ERROR("Invalid Load Scale value 0.0, using 1.0 instead");
+                        }
                         break;
                     }
                 }
@@ -902,11 +909,16 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
         return TS_INVALID_PARAM;
     }
 
-    //TODO Calibration value bounds checking
-    ts->chan[chanIdx].afe.cal = *cal;
 
     LOG_DEBUG("Received Calibration for channel %d", chanIdx);
     LOG_DEBUG("\tAttenuator Scale               %.03f", cal->attenuatorScale);
+
+    if (cal->attenuatorScale == 0.0)
+    {
+        LOG_ERROR("Cannot set channel %d calibration, Invalid Attenuator Scale", chanIdx);
+        return TS_INVALID_PARAM;
+    }
+
     LOG_DEBUG("\tHigh Gain PGA");
     for (int path = 0; path < TS_CAL_NUM_PATHS; path++)
     {
@@ -916,6 +928,16 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
         LOG_DEBUG("\t\tTrim DAC Scale:              %.03f", cal->highPgaPathCal[path].trimOffsetDacScale);
         LOG_DEBUG("\t\tTrim DAC Zero:               %.03f", cal->highPgaPathCal[path].trimOffsetDacZeroC);
         LOG_DEBUG("\t\tTrim DAC Zero Slope:         %.03f", cal->highPgaPathCal[path].trimOffsetDacZeroM);
+        if (cal->highPgaPathCal[path].bufferInputVpp == 0.0)
+        {
+            LOG_ERROR("Cannot set channel %d calibration, Invalid high PGA bufferInputVpp", chanIdx);
+            return TS_INVALID_PARAM;
+        }
+        if (cal->highPgaPathCal[path].trimOffsetDacScale == 0.0)
+        {
+            LOG_ERROR("Cannot set channel %d calibration, Invalid high PGA trimOffsetDacScale", chanIdx);
+            return TS_INVALID_PARAM;
+        }
     }
     LOG_DEBUG("\tLow Gain PGA");
     for (int path = 0; path < TS_CAL_NUM_PATHS; path++)
@@ -926,7 +948,19 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
         LOG_DEBUG("\t\tTrim DAC Scale:              %.03f", cal->lowPgaPathCal[path].trimOffsetDacScale);
         LOG_DEBUG("\t\tTrim DAC Zero:               %.03f", cal->lowPgaPathCal[path].trimOffsetDacZeroC);
         LOG_DEBUG("\t\tTrim DAC Zero Slope:         %.03f", cal->lowPgaPathCal[path].trimOffsetDacZeroM);
+        if (cal->lowPgaPathCal[path].bufferInputVpp == 0.0)
+        {
+            LOG_ERROR("Cannot set channel %d calibration, Invalid low PGA bufferInputVpp", chanIdx);
+            return TS_INVALID_PARAM;
+        }
+        if (cal->lowPgaPathCal[path].trimOffsetDacScale == 0.0)
+        {
+            LOG_ERROR("Cannot set channel %d calibration, Invalid low PGA trimOffsetDacScale", chanIdx);
+            return TS_INVALID_PARAM;
+        }
     }
+
+    ts->chan[chanIdx].afe.cal = *cal;
 
     //Force afe to recalculate gain/offsets
     tsChannelParam_t param = ts->chan[chanIdx].params;
