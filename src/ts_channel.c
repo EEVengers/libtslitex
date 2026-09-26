@@ -915,8 +915,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
 
     if (cal->attenuatorScale == 0.0)
     {
-        LOG_ERROR("Cannot set channel %d calibration, Invalid Attenuator Scale", chanIdx);
-        return TS_INVALID_PARAM;
+        LOG_ERROR("Error setting channel %d calibration. Invalid Attenuator Scale, using default", chanIdx);
+        cal->attenuatorScale = TS_AFE_DEFAULT_CAL.attenuatorScale;
     }
 
     LOG_DEBUG("\tHigh Gain PGA");
@@ -930,13 +930,13 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
         LOG_DEBUG("\t\tTrim DAC Zero Slope:         %.03f", cal->highPgaPathCal[path].trimOffsetDacZeroM);
         if (cal->highPgaPathCal[path].bufferInputVpp == 0.0)
         {
-            LOG_ERROR("Cannot set channel %d calibration, Invalid high PGA bufferInputVpp", chanIdx);
-            return TS_INVALID_PARAM;
+            LOG_ERROR("Error setting channel %d calibration, Invalid high PGA bufferInputVpp", chanIdx);
+            cal->highPgaPathCal[path].bufferInputVpp = 1E-6;
         }
         if (cal->highPgaPathCal[path].trimOffsetDacScale == 0.0)
         {
-            LOG_ERROR("Cannot set channel %d calibration, Invalid high PGA trimOffsetDacScale", chanIdx);
-            return TS_INVALID_PARAM;
+            LOG_ERROR("Error setting channel %d calibration, Invalid high PGA trimOffsetDacScale, using default", chanIdx);
+            cal->highPgaPathCal[path].trimOffsetDacScale = TS_AFE_DEFAULT_CAL.highPgaPathCal[path].trimOffsetDacScale;
         }
     }
     LOG_DEBUG("\tLow Gain PGA");
@@ -951,12 +951,12 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
         if (cal->lowPgaPathCal[path].bufferInputVpp == 0.0)
         {
             LOG_ERROR("Cannot set channel %d calibration, Invalid low PGA bufferInputVpp", chanIdx);
-            return TS_INVALID_PARAM;
+            cal->lowPgaPathCal[path].bufferInputVpp = 1E-6;
         }
         if (cal->lowPgaPathCal[path].trimOffsetDacScale == 0.0)
         {
-            LOG_ERROR("Cannot set channel %d calibration, Invalid low PGA trimOffsetDacScale", chanIdx);
-            return TS_INVALID_PARAM;
+            LOG_ERROR("Cannot set channel %d calibration, Invalid low PGA trimOffsetDacScale, using default", chanIdx);
+            cal->lowPgaPathCal[path].trimOffsetDacScale = TS_AFE_DEFAULT_CAL.lowPgaPathCal[path].trimOffsetDacScale;
         }
     }
 

@@ -39,7 +39,7 @@ extern "C" {
 #define TS_AFE_BETA_TERM_SCALE                  (5.0)
 
 #define TS_AFE_DEFAULT_CAL          (tsChannelCalibration_t) { \
-    .attenuatorScale = 0.02, \
+    .attenuatorScale = 50.0, \
     .highPgaPathCal = { \
         {.bufferInputVpp = 0.0097, .trimOffsetDacZeroC = 2156, .trimOffsetDacZeroM = 1.475, .trimOffsetDacScale = 129.4, .trimDPot = 20}, \
         {.bufferInputVpp = 0.0122, .trimOffsetDacZeroC = 2157, .trimOffsetDacZeroM = 1.465, .trimOffsetDacScale = 163.0, .trimDPot = 20}, \
