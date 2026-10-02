@@ -113,7 +113,7 @@ const static tsChannelParam_t g_tsParamsDefault = {.active = false,
                                                    .coupling = TS_COUPLE_DC,
                                                    .term = TS_TERM_1M,
                                                    .volt_offset_uV = 0,
-                                                   .volt_scale_uV = 700000};
+                                                   .volt_scale_uV = 5000000};
 
 static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
 static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param);
@@ -316,7 +316,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         }
 
         pChan->chan[chanIdx].params = g_tsParamsDefault;
-        pChan->chan[chanIdx].lastScaleReq = 700000;
+        pChan->chan[chanIdx].lastScaleReq = 5.0;
         pChan->chan[chanIdx].lastTempAdjust = 0;
     }
 
@@ -962,10 +962,13 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
 
     ts->chan[chanIdx].afe.cal = *cal;
 
-    //Force afe to recalculate gain/offsets
-    tsChannelParam_t param = ts->chan[chanIdx].params;
-    param.volt_scale_uV = (uint32_t)(ts->chan[chanIdx].lastScaleReq * 1000000.0);
-    ts_channel_apply_params(ts, chanIdx, &param);
+    if (ts->chan[chanIdx].params.active)
+    {
+        //Force afe to recalculate gain/offsets
+        tsChannelParam_t param = ts->chan[chanIdx].params;
+        param.volt_scale_uV = (uint32_t)(ts->chan[chanIdx].lastScaleReq * 1000000.0);
+        ts_channel_apply_params(ts, chanIdx, &param);
+    }
 
     return TS_STATUS_OK;
 }
