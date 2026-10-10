@@ -109,7 +109,7 @@ struct ts_channel_hw_conf_s {
 };
 
 const static tsChannelParam_t g_tsParamsDefault = {.active = false,
-                                                   .bandwidth = 650,
+                                                   .bandwidth = 0,
                                                    .coupling = TS_COUPLE_DC,
                                                    .term = TS_TERM_1M,
                                                    .volt_offset_uV = 0,
@@ -398,7 +398,6 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
 {
     int32_t retVal = TS_STATUS_OK;
     bool needUpdateGain = false, needActiveUpdate = false;
-    tsChannelsActive_t active = TS_CHAN_NONE;
     
     if(param->active != pTsHdl->chan[chanIdx].params.active)
     {
@@ -428,8 +427,6 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     {
         needUpdateGain = true;
     }
-
-    active = ts_channel_active_get(pTsHdl);
 
     //Set AFE Bandwidth
     if(param->bandwidth != pTsHdl->chan[chanIdx].params.bandwidth || force)
@@ -574,15 +571,23 @@ static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, c
 
 static tsChannelsActive_t ts_channel_active_get(ts_channel_t* pTsHdl)
 {
-    tsChannelsActive_t channels = TS_CHAN_NONE;
+    uint32_t channels = 0;
+    uint32_t chanCount = 0;
+
     for (int i = 0; i < TS_NUM_CHANNELS; i++)
     {
         if (pTsHdl->chan[i].params.active)
         {
-            channels |= (tsChannelsActive_t)( 1UL << i );
+            channels |= 1UL << i;
+            chanCount++;
         }
     }
-    return channels;
+    if(chanCount == 3)
+    {
+        channels = (uint32_t)TS_CHAN_0_1_2_3;
+    }
+
+    return (tsChannelsActive_t)channels;
 }
 
 static uint32_t ts_channel_active_index(tsChannelsActive_t active, uint32_t chanIdx)

@@ -184,10 +184,8 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
 
     }
 
-
     events_initialize(pInst->ctrl);
 
-   
     if(pInst->identity.hw_id & TS_HW_ID_VALID_MASK)
     {
         pInst->signals = &ts_dev_leds;
