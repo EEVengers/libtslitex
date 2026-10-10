@@ -85,7 +85,7 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
 
     // Default states for AFE signals
     afe->termination = TS_TERM_1M;
-    afe->coupling = TS_COUPLE_AC;
+    afe->coupling = TS_COUPLE_DC;
     afe->isAttenuated = true;
     
     // Default calibration
@@ -101,9 +101,9 @@ int32_t ts_afe_init(ts_afe_t* afe, uint8_t channel, spi_dev_t afe_amp, i2c_t tri
     retVal = lmh6518_apply_config(afe->amp, afe->ampConf);
     mcp4728_channel_set(afe->trimDac, afe->trimDacCh, trimConf);
     mcp443x_set_wiper(afe->trimPot, afe->trimPotCh, TS_TRIM_DPOT_DEFAULT);
-    gpio_clear(termination);
-    gpio_clear(attenuator);
-    gpio_clear(coupling);
+    ts_afe_termination_control(afe, afe->termination);
+    ts_afe_attenuation_control(afe, afe->isAttenuated);
+    ts_afe_coupling_control(afe, afe->coupling);
 
     return retVal;
 }

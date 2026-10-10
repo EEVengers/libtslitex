@@ -109,14 +109,14 @@ struct ts_channel_hw_conf_s {
 };
 
 const static tsChannelParam_t g_tsParamsDefault = {.active = false,
-                                                   .bandwidth = 0,
+                                                   .bandwidth = 650,
                                                    .coupling = TS_COUPLE_DC,
                                                    .term = TS_TERM_1M,
                                                    .volt_offset_uV = 0,
                                                    .volt_scale_uV = 5000000};
 
-static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force);
-static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param);
+static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, const tsChannelParam_t* param, bool force);
+static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, const tsChannelParam_t* param);
 static int32_t ts_channel_health_update(ts_channel_t* pTsHdl);
 static tsChannelsActive_t ts_channel_active_get(ts_channel_t* pTsHdl);
 static uint32_t ts_channel_active_index(tsChannelsActive_t active, uint32_t chanIdx);
@@ -318,6 +318,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         pChan->chan[chanIdx].params = g_tsParamsDefault;
         pChan->chan[chanIdx].lastScaleReq = 5.0;
         pChan->chan[chanIdx].lastTempAdjust = 0;
+        ts_channel_update_params(pChan, chanIdx, &g_tsParamsDefault, true);
     }
 
     if( TS_STATUS_OK != ts_channel_health_update(pChan))
@@ -393,7 +394,7 @@ int32_t ts_channel_params_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, tsCha
 
 }
 
-static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param, bool force)
+static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, const tsChannelParam_t* param, bool force)
 {
     int32_t retVal = TS_STATUS_OK;
     bool needUpdateGain = false, needActiveUpdate = false;
@@ -500,7 +501,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     return retVal;
 }
 
-static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, tsChannelParam_t* param)
+static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, const tsChannelParam_t* param)
 {
     int32_t retVal;
     tsChannelsActive_t active = ts_channel_active_get(pTsHdl);
