@@ -38,6 +38,8 @@ extern "C" {
 
 #define TS_AFE_BETA_TERM_SCALE                  (5.0)
 
+#define TS_AFE_BW_MHZ_MAX                       (900)
+
 #define TS_AFE_DEFAULT_CAL          (tsChannelCalibration_t) { \
     .attenuatorScale = 50.0, \
     .highPgaPathCal = { \
