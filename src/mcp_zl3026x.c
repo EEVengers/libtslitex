@@ -216,7 +216,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         return TS_INVALID_PARAM;
     }
 
-    double multiplier = pll_vco / mcp_zl3026x_selected_input_freq(&conf);
+    double multiplier = ((double)pll_vco) / mcp_zl3026x_selected_input_freq(&conf);
     int64_t pll_numerator = 0;
     int64_t pll_denominator = 1;
     //TODO - Determine N & D parameters

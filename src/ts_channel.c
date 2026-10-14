@@ -39,6 +39,7 @@ typedef struct ts_channel_s {
         uint32_t lastTempAdjust;
         double lastScaleReq;
         double lastOffsReq;
+        uint8_t chInvert;
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
     ts_adc_t adc;
@@ -69,7 +70,7 @@ struct ts_channel_hw_conf_s {
     uint8_t afe_dpot_ch;
     uint8_t adc_input;
     uint8_t adc_invert;
-} g_channelConf[TS_NUM_CHANNELS] = {
+} const g_channelConf[TS_NUM_CHANNELS] = {
     // Channel 1
     {
         TS_AFE_0_AMP_CS,
@@ -150,10 +151,18 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
     //Units prior to HWID 2 (Gamma HW Rev 5.3) have the ADC P/N pairs swapped
     if((id & (( 1UL << CSR_DEV_STATUS_HW_ID_HW_REV_SIZE) - 1)) < 0x2)
     {
-        g_channelConf[0].adc_invert = TS_ADC_CH_INVERT;
-        g_channelConf[1].adc_invert = TS_ADC_CH_INVERT;
-        g_channelConf[2].adc_invert = TS_ADC_CH_INVERT;
-        g_channelConf[3].adc_invert = TS_ADC_CH_INVERT;
+        
+        pChan->chan[0].chInvert = TS_ADC_CH_INVERT;
+        pChan->chan[1].chInvert = TS_ADC_CH_INVERT;
+        pChan->chan[2].chInvert = TS_ADC_CH_INVERT;
+        pChan->chan[3].chInvert = TS_ADC_CH_INVERT;
+    }
+    else
+    {
+        pChan->chan[0].chInvert = g_channelConf[0].adc_invert;
+        pChan->chan[1].chInvert = g_channelConf[1].adc_invert;
+        pChan->chan[2].chInvert = g_channelConf[2].adc_invert;
+        pChan->chan[3].chInvert = g_channelConf[3].adc_invert;
     }
 
     //Initialize Status
@@ -287,7 +296,7 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         pChan->chan[chanIdx].channelNo = chanIdx;
         ts_adc_set_gain(&pChan->adc, chanIdx, TS_ADC_CH_COARSE_GAIN_DEFAULT);
         retVal = ts_adc_set_channel_conf(&pChan->adc, chanIdx, g_channelConf[chanIdx].adc_input,
-                                            g_channelConf[chanIdx].adc_invert);
+                                            pChan->chan[chanIdx].chInvert);
         if(retVal != TS_STATUS_OK)
         {
             goto channel_init_error;

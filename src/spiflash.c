@@ -440,6 +440,7 @@ int32_t spiflash_init(file_t fd, spiflash_dev_t* dev)
         default:
         {
             LOG_ERROR("Unknown SPI Flash Device %08X", flash_id);
+            dev->ops = mx25u6432f_ops; //Try MX25 ops
             break;
         }
     }
@@ -482,16 +483,20 @@ int32_t spiflash_read(spiflash_dev_t* dev, uint32_t addr, uint8_t* pData, uint32
             return TS_STATUS_ERROR;
         }
         read_len = (4 - (addr%4));
+        read_len = read_len < len ? read_len : len;
         memcpy(pData, &flashBytes[addr%4], read_len);
         addr += read_len;
         pData += read_len;
         remaining -= read_len;
     }
 
-    read_len = get_flash_data(dev, addr, pData, (remaining/4)*4);
-    addr += read_len;
-    pData += read_len;
-    remaining -= read_len;
+    if (remaining >= 4)
+    {
+        read_len = get_flash_data(dev, addr, pData, (remaining/4)*4);
+        addr += read_len;
+        pData += read_len;
+        remaining -= read_len;
+    }
 
     if(remaining >= 4)
     {

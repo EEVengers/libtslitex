@@ -159,6 +159,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
             return NULL;
         }
         pInst->bytes_per_sample = 1;
+        pInst->sample_divisor = 1;
         pInst->initialized = true;
 
         // Fetch Factory Calibration

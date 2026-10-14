@@ -319,7 +319,6 @@ int32_t ts_data_parse_factory_cal(uint8_t* cal_buffer, tsScopeCalibration_t *fca
     if (!json_data)
     {
         LOG_ERROR("Failed to parse Factory Calibration JSON");
-        free(cal_buffer);
         return TS_STATUS_ERROR;
     }
 

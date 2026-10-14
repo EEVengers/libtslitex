@@ -67,69 +67,96 @@ static uint32_t ts_fw_get_idcode(file_t fd)
     return code & IDCODE_MASK;
 }
 
-static const char* ts_fw_parse_bit_header(const char* header, const char** part, uint32_t* bin_len)
+static const char* ts_fw_parse_bit_header(const char* header, const uint32_t file_len, const char** part, uint32_t* bin_len)
 {
     const uint8_t* position = (const uint8_t*)header;
     uint16_t key_len = 0;
+    uint32_t header_len = 0;
     *bin_len = 0;
 
     //First Field ('0FF0...')
+    if ((header_len + 2) > file_len)
+        return NULL;
     key_len = (uint16_t)(position[0] << 8) + (position[1]);
     if(key_len != 9)
     {
         LOG_ERROR("Invalid bitstream FIELD 1 (%d)", key_len);
         return NULL;
     }
+    header_len += (2+key_len);
     position += (2+key_len);
 
     //Second Field ('a')
+    if ((header_len + 3) > file_len)
+        return NULL;
     key_len = (uint16_t)(position[0] << 8) + (position[1]);
-    if(key_len != 1 && position[2] != 'a')
+    if(key_len != 1 || position[2] != 'a')
     {
         LOG_ERROR("Invalid bitstream FIELD 2 (%d)", key_len);
         return NULL;
     }
+    header_len += (2+key_len);
     position += (2+key_len);
 
     //Third Field (Design Name)
+    if ((header_len + 3) > file_len)
+        return NULL;
     key_len = (uint16_t)(position[0] << 8) + (position[1]);
     LOG_DEBUG("Parsing Bitstream for project: %s", &position[2]);
+    header_len += (2+key_len);
     position += (2+key_len);
 
     //Fourth Field ('b' + Part Name)
+    if ((header_len + 3) > file_len)
+        return NULL;
     if(position[0] != 'b')
     {
         LOG_ERROR("Invalid bitstream FIELD 4 (%c)", position[0]);
         return NULL;
     }
     key_len = (uint16_t)(position[1] << 8) + (position[2]);
+    if ((header_len + 3 + key_len) > file_len)
+        return NULL;
     *part = (char*)&position[3];
     LOG_DEBUG("Part: %s", &position[3]);
+    header_len += (3+key_len);
     position += (3+key_len);
 
     //Fifth Field ('c' + Build Date)
+    if ((header_len + 3) > file_len)
+        return NULL;
     key_len = (uint16_t)(position[1] << 8) + (position[2]);
     if((position[0] != 'c') || (key_len != 11))
     {
         LOG_ERROR("Invalid bitstream FIELD 5 (%c)", position[0]);
         return NULL;
     }
+    if ((header_len + 3 + key_len) > file_len)
+        return NULL;
     LOG_DEBUG("Build Date: %s", &position[3]);
+    header_len += (3+key_len);
     position += (3+key_len);
 
     
     //Sixth Field ('d' + Build Time)
+    if ((header_len + 3) > file_len)
+        return NULL;
     key_len = (uint16_t)(position[1] << 8) + (position[2]);
     if((position[0] != 'd') || (key_len != 9))
     {
         LOG_ERROR("Invalid bitstream FIELD 6 (%c)", position[0]);
         return NULL;
     }
+    if ((header_len + 3 + key_len) > file_len)
+        return NULL;
     LOG_DEBUG("Build Time: %s", &position[3]);
+    header_len += (3+key_len);
     position += (3+key_len);
 
     
     //Seventh Field ('e' + Bitstream)
+    if ((header_len + 5) > file_len)
+        return NULL;
     if(position[0] != 'e')
     {
         LOG_ERROR("Invalid bitstream FIELD 6 (%c)", position[0]);
@@ -183,7 +210,7 @@ int32_t ts_fw_manager_user_fw_update(ts_fw_manager_t* mngr, const char* file_str
     uint32_t bin_length = 0;
     const char* part_name = NULL;
     atomic_store(&mngr->fw_progress, 0);
-    const char* bin_start = ts_fw_parse_bit_header(file_stream, &part_name, &bin_length);
+    const char* bin_start = ts_fw_parse_bit_header(file_stream, len, &part_name, &bin_length);
     if((bin_start == NULL) ||
         (bin_length >= len) ||
         (bin_length == 0))
@@ -528,7 +555,7 @@ int32_t ts_fw_manager_factory_data_append(ts_fw_manager_t* mngr, uint32_t tag, u
         if(current_tag == INVALID_TAG)
         {
             //Test for length
-            if((mngr->partition_table->factory_bitstream_start + offset + sizeof(uint32_t)*3 + length) > 
+            if((mngr->partition_table->factory_config_start + offset + sizeof(uint32_t)*3 + length) > 
                 mngr->partition_table->factory_config_end)
             {
                 LOG_ERROR("Not enough space in Factory Partition to store object of %dB",length);
@@ -623,12 +650,13 @@ int32_t ts_fw_manager_factory_data_verify(ts_fw_manager_t* mngr)
                                 (uint8_t*)&next_len, sizeof(uint32_t));
         if(retVal < 0)
         {
-            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            LOG_ERROR("Failed to read length of tag %08x at offset 0x%x", tag, offset);
             break;
         }
+        next_len = ntohl(next_len);
         offset += sizeof(uint32_t);
 
-        if((mngr->partition_table->factory_config_start + offset + ntohl(next_len) + sizeof(uint32_t)) >
+        if((mngr->partition_table->factory_config_start + offset + next_len + sizeof(uint32_t)) >
             mngr->partition_table->factory_config_end)
         {
             LOG_ERROR("Tag %08X Exceeds Length (%d)", tag, next_len);
@@ -637,15 +665,16 @@ int32_t ts_fw_manager_factory_data_verify(ts_fw_manager_t* mngr)
         }
         
         //Read the CRC
-        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset + ntohl(next_len)),
+        retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset + next_len),
                                 (uint8_t*)&stored_crc, sizeof(uint32_t));
         if(retVal < 0)
         {
-            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            LOG_ERROR("Failed to read CRC for tag %08x at offset 0x%x", tag, offset);
             break;
         }
 
         //Read Value and Compute CRC
+        new_crc = crc32(0, Z_NULL, 0);
         while(next_len > 0)
         {
             uint32_t segment_len = next_len > sizeof(val_buffer) ? sizeof(val_buffer) : next_len;
@@ -654,7 +683,7 @@ int32_t ts_fw_manager_factory_data_verify(ts_fw_manager_t* mngr)
                                     val_buffer, segment_len);
             if(retVal < 0)
             {
-                LOG_ERROR("Failed to write value for tag %08x at offset 0x%x", tag, offset);
+                LOG_ERROR("Failed to read value for tag %08x at offset 0x%x", tag, offset);
                 break;
             }
             offset += segment_len;
@@ -799,7 +828,8 @@ int32_t ts_fw_manager_factory_data_retreive(ts_fw_manager_t* mngr, uint32_t tag,
         retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start+offset + next_len), (uint8_t*)&stored_crc, sizeof(uint32_t));
         if(retVal < 0)
         {
-            LOG_ERROR("Failed to write tag %08x at offset 0x%x", tag, offset);
+            LOG_ERROR("Failed to read CRC for tag %08x at offset 0x%x", tag, offset);
+            retVal = TS_STATUS_ERROR;
             break;
         }
 
@@ -831,6 +861,12 @@ int32_t ts_fw_manager_factory_data_retreive(ts_fw_manager_t* mngr, uint32_t tag,
         }
         
         //CRC Passes, read to user buffer
+        if(val_len > max_len)
+        {
+            LOG_ERROR("Failed to read tag %08x is larger than user buffer %dB", tag, val_len);
+            retVal = TS_STATUS_ERROR;
+            break;
+        }
         new_crc = crc32(0, Z_NULL, 0);
         retVal = spiflash_read(&mngr->flash_dev, (mngr->partition_table->factory_config_start + offset), content, val_len);
         if(retVal < 0)
