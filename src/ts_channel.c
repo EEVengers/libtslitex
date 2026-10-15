@@ -37,8 +37,8 @@ typedef struct ts_channel_s {
         tsChannelParam_t params;
         ts_afe_t afe;
         uint32_t lastTempAdjust;
-        double lastScaleReq;
-        double lastOffsReq;
+        uint32_t lastScaleReq;
+        int32_t lastOffsReq;
         uint8_t chInvert;
         tsChannelCalibration_t cal;
     } chan[TS_NUM_CHANNELS];
@@ -326,8 +326,8 @@ int32_t ts_channel_init(tsChannelHdl_t* pTsChannels, file_t ts)
         }
 
         pChan->chan[chanIdx].params = g_tsParamsDefault;
-        pChan->chan[chanIdx].lastScaleReq = 5.0;
-        pChan->chan[chanIdx].lastOffsReq = 0.0;
+        pChan->chan[chanIdx].lastScaleReq = g_tsParamsDefault.volt_scale_uV;
+        pChan->chan[chanIdx].lastOffsReq = g_tsParamsDefault.volt_offset_uV;
         pChan->chan[chanIdx].lastTempAdjust = 0;
         ts_channel_update_params(pChan, chanIdx, &g_tsParamsDefault, true);
     }
@@ -433,8 +433,8 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
 
     if ((0 != param->active) &&
         ((param->volt_scale_uV != pTsHdl->chan[chanIdx].params.volt_scale_uV) ||
-         (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV)) ||
-        (abs((int32_t)pTsHdl->status.sys_health.temp_c - (int32_t)pTsHdl->chan[chanIdx].lastTempAdjust) > TS_OFFS_TEMP_HYST))
+         (param->volt_offset_uV != pTsHdl->chan[chanIdx].params.volt_offset_uV) ||
+        (abs((int32_t)pTsHdl->status.sys_health.temp_c - (int32_t)pTsHdl->chan[chanIdx].lastTempAdjust) > TS_OFFS_TEMP_HYST)))
     {
         needUpdateGain = true;
     }
@@ -489,6 +489,10 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
         }
     }
 
+    // Store last update
+    pTsHdl->chan[chanIdx].lastScaleReq = param->volt_scale_uV;
+    pTsHdl->chan[chanIdx].lastOffsReq = param->volt_offset_uV;
+
     //Set Active
     if(needActiveUpdate)
     {
@@ -503,6 +507,7 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     }
     else if (needUpdateGain || force)
     {
+        LOG_ERROR("%s Channel %d", force ? "Force set" : "Update Gain", chanIdx);
         retVal = ts_channel_apply_params(pTsHdl, chanIdx, param);
     }
 
@@ -518,8 +523,13 @@ static int32_t ts_channel_apply_params(ts_channel_t* pTsHdl, uint32_t chanIdx, c
     double gain = 1.0;
     double requestVpp = ((double)param->volt_scale_uV) * 0.000001;
     double requestOffset = ((double)param->volt_offset_uV) * 0.000001;
-    pTsHdl->chan[chanIdx].lastScaleReq = requestVpp;
-    pTsHdl->chan[chanIdx].lastOffsReq = requestOffset;
+
+    // Set default Scale and Offset if channel is disabled
+    if (0 == param->active)
+    {
+        requestVpp = ((double)g_tsParamsDefault.volt_scale_uV) * 0.000001;
+        requestOffset = ((double)g_tsParamsDefault.volt_offset_uV) * 0.000001;
+    }
 
     // 1. Adjust for ADC Load scale
     double loadScale = 1.0;
@@ -802,8 +812,8 @@ int32_t ts_channel_sample_rate_set(tsChannelHdl_t tsChannels, uint32_t rate, tsS
         if (ts->chan[ch].params.active)
         {
             tsChannelParam_t param = ts->chan[ch].params;
-            param.volt_scale_uV = (uint32_t)(ts->chan[ch].lastScaleReq * 1000000.0);
-            param.volt_offset_uV = (int32_t)(ts->chan[ch].lastOffsReq * 1000000.0);
+            param.volt_scale_uV = ts->chan[ch].lastScaleReq;
+            param.volt_offset_uV = ts->chan[ch].lastOffsReq;
 
             ts_channel_apply_params(ts, ch, &param);
         }
@@ -987,8 +997,8 @@ int32_t ts_channel_calibration_set(tsChannelHdl_t tsChannels, uint32_t chanIdx, 
     {
         //Force afe to recalculate gain/offsets
         tsChannelParam_t param = ts->chan[chanIdx].params;
-        param.volt_scale_uV = (uint32_t)(ts->chan[chanIdx].lastScaleReq * 1000000.0);
-        param.volt_offset_uV = (int32_t)(ts->chan[chanIdx].lastOffsReq * 1000000.0);
+        param.volt_scale_uV = ts->chan[chanIdx].lastScaleReq;
+        param.volt_offset_uV = ts->chan[chanIdx].lastOffsReq;
 
         ts_channel_apply_params(ts, chanIdx, &param);
     }
