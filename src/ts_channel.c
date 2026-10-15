@@ -507,7 +507,6 @@ static int32_t ts_channel_update_params(ts_channel_t* pTsHdl, uint32_t chanIdx, 
     }
     else if (needUpdateGain || force)
     {
-        LOG_ERROR("%s Channel %d", force ? "Force set" : "Update Gain", chanIdx);
         retVal = ts_channel_apply_params(pTsHdl, chanIdx, param);
     }
 

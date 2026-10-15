@@ -16,6 +16,7 @@
 #include "ts_common.h"
 
 #include <math.h>
+#include <inttypes.h>
 
 
 #define MCP_ADD_REG_WRITE(conf, reg, val)   { (conf)->action = MCP_CLKGEN_WRITE_REG; \
@@ -81,7 +82,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         {
             if(conf.in_clks[ch].enable)
             {
-                LOG_DEBUG("Input Clock %d: Freq %llu Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
+                LOG_DEBUG("Input Clock %d: Freq %"PRIu64" Hz, Div %d", ch, conf.in_clks[ch].input_freq, conf.in_clks[ch].input_divider);
                 MCP_ADD_REG_WRITE(&confData[calLen], (0x0303+ch), (uint8_t)conf.in_clks[ch].input_divider | ZL3026X_VALTIME_DEFAULT);
                 calLen++;
                 in_ch_bitmap |= (1 << ch);
@@ -196,7 +197,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
         }
     }
 
-    LOG_DEBUG("Calculated APLL Output Freq: %llu Hz", pll_out);
+    LOG_DEBUG("Calculated APLL Output Freq: %"PRIu64" Hz", pll_out);
 
     uint64_t pll_vco = 4200000000;
     uint32_t pll_int_div = pll_vco/pll_out;
@@ -212,7 +213,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     //validate VCO between 3.7GHz and 4.2GHz
     if(pll_vco < 3700000000 || pll_vco > 4200000000)
     {
-        LOG_ERROR("Invalid APLL Configuration: VCO Freq %llu", pll_vco);
+        LOG_ERROR("Invalid APLL Configuration: VCO Freq %"PRIu64, pll_vco);
         return TS_INVALID_PARAM;
     }
 
@@ -375,7 +376,7 @@ int32_t mcp_zl3026x_build_config(mcp_clkgen_conf_t* confData, uint32_t len, zl30
     {
         if(conf.out_clks[ch].enable)
         {
-            LOG_DEBUG("Setting Output CLK %d to %llu Hz", ch, conf.out_clks[ch].output_freq);
+            LOG_DEBUG("Setting Output CLK %d to %"PRIu64" Hz", ch, conf.out_clks[ch].output_freq);
             /**
              * The frequency of the clock from the medium-speed divider is divided by LSDIV+1.
              *
