@@ -49,6 +49,7 @@ typedef struct ts_inst_s
     uint32_t interrupt_rate;
     uint8_t bytes_per_sample;
     uint8_t sample_divisor;
+    tsSampleFormat_t sample_format;
     //TBD - Other Instance Data
 } ts_inst_t;
 
@@ -162,6 +163,7 @@ tsHandle_t thunderscopeOpen(uint32_t devIdx, bool skip_init)
         }
         pInst->bytes_per_sample = 1;
         pInst->sample_divisor = 1;
+        pInst->sample_format = TS_8_BIT;
         pInst->initialized = true;
 
         // Fetch Factory Calibration
@@ -286,6 +288,8 @@ int32_t thunderscopeSampleModeSet(tsHandle_t ts, uint32_t rate, tsSampleFormat_t
         int32_t status = ts_channel_sample_rate_set(pInst->pChannel, rate, mode);
         if(status == TS_STATUS_OK)
         {
+            pInst->sample_format = mode;
+
             //Target 100Hz interrupt rate
             pInst->samples.interrupt_rate  = 1 + ((((mode == TS_8_BIT) ? rate : 2*rate) / 
                                                 (DMA_BUFFER_SIZE)) / pInst->interrupt_rate);
@@ -576,11 +580,14 @@ int32_t thunderscopeEventGet(tsHandle_t ts, tsEvent_t* evt)
                 evt->event_sample = (evt->event_sample * (TS_BYTES_PER_SAMPLE_COUNT / pInst->bytes_per_sample));
                 //Shift by half a data frame
                 evt->event_sample -= (TS_BYTES_PER_SAMPLE_COUNT/2) / pInst->bytes_per_sample;
-                // Correct two base-sample periods, combining offsets before rounding.
-                uint32_t offset = TS_ADC_BASE_PIPELINE_DELAY - TS_EVENT_PIPELINE_CORRECTION
-                                  + adjustment;
-                evt->event_sample += (offset + pInst->sample_divisor / 2)
-                                     / pInst->sample_divisor;
+                //Calculate offset correction
+                uint32_t offset = TS_ADC_BASE_PIPELINE_DELAY - TS_EVENT_PIPELINE_CORRECTION + adjustment;
+                evt->event_sample += (offset + pInst->sample_divisor / 2) / pInst->sample_divisor;
+                if(pInst->sample_divisor == 1 && (pInst->sample_format == TS_12_BIT_LSB || pInst->sample_format == TS_12_BIT_MSB))
+                {
+                    //Single-channel 12-bit capture needs 2 more samples for alignment
+                    evt->event_sample += 2;
+                }
             }
             else
             {
