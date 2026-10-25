@@ -133,6 +133,7 @@ typedef struct tsScopeState_s
             uint8_t pll_low:1;
             uint8_t pll_high:1;
             uint8_t pll_alt:1;
+            uint8_t dma_input_gate_drop:1; 
         };
     };
     sysHealth_t sys_health;

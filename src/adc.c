@@ -215,7 +215,7 @@ int32_t ts_adc_run(ts_adc_t* adc, uint8_t en)
         return TS_STATUS_ERROR;
     }
     //Enable Trigger
-    litepcie_writel(adc->ctrl, CSR_ADC_TRIGGER_CONTROL_ADDR, en);
+    litepcie_writel(adc->ctrl, CSR_ADC_DMA_INPUT_GATE_CONTROL_ADDR, en);
     return TS_STATUS_OK;
 }
 
