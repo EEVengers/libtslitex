@@ -52,7 +52,7 @@ configure_file(pyproject.toml.in pyproject.toml @ONLY)
 configure_file(__init__.py.in tslitex/__init__.py COPYONLY)
 
 add_custom_target(PyBindings
-        COMMAND Python::Interpreter -m pipx run build --wheel .
+        COMMAND Python::Interpreter -m build --wheel .
         WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
         COMMENT "Building python whl"
         DEPENDS pydeps
